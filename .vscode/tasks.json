@@ -1,0 +1,53 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Gradle: Assemble Debug APK",
+            "type": "shell",
+            "command": "cmd.exe",
+            "args": [
+                "/d",
+                "/v:on",
+                "/c",
+                "set \"JAVA_HOME=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\" & set \"PATH=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin;%PATH%\" & gradlew.bat assembleDebug"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder:local-music}"
+            },
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Gradle: Assemble Release APK",
+            "type": "shell",
+            "command": "cmd.exe",
+            "args": [
+                "/d",
+                "/v:on",
+                "/c",
+                "set \"JAVA_HOME=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\" & set \"PATH=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin;%PATH%\" & gradlew.bat assembleRelease"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder:local-music}"
+            },
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Gradle: Bundle Release AAB",
+            "type": "shell",
+            "command": "cmd.exe",
+            "args": [
+                "/d",
+                "/v:on",
+                "/c",
+                "set \"JAVA_HOME=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\" & set \"PATH=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin;%PATH%\" & gradlew.bat bundleRelease"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder:local-music}"
+            },
+            "group": "build",
+            "problemMatcher": []
+        }
+    ]
+}
