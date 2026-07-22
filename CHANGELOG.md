@@ -28,3 +28,7 @@
 - Added Follow System, Dark, and Light theme modes with Follow System as the default.
 - Limited automatic library enumeration to the initial ViewModel refresh to keep navigation responsive.
 - Synced Now Playing progress and selected song state from Media3 playback updates, including external media controls.
+- Updated bottom navigation to use larger icon-only destinations.
+- Scoped library search, filters, and import/export actions to the Home screen.
+- Persisted imported playlists locally and added delete actions on the Playlists screen.
+- Fixed favourite retention during library refresh and made playlist writes durable before returning.

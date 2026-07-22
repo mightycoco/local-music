@@ -25,6 +25,7 @@ import com.localmusic.player.domain.usecase.RefreshMusicLibraryUseCase
 import com.localmusic.player.domain.usecase.SetFavouriteUseCase
 import com.localmusic.player.domain.usecase.StartPlaybackUseCase
 import com.localmusic.player.playback.Media3PlaybackController
+import com.localmusic.player.playlist.SharedPreferencesPlaylistStore
 import com.localmusic.player.ui.home.HomeRoute
 import com.localmusic.player.ui.home.HomeViewModel
 import com.localmusic.player.ui.home.HomeViewModelFactory
@@ -65,6 +66,9 @@ class MainActivity : ComponentActivity() {
             addFolderSource = AddFolderSourceUseCase(repository),
             setFavourite = SetFavouriteUseCase(repository),
             startPlayback = StartPlaybackUseCase(Media3PlaybackController(applicationContext)),
+            playlistStore = SharedPreferencesPlaylistStore(
+                getSharedPreferences("local-music-playlists", MODE_PRIVATE)
+            ),
             artworkExtractor = EmbeddedArtworkExtractor(
                 context = applicationContext,
                 cache = ArtworkDiskCache(cacheDir)

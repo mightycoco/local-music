@@ -15,6 +15,9 @@ interface SongDao {
     @Upsert
     suspend fun upsertAll(songs: List<SongEntity>)
 
+    @Query("SELECT * FROM songs WHERE id IN (:ids)")
+    suspend fun songsByIds(ids: List<String>): List<SongEntity>
+
     @Query("DELETE FROM songs WHERE id NOT IN (:ids)")
     suspend fun deleteMissing(ids: List<String>)
 

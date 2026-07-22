@@ -1,0 +1,56 @@
+package com.localmusic.player.playlist
+
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+class SharedPreferencesPlaylistStoreTest {
+    @Test
+    fun savePersistsPlaylistsAcrossStoreInstances() {
+        val preferences = FakeSharedPreferences()
+        val playlist = testPlaylist(name = "Road")
+
+        SharedPreferencesPlaylistStore(preferences).save(playlist)
+
+        val restored = SharedPreferencesPlaylistStore(preferences).playlists()
+        assertEquals(listOf(playlist), restored)
+    }
+
+    @Test
+    fun saveReplacesPlaylistWithSameName() {
+        val store = SharedPreferencesPlaylistStore(FakeSharedPreferences())
+
+        store.save(testPlaylist(name = "Road", uri = "content://music/old"))
+        store.save(testPlaylist(name = "Road", uri = "content://music/new"))
+
+        val restored = store.playlists()
+        assertEquals(1, restored.size)
+        assertEquals("content://music/new", restored.first().entries.first().uri)
+    }
+
+    @Test
+    fun deleteRemovesPlaylistByName() {
+        val store = SharedPreferencesPlaylistStore(FakeSharedPreferences())
+        store.save(testPlaylist(name = "Road"))
+        store.save(testPlaylist(name = "Focus"))
+
+        val remaining = store.delete("Road")
+
+        assertEquals(listOf("Focus"), remaining.map { it.name })
+        assertEquals(listOf("Focus"), store.playlists().map { it.name })
+    }
+
+    private fun testPlaylist(
+        name: String,
+        uri: String = "content://music/song-1"
+    ): M3uPlaylist = M3uPlaylist(
+        name = name,
+        entries = listOf(
+            M3uPlaylistEntry(
+                title = "The Title",
+                artist = "The Artist",
+                durationSeconds = 181,
+                uri = uri
+            )
+        )
+    )
+}

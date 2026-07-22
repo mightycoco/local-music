@@ -1,6 +1,7 @@
 package com.localmusic.player.data.repository
 
 import com.localmusic.player.data.database.SongDao
+import com.localmusic.player.data.database.SongEntity
 import com.localmusic.player.data.database.toDomain
 import com.localmusic.player.data.database.toEntity
 import com.localmusic.player.data.mediastore.MusicScanner
@@ -28,7 +29,9 @@ class RoomMusicRepository(
 
     override suspend fun refreshLibrary() = withContext(ioDispatcher) {
         val scannedSongs = duplicateSongResolver.resolve(musicScanner.scan())
-        songDao.replaceScannedLibrary(scannedSongs.map { it.toEntity() })
+        val scannedEntities = scannedSongs.map { it.toEntity() }
+        val retainedEntities = songDao.songsByIds(scannedEntities.map { it.id })
+        songDao.replaceScannedLibrary(scannedEntities.mergeRetainedState(retainedEntities))
     }
 
     override suspend fun addFolderSource(folderUri: String) = withContext(ioDispatcher) {
@@ -39,5 +42,21 @@ class RoomMusicRepository(
 
     override suspend fun setFavourite(songId: String, isFavourite: Boolean) = withContext(ioDispatcher) {
         songDao.setFavourite(songId, isFavourite)
+    }
+}
+
+internal fun List<SongEntity>.mergeRetainedState(retainedEntities: List<SongEntity>): List<SongEntity> {
+    val retainedById = retainedEntities.associateBy { it.id }
+    return map { scanned ->
+        val retained = retainedById[scanned.id]
+        if (retained == null) {
+            scanned
+        } else {
+            scanned.copy(
+                playCount = retained.playCount,
+                lastPlayedEpochMillis = retained.lastPlayedEpochMillis,
+                isFavourite = retained.isFavourite
+            )
+        }
     }
 }

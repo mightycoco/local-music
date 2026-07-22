@@ -51,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.painter.Painter
@@ -62,6 +63,7 @@ import com.localmusic.player.bluetooth.CarModeDetector
 import com.localmusic.player.domain.model.LibraryFilter
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.SortOrder
+import com.localmusic.player.playlist.M3uPlaylist
 import com.localmusic.player.ui.theme.AppThemeMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -160,6 +162,7 @@ fun HomeRoute(viewModel: HomeViewModel) {
         onExportPlaylist = { playlistExportLauncher.launch("local-music-library.m3u") },
         onSongSelected = viewModel::playSong,
         onFavouriteToggle = viewModel::toggleFavourite,
+        onDeletePlaylist = viewModel::deletePlaylist,
         onPlayPause = viewModel::togglePlayback,
         onNext = viewModel::skipToNext,
         onPrevious = viewModel::skipToPrevious,
@@ -187,6 +190,7 @@ fun HomeScreen(
     onExportPlaylist: () -> Unit,
     onSongSelected: (Song) -> Unit,
     onFavouriteToggle: (Song) -> Unit,
+    onDeletePlaylist: (M3uPlaylist) -> Unit,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
@@ -212,8 +216,13 @@ fun HomeScreen(
                     NavigationBarItem(
                         selected = uiState.selectedScreen == destination,
                         onClick = { onScreenSelected(destination) },
-                        icon = { Text(destination.iconLabel()) },
-                        label = { Text(destination.label) }
+                        icon = {
+                            Text(
+                                text = destination.iconLabel(),
+                                fontSize = 28.sp
+                            )
+                        },
+                        label = null
                     )
                 }
             }
@@ -225,30 +234,10 @@ fun HomeScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp)
         ) {
-            OutlinedTextField(
-                value = uiState.searchQuery,
-                onValueChange = onSearchChange,
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                label = { Text("Search") }
-            )
-            Spacer(modifier = Modifier.height(12.dp))
             if (!hasAudioPermission) {
                 PermissionBanner(onRequestPermission = onRequestPermission)
                 Spacer(modifier = Modifier.height(12.dp))
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onAddFolderSource) {
-                    Text("Add Folder")
-                }
-                Button(onClick = onImportPlaylist) {
-                    Text("Import M3U")
-                }
-                Button(onClick = onExportPlaylist) {
-                    Text("Export M3U")
-                }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
             uiState.refreshError?.let { error ->
                 Text(text = error, color = MaterialTheme.colorScheme.error)
                 Spacer(modifier = Modifier.height(12.dp))
@@ -265,14 +254,36 @@ fun HomeScreen(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
             }
-            FilterRow(uiState, onFilterSelected, onSortSelected)
-            Spacer(modifier = Modifier.height(12.dp))
-            if (uiState.importedPlaylists.isNotEmpty()) {
-                Text(
-                    text = "Imported playlists: ${uiState.importedPlaylists.joinToString { it.name }}",
-                    style = MaterialTheme.typography.bodyMedium
+            if (uiState.selectedScreen == HomeScreenDestination.Home) {
+                OutlinedTextField(
+                    value = uiState.searchQuery,
+                    onValueChange = onSearchChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("Search") }
                 )
                 Spacer(modifier = Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = onAddFolderSource) {
+                        Text("Add Folder")
+                    }
+                    Button(onClick = onImportPlaylist) {
+                        Text("Import M3U")
+                    }
+                    Button(onClick = onExportPlaylist) {
+                        Text("Export M3U")
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                FilterRow(uiState, onFilterSelected, onSortSelected)
+                Spacer(modifier = Modifier.height(12.dp))
+                if (uiState.importedPlaylists.isNotEmpty()) {
+                    Text(
+                        text = "Imported playlists: ${uiState.importedPlaylists.joinToString { it.name }}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
             }
             when (uiState.selectedScreen) {
                 HomeScreenDestination.Home -> AdaptiveLibraryContent(
@@ -287,7 +298,10 @@ fun HomeScreen(
                     onPrevious = onPrevious,
                     onProgressChange = onProgressChange
                 )
-                HomeScreenDestination.Playlists -> PlaylistContent(uiState = uiState)
+                HomeScreenDestination.Playlists -> PlaylistContent(
+                    uiState = uiState,
+                    onDeletePlaylist = onDeletePlaylist
+                )
                 HomeScreenDestination.Favourites -> SongList(
                     songs = uiState.songs.filter { it.isFavourite },
                     artworkBySongId = uiState.artworkBySongId,
@@ -436,7 +450,10 @@ private fun NowPlayingContent(
 }
 
 @Composable
-private fun PlaylistContent(uiState: HomeUiState) {
+private fun PlaylistContent(
+    uiState: HomeUiState,
+    onDeletePlaylist: (M3uPlaylist) -> Unit
+) {
     if (uiState.importedPlaylists.isEmpty()) {
         EmptyState(
             title = "No playlists imported",
@@ -449,7 +466,12 @@ private fun PlaylistContent(uiState: HomeUiState) {
         items(uiState.importedPlaylists) { playlist ->
             ListItem(
                 headlineContent = { Text(playlist.name) },
-                supportingContent = { Text("${playlist.entries.size} entries") }
+                supportingContent = { Text("${playlist.entries.size} entries") },
+                trailingContent = {
+                    Button(onClick = { onDeletePlaylist(playlist) }) {
+                        Text("Delete")
+                    }
+                }
             )
         }
     }

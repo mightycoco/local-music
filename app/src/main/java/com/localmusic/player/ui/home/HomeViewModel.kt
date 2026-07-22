@@ -14,6 +14,7 @@ import com.localmusic.player.domain.usecase.SetFavouriteUseCase
 import com.localmusic.player.domain.usecase.StartPlaybackUseCase
 import com.localmusic.player.playlist.M3uPlaylist
 import com.localmusic.player.playlist.M3uPlaylistCodec
+import com.localmusic.player.playlist.PlaylistStore
 import com.localmusic.player.playlist.toM3uEntry
 import com.localmusic.player.ui.theme.AppThemeMode
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +34,7 @@ class HomeViewModel(
     private val addFolderSource: AddFolderSourceUseCase,
     private val setFavourite: SetFavouriteUseCase,
     private val startPlayback: StartPlaybackUseCase,
+    private val playlistStore: PlaylistStore? = null,
     private val artworkExtractor: EmbeddedArtworkExtractor? = null
 ) : ViewModel() {
     private val selectedFilter = MutableStateFlow(LibraryFilter.AllSongs)
@@ -43,7 +45,7 @@ class HomeViewModel(
     private val isPlaying = MutableStateFlow(false)
     private val playbackProgress = MutableStateFlow(0f)
     private val themeMode = MutableStateFlow(AppThemeMode.FollowSystem)
-    private val importedPlaylists = MutableStateFlow<List<M3uPlaylist>>(emptyList())
+    private val importedPlaylists = MutableStateFlow(playlistStore?.playlists().orEmpty())
     private val artworkBySongId = MutableStateFlow<Map<String, String>>(emptyMap())
     private val isCarMode = MutableStateFlow(false)
     private val isRefreshing = MutableStateFlow(false)
@@ -282,8 +284,13 @@ class HomeViewModel(
 
     fun importPlaylist(name: String, content: String) {
         runCatching { playlistCodec.parse(name, content) }
-            .onSuccess { playlist -> importedPlaylists.value = importedPlaylists.value + playlist }
+            .onSuccess { playlist -> importedPlaylists.value = playlistStore?.save(playlist) ?: importedPlaylists.value + playlist }
             .onFailure { error -> refreshError.value = error.message ?: "Playlist import failed" }
+    }
+
+    fun deletePlaylist(playlist: M3uPlaylist) {
+        importedPlaylists.value = playlistStore?.delete(playlist.name)
+            ?: importedPlaylists.value.filterNot { it.name == playlist.name }
     }
 
     fun exportCurrentPlaylist(): String = playlistCodec.export(
@@ -354,11 +361,20 @@ class HomeViewModelFactory(
     private val addFolderSource: AddFolderSourceUseCase,
     private val setFavourite: SetFavouriteUseCase,
     private val startPlayback: StartPlaybackUseCase,
+    private val playlistStore: PlaylistStore? = null,
     private val artworkExtractor: EmbeddedArtworkExtractor? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(HomeViewModel::class.java))
-        return HomeViewModel(observeSongs, refreshMusicLibrary, addFolderSource, setFavourite, startPlayback, artworkExtractor) as T
+        return HomeViewModel(
+            observeSongs,
+            refreshMusicLibrary,
+            addFolderSource,
+            setFavourite,
+            startPlayback,
+            playlistStore,
+            artworkExtractor
+        ) as T
     }
 }
