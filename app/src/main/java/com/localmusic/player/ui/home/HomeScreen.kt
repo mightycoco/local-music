@@ -74,7 +74,11 @@ fun HomeRoute(viewModel: HomeViewModel) {
         onSearchChange = viewModel::updateSearchQuery,
         onFilterSelected = viewModel::selectFilter,
         onSortSelected = viewModel::selectSortOrder,
-        onRequestPermission = { permissionLauncher.launch(audioPermission) }
+        onRequestPermission = {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                permissionLauncher.launch(audioPermission)
+            }
+        }
     )
 }
 
@@ -195,7 +199,7 @@ private fun SongList(songs: List<Song>) {
                 style = MaterialTheme.typography.headlineSmall
             )
             Text(
-                text = "MediaStore and folder scanning will populate this library in the next feature slice.",
+                text = "Allow audio access to scan MediaStore and populate this library.",
                 style = MaterialTheme.typography.bodyLarge
             )
         }

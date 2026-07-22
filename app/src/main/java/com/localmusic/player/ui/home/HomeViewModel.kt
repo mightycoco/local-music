@@ -25,22 +25,27 @@ class HomeViewModel(
     private val isRefreshing = MutableStateFlow(false)
     private val refreshError = MutableStateFlow<String?>(null)
 
-    val uiState: StateFlow<HomeUiState> = combine(
-        observeSongs(),
+    private val controlsState = combine(
         selectedFilter,
         sortOrder,
         searchQuery,
         isRefreshing,
         refreshError
-    ) { songs, filter, order, query, refreshing, error ->
+    ) { filter, order, query, refreshing, error ->
         HomeUiState(
-            songs = songs,
             selectedFilter = filter,
             sortOrder = order,
             searchQuery = query,
             isRefreshing = refreshing,
             refreshError = error
         )
+    }
+
+    val uiState: StateFlow<HomeUiState> = combine(
+        observeSongs(),
+        controlsState
+    ) { songs, state ->
+        state.copy(songs = songs)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
