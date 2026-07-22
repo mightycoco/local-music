@@ -7,6 +7,7 @@ enum class LibraryFilter(val label: String) {
     Albums("Albums"),
     Genres("Genres"),
     Folders("Folders"),
+    Favourites("Favourites"),
     RecentlyAdded("Recently Added"),
     RecentlyPlayed("Recently Played"),
     MostPlayed("Most Played")

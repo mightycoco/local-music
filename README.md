@@ -4,7 +4,7 @@ Local Music is an Android music player focused exclusively on local audio playba
 
 ## Current Increment
 
-This repository currently contains the first buildable architecture slice:
+This repository currently contains buildable architecture and feature foundations:
 
 - Gradle Kotlin DSL Android app module.
 - Compose Material 3 application shell.
@@ -14,8 +14,15 @@ This repository currently contains the first buildable architecture slice:
 - Room schema foundation for local song metadata.
 - Initial home screen with visible search, filters, and sorting controls.
 - MediaStore library scanning with Room-backed persistence.
+- Storage Access Framework folder-source scanning with persisted tree URIs.
 - Runtime audio permission request for Android 13+ and legacy storage access.
-- Duplicate hiding across URI, file signature, and normalized metadata signature.
+- Duplicate hiding across MediaStore and user-selected folders.
+- Instant metadata search, filters, sorting, and adaptive library layout.
+- Persistent favourites with song-row toggle controls.
+- Media3 playback service, queue mapping, and song-tap playback.
+- M3U playlist import/export codec and SAF picker workflows.
+- Embedded album-art extraction, disk cache pruning, and song-list thumbnails.
+- Bluetooth car detection, runtime Bluetooth permission handling, settings import/export, and license foundations.
 - Unit test for the first use case.
 
 ## Build From VS Code

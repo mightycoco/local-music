@@ -21,6 +21,9 @@ interface SongDao {
     @Query("DELETE FROM songs")
     suspend fun deleteAll()
 
+    @Query("UPDATE songs SET isFavourite = :isFavourite WHERE id = :songId")
+    suspend fun setFavourite(songId: String, isFavourite: Boolean)
+
     @Transaction
     suspend fun replaceScannedLibrary(songs: List<SongEntity>) {
         if (songs.isEmpty()) {

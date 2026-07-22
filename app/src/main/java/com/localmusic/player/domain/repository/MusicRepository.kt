@@ -8,4 +8,8 @@ interface MusicRepository {
     fun observeSongs(): Flow<List<Song>>
 
     suspend fun refreshLibrary()
+
+    suspend fun addFolderSource(folderUri: String)
+
+    suspend fun setFavourite(songId: String, isFavourite: Boolean)
 }

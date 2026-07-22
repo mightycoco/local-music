@@ -18,13 +18,22 @@
 
 ## Backlog
 
-- [ ] Storage Access Framework folder sources.
-- [ ] Duplicate detection across MediaStore and user folders.
-- [ ] Instant metadata search.
-- [ ] Media3 playback service and queue.
-- [ ] Playlists with M3U import/export.
-- [ ] Favourites screen.
-- [ ] Artwork cache and lookup pipeline.
-- [ ] Bluetooth car device detection and Car Mode.
-- [ ] Adaptive layouts for tablets and foldables.
-- [ ] Settings import/export and licenses.
+- [x] Storage Access Framework folder sources.
+- [x] Duplicate detection across MediaStore and user folders.
+- [x] Instant metadata search.
+- [x] Media3 playback service and queue.
+- [x] Playlists with M3U import/export.
+- [x] Favourites screen foundation.
+- [x] Artwork disk cache.
+- [x] Artwork lookup pipeline foundation.
+- [x] Bluetooth car device detection foundation.
+- [x] Adaptive layouts for tablets and foldables.
+- [x] Settings import/export and licenses foundation.
+
+## Follow-up Backlog
+
+- [x] Persist and toggle favourites from the song list.
+- [x] Connect song taps to the Media3 playback service.
+- [x] Add full playlist management screens and SAF import/export pickers.
+- [x] Add album-art extraction, disk cache pruning, and UI image loading.
+- [x] Add runtime Bluetooth permissions and automatic Car Mode UI switching.

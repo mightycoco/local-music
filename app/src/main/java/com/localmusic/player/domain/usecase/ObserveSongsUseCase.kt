@@ -1,6 +1,7 @@
 package com.localmusic.player.domain.usecase
 
 import com.localmusic.player.domain.model.Song
+import com.localmusic.player.domain.repository.PlaybackController
 import com.localmusic.player.domain.repository.MusicRepository
 import kotlinx.coroutines.flow.Flow
 
@@ -16,4 +17,22 @@ class RefreshMusicLibraryUseCase(
     private val repository: MusicRepository
 ) {
     suspend operator fun invoke() = repository.refreshLibrary()
+}
+
+class AddFolderSourceUseCase(
+    private val repository: MusicRepository
+) {
+    suspend operator fun invoke(folderUri: String) = repository.addFolderSource(folderUri)
+}
+
+class SetFavouriteUseCase(
+    private val repository: MusicRepository
+) {
+    suspend operator fun invoke(songId: String, isFavourite: Boolean) = repository.setFavourite(songId, isFavourite)
+}
+
+class StartPlaybackUseCase(
+    private val playbackController: PlaybackController
+) {
+    operator fun invoke(songs: List<Song>, startSongId: String) = playbackController.play(songs, startSongId)
 }

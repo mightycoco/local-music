@@ -12,4 +12,8 @@ class InMemoryMusicRepository : MusicRepository {
     override fun observeSongs(): Flow<List<Song>> = songs
 
     override suspend fun refreshLibrary() = Unit
+
+    override suspend fun addFolderSource(folderUri: String) = Unit
+
+    override suspend fun setFavourite(songId: String, isFavourite: Boolean) = Unit
 }

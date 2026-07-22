@@ -29,6 +29,14 @@ flowchart LR
 - Media3 is reserved for playback and metadata compatibility instead of custom decoder logic.
 - Dependency injection starts with explicit factories. A DI library can be added only when constructor wiring becomes repetitive enough to justify the dependency.
 
-## Next Architecture Slice
+## Implemented Feature Slices
 
-MediaStore scanning is implemented behind `MusicRepository`, sorted by `MediaStore.DATE_ADDED` for the default recently added view. SAF folder scanning should be added as a separate data source and merged with MediaStore using the same duplicate detection pipeline.
+MediaStore scanning is implemented behind `MusicRepository`, sorted by `MediaStore.DATE_ADDED` for the default recently added view. SAF folder scanning is a separate data source merged through `CompositeMusicScanner`, then normalized by the shared duplicate detection pipeline before Room persistence.
+
+Playback is exposed through a Media3 `MediaSessionService` and a queue factory that converts domain songs into `MediaItem`s. Playlist, artwork, settings, license, and car-mode code starts as focused services so UI screens can be added without moving business rules into Compose.
+
+Favourites are persisted through the repository boundary and toggled from Compose via `SetFavouriteUseCase`. Song taps call `StartPlaybackUseCase`, which delegates to a domain `PlaybackController` implemented by the Media3 controller.
+
+Artwork extraction is handled by a focused Android service that uses `MediaMetadataRetriever`, stores embedded artwork in a small disk cache, and exposes file URIs to UI state for thumbnail rendering. Cache pruning is separated into JVM-testable policy code.
+
+Car Mode detection remains a focused Bluetooth service. The UI requests `BLUETOOTH_CONNECT` when required, reads bonded devices only after permission is available, and reflects likely car-audio state through `HomeUiState`.
