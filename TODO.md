@@ -42,3 +42,13 @@
 - [x] The default setting for the theme must be "Follow System", other options are Dark, Light
 - [x] The navigation is very slow. The enumeration of media files seems to be done on any UI input
 - [x] Keep Now Playing progress and selected song synchronized with Media3 playback state and external media controls.
+- [ ] Favourite songs must be persisted
+- [ ] Playlist screen must allow deleting playlists
+- [ ] Now Playing must allow adding to a new/existing playlist
+- [ ] Queueing of items must be possible. The Queue must behave like a playlist, not be deletable, can be cleared, must be always at the top of the list of playlists
+- [ ] Playlists must be persisted
+- [ ] Media list items must have a long press menu with the options to queue, add to a new/existing playlist
+- [ ] Creating a playlist should just show a modal dialog with a generic TextInput field and Cancle/Create buttons
+- [ ] The bottom nav buttons must have a larger icon, no text (home, now playing, playlists, favourites, settings)
+- [ ] The media list filters and search bar should only be visible on the home screen, not on the other screens.
+- [ ] The now playing screen should have the song, album or artist image as a backdrop. If none is available, try to use the online service.
