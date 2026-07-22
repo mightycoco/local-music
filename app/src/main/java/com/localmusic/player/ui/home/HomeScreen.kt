@@ -63,6 +63,9 @@ import com.localmusic.player.domain.model.LibraryFilter
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.SortOrder
 import com.localmusic.player.ui.theme.AppThemeMode
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 
 @Composable
 fun HomeRoute(viewModel: HomeViewModel) {
@@ -124,10 +127,12 @@ fun HomeRoute(viewModel: HomeViewModel) {
     }
 
     LaunchedEffect(hasAudioPermission) {
+        yield()
         if (hasAudioPermission) viewModel.refreshLibraryOnce()
     }
 
     LaunchedEffect(Unit) {
+        yield()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val hasBluetoothPermission = ContextCompat.checkSelfPermission(
                 context,
@@ -546,17 +551,23 @@ private fun SongList(
 @Composable
 private fun ArtworkThumbnail(artworkUri: String?) {
     val context = LocalContext.current
-    val bitmap = remember(artworkUri) {
-        artworkUri?.let { uri ->
-            context.contentResolver.openInputStream(Uri.parse(uri))?.use { input ->
-                BitmapFactory.decodeStream(input)
+    var bitmap by remember(artworkUri) { mutableStateOf<android.graphics.Bitmap?>(null) }
+
+    LaunchedEffect(artworkUri) {
+        bitmap = null
+        if (artworkUri != null) {
+            bitmap = withContext(Dispatchers.IO) {
+                context.contentResolver.openInputStream(Uri.parse(artworkUri))?.use { input ->
+                    BitmapFactory.decodeStream(input)
+                }
             }
         }
     }
 
-    if (bitmap != null) {
+    val thumbnail = bitmap
+    if (thumbnail != null) {
         Image(
-            bitmap = bitmap.asImageBitmap(),
+            bitmap = thumbnail.asImageBitmap(),
             contentDescription = null,
             modifier = Modifier.size(48.dp),
             contentScale = ContentScale.Crop

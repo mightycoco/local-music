@@ -16,12 +16,15 @@ import com.localmusic.player.playlist.M3uPlaylist
 import com.localmusic.player.playlist.M3uPlaylistCodec
 import com.localmusic.player.playlist.toM3uEntry
 import com.localmusic.player.ui.theme.AppThemeMode
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** ViewModel for library browsing, filtering, sorting, and search state. */
 class HomeViewModel(
@@ -46,6 +49,7 @@ class HomeViewModel(
     private val isRefreshing = MutableStateFlow(false)
     private val refreshError = MutableStateFlow<String?>(null)
     private val playlistCodec = M3uPlaylistCodec()
+    private val requestedArtworkSongIds = mutableSetOf<String>()
     private var hasRequestedInitialRefresh = false
 
     private val selectionState = combine(
@@ -103,16 +107,29 @@ class HomeViewModel(
         )
     }
 
-    val uiState: StateFlow<HomeUiState> = combine(
+    private val projectedSongs = combine(
         observeSongs(),
+        controlsState
+    ) { songs, state -> songs to state }
+        .map { (songs, state) ->
+            ProjectedSongs(
+                allSongs = songs,
+                visibleSongs = withContext(Dispatchers.Default) {
+                    songs.applyLibraryProjection(state)
+                }
+            )
+        }
+
+    val uiState: StateFlow<HomeUiState> = combine(
+        projectedSongs,
         controlsState,
         artworkBySongId,
         playbackState
-    ) { songs, state, artwork, playback ->
-        refreshArtwork(songs)
-        val nowPlaying = songs.firstOrNull { it.id == playback.songId }
+    ) { projected, state, artwork, playback ->
+        refreshArtwork(projected.visibleSongs.take(ARTWORK_PREFETCH_LIMIT))
+        val nowPlaying = projected.allSongs.firstOrNull { it.id == playback.songId }
         state.copy(
-            songs = songs.applyLibraryProjection(state),
+            songs = projected.visibleSongs,
             nowPlayingSong = nowPlaying,
             isPlaying = nowPlaying != null && playback.isPlaying,
             playbackProgress = playback.progress,
@@ -176,13 +193,20 @@ class HomeViewModel(
     }
 
     fun playSong(song: Song) {
-        runCatching { startPlayback(uiState.value.songs, song.id) }
-            .onSuccess {
-                nowPlayingSongId.value = song.id
-                isPlaying.value = true
-                selectedScreen.value = HomeScreenDestination.NowPlaying
-            }
-            .onFailure { error -> refreshError.value = error.message ?: "Playback failed" }
+        val queue = uiState.value.songs
+        nowPlayingSongId.value = song.id
+        isPlaying.value = true
+        selectedScreen.value = HomeScreenDestination.NowPlaying
+
+        viewModelScope.launch(Dispatchers.Default) {
+            runCatching { startPlayback(queue, song.id) }
+                .onFailure { error ->
+                    withContext(Dispatchers.Main) {
+                        isPlaying.value = false
+                        refreshError.value = error.message ?: "Playback failed"
+                    }
+                }
+        }
     }
 
     fun togglePlayback() {
@@ -225,17 +249,22 @@ class HomeViewModel(
 
     private fun refreshArtwork(songs: List<Song>) {
         val extractor = artworkExtractor ?: return
-        val missingSongs = songs.filter { it.id !in artworkBySongId.value }
+        val cachedArtworkIds = artworkBySongId.value.keys
+        val missingSongs = songs.filter { song ->
+            song.id !in cachedArtworkIds && requestedArtworkSongIds.add(song.id)
+        }
         if (missingSongs.isEmpty()) return
 
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val resolvedArtwork = missingSongs.mapNotNull { song ->
                 runCatching { extractor.artworkFor(song)?.toString() }
                     .getOrNull()
                     ?.let { song.id to it }
             }
             if (resolvedArtwork.isNotEmpty()) {
-                artworkBySongId.value = artworkBySongId.value + resolvedArtwork
+                withContext(Dispatchers.Main) {
+                    artworkBySongId.value = artworkBySongId.value + resolvedArtwork
+                }
             }
         }
     }
@@ -299,6 +328,13 @@ private data class PlaybackState(
     val isPlaying: Boolean,
     val progress: Float
 )
+
+private data class ProjectedSongs(
+    val allSongs: List<Song>,
+    val visibleSongs: List<Song>
+)
+
+private const val ARTWORK_PREFETCH_LIMIT = 64
 
 /** Factory used until a dependency injection container is introduced. */
 class HomeViewModelFactory(

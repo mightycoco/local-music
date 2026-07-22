@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.core.content.ContextCompat
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import com.google.common.util.concurrent.ListenableFuture
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.repository.PlaybackController
 
@@ -13,6 +14,8 @@ class Media3PlaybackController(
     private val context: Context,
     private val queueFactory: PlaybackQueueFactory = PlaybackQueueFactory()
 ) : PlaybackController {
+    private var controllerFuture: ListenableFuture<MediaController>? = null
+
     override fun play(songs: List<Song>, startSongId: String) {
         val queue = queueFactory.createQueue(songs, startSongId)
         if (queue.isEmpty()) return
@@ -40,14 +43,18 @@ class Media3PlaybackController(
     }
 
     private fun withController(command: (MediaController) -> Unit) {
-        val sessionToken = SessionToken(context, ComponentName(context, LocalMusicPlaybackService::class.java))
-        val controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
-        controllerFuture.addListener(
+        val future = controllerFuture ?: MediaController.Builder(context, sessionToken()).buildAsync().also {
+            controllerFuture = it
+        }
+        future.addListener(
             {
-                val controller = controllerFuture.get()
+                val controller = future.get()
                 command(controller)
             },
             ContextCompat.getMainExecutor(context)
         )
     }
+
+    private fun sessionToken(): SessionToken =
+        SessionToken(context, ComponentName(context, LocalMusicPlaybackService::class.java))
 }

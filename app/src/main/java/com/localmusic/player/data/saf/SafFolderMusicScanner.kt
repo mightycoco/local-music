@@ -5,15 +5,21 @@ import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import com.localmusic.player.data.mediastore.MusicScanner
 import com.localmusic.player.domain.model.Song
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** Recursively scans user-selected SAF folders for supported local audio files. */
 class SafFolderMusicScanner(
     private val context: Context,
-    private val sourceStore: SafFolderSourceStore
+    private val sourceStore: SafFolderSourceStore,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : MusicScanner {
-    override suspend fun scan(): List<Song> = sourceStore.folders().flatMap { folderUri ->
-        val root = DocumentFile.fromTreeUri(context, Uri.parse(folderUri)) ?: return@flatMap emptyList()
-        root.walkAudioFiles()
+    override suspend fun scan(): List<Song> = withContext(ioDispatcher) {
+        sourceStore.folders().flatMap { folderUri ->
+            val root = DocumentFile.fromTreeUri(context, Uri.parse(folderUri)) ?: return@flatMap emptyList()
+            root.walkAudioFiles()
+        }
     }
 
     private fun DocumentFile.walkAudioFiles(): List<Song> {
