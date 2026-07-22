@@ -17,14 +17,35 @@ class Media3PlaybackController(
         val queue = queueFactory.createQueue(songs, startSongId)
         if (queue.isEmpty()) return
 
+        withController { controller ->
+            controller.setMediaItems(queue)
+            controller.prepare()
+            controller.play()
+        }
+    }
+
+    override fun resume() {
+        withController { controller -> controller.play() }
+    }
+
+    override fun pause() {
+        withController { controller -> controller.pause() }
+    }
+
+    override fun seekTo(progress: Float) {
+        withController { controller ->
+            val duration = controller.duration.takeIf { it > 0 } ?: return@withController
+            controller.seekTo((duration * progress.coerceIn(0f, 1f)).toLong())
+        }
+    }
+
+    private fun withController(command: (MediaController) -> Unit) {
         val sessionToken = SessionToken(context, ComponentName(context, LocalMusicPlaybackService::class.java))
         val controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
         controllerFuture.addListener(
             {
                 val controller = controllerFuture.get()
-                controller.setMediaItems(queue)
-                controller.prepare()
-                controller.play()
+                command(controller)
             },
             ContextCompat.getMainExecutor(context)
         )

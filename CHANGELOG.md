@@ -23,3 +23,7 @@
 - Added SAF playlist import/export picker workflows.
 - Added embedded album-art extraction, disk cache pruning, and song-list thumbnails.
 - Added Bluetooth runtime permission handling and automatic Car Mode state detection.
+- Added bottom navigation for Home, Now Playing, Playlists, Favourites, and Settings.
+- Added Now Playing controls backed by Media3 playback commands for play, pause, next, previous, and seek.
+- Added Follow System, Dark, and Light theme modes with Follow System as the default.
+- Limited automatic library enumeration to the initial ViewModel refresh to keep navigation responsive.

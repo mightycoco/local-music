@@ -5,4 +5,7 @@ import com.localmusic.player.domain.model.Song
 /** Boundary for local playback commands; UI never talks to Media3 directly. */
 interface PlaybackController {
     fun play(songs: List<Song>, startSongId: String)
+    fun resume()
+    fun pause()
+    fun seekTo(progress: Float)
 }

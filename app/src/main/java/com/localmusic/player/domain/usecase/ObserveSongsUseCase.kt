@@ -35,4 +35,7 @@ class StartPlaybackUseCase(
     private val playbackController: PlaybackController
 ) {
     operator fun invoke(songs: List<Song>, startSongId: String) = playbackController.play(songs, startSongId)
+    fun resume() = playbackController.resume()
+    fun pause() = playbackController.pause()
+    fun seekTo(progress: Float) = playbackController.seekTo(progress)
 }

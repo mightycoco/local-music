@@ -17,6 +17,8 @@ import com.localmusic.player.data.saf.SafFolderMusicScanner
 import com.localmusic.player.data.saf.SharedPreferencesSafFolderSourceStore
 import com.localmusic.player.data.repository.RoomMusicRepository
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import com.localmusic.player.domain.usecase.AddFolderSourceUseCase
 import com.localmusic.player.domain.usecase.ObserveSongsUseCase
 import com.localmusic.player.domain.usecase.RefreshMusicLibraryUseCase
@@ -70,12 +72,13 @@ class MainActivity : ComponentActivity() {
         )
 
         setContent {
-            LocalMusicTheme {
+            val viewModel: HomeViewModel = viewModel(factory = factory)
+            val uiState by viewModel.uiState.collectAsState()
+            LocalMusicTheme(themeMode = uiState.themeMode) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val viewModel: HomeViewModel = viewModel(factory = factory)
                     HomeRoute(viewModel = viewModel)
                 }
             }

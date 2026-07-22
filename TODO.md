@@ -37,3 +37,7 @@
 - [x] Add full playlist management screens and SAF import/export pickers.
 - [x] Add album-art extraction, disk cache pruning, and UI image loading.
 - [x] Add runtime Bluetooth permissions and automatic Car Mode UI switching.
+- [x] Starting a playback opens a detailed view of the song with song controls (next/previous/progress slider control/play/pause)
+- [x] The selection of the screen must be at the bottom (Home/Now Playing/Playlists/Favourites/Settings)
+- [x] The default setting for the theme must be "Follow System", other options are Dark, Light
+- [x] The navigation is very slow. The enumeration of media files seems to be done on any UI input

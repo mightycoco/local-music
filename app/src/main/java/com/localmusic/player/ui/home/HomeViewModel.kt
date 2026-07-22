@@ -15,6 +15,7 @@ import com.localmusic.player.domain.usecase.StartPlaybackUseCase
 import com.localmusic.player.playlist.M3uPlaylist
 import com.localmusic.player.playlist.M3uPlaylistCodec
 import com.localmusic.player.playlist.toM3uEntry
+import com.localmusic.player.ui.theme.AppThemeMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -34,36 +35,58 @@ class HomeViewModel(
     private val selectedFilter = MutableStateFlow(LibraryFilter.AllSongs)
     private val sortOrder = MutableStateFlow(SortOrder.NewestAdded)
     private val searchQuery = MutableStateFlow("")
+    private val selectedScreen = MutableStateFlow(HomeScreenDestination.Home)
+    private val nowPlayingSongId = MutableStateFlow<String?>(null)
+    private val isPlaying = MutableStateFlow(false)
+    private val playbackProgress = MutableStateFlow(0f)
+    private val themeMode = MutableStateFlow(AppThemeMode.FollowSystem)
     private val importedPlaylists = MutableStateFlow<List<M3uPlaylist>>(emptyList())
     private val artworkBySongId = MutableStateFlow<Map<String, String>>(emptyMap())
     private val isCarMode = MutableStateFlow(false)
     private val isRefreshing = MutableStateFlow(false)
     private val refreshError = MutableStateFlow<String?>(null)
     private val playlistCodec = M3uPlaylistCodec()
+    private var hasRequestedInitialRefresh = false
 
     private val selectionState = combine(
         selectedFilter,
         sortOrder,
-        searchQuery
-    ) { filter, order, query ->
+        searchQuery,
+        selectedScreen
+    ) { filter, order, query, screen ->
         HomeUiState(
             selectedFilter = filter,
             sortOrder = order,
-            searchQuery = query
+            searchQuery = query,
+            selectedScreen = screen
         )
     }
 
     private val statusState = combine(
         importedPlaylists,
         isCarMode,
+        themeMode,
         isRefreshing,
         refreshError
-    ) { playlists, carMode, refreshing, error ->
+    ) { playlists, carMode, mode, refreshing, error ->
         HomeUiState(
             importedPlaylists = playlists,
             isCarMode = carMode,
+            themeMode = mode,
             isRefreshing = refreshing,
             refreshError = error
+        )
+    }
+
+    private val playbackState = combine(
+        nowPlayingSongId,
+        isPlaying,
+        playbackProgress
+    ) { songId, playing, progress ->
+        PlaybackState(
+            songId = songId,
+            isPlaying = playing,
+            progress = progress
         )
     }
 
@@ -74,6 +97,7 @@ class HomeViewModel(
         selection.copy(
             importedPlaylists = status.importedPlaylists,
             isCarMode = status.isCarMode,
+            themeMode = status.themeMode,
             isRefreshing = status.isRefreshing,
             refreshError = status.refreshError
         )
@@ -82,11 +106,16 @@ class HomeViewModel(
     val uiState: StateFlow<HomeUiState> = combine(
         observeSongs(),
         controlsState,
-        artworkBySongId
-    ) { songs, state, artwork ->
+        artworkBySongId,
+        playbackState
+    ) { songs, state, artwork, playback ->
         refreshArtwork(songs)
+        val nowPlaying = songs.firstOrNull { it.id == playback.songId }
         state.copy(
             songs = songs.applyLibraryProjection(state),
+            nowPlayingSong = nowPlaying,
+            isPlaying = nowPlaying != null && playback.isPlaying,
+            playbackProgress = playback.progress,
             artworkBySongId = artwork
         )
     }.stateIn(
@@ -105,6 +134,16 @@ class HomeViewModel(
 
     fun updateSearchQuery(query: String) {
         searchQuery.value = query
+    }
+
+    fun selectScreen(destination: HomeScreenDestination) {
+        selectedScreen.value = destination
+    }
+
+    fun refreshLibraryOnce() {
+        if (hasRequestedInitialRefresh) return
+        hasRequestedInitialRefresh = true
+        refreshLibrary()
     }
 
     fun refreshLibrary() {
@@ -138,7 +177,50 @@ class HomeViewModel(
 
     fun playSong(song: Song) {
         runCatching { startPlayback(uiState.value.songs, song.id) }
+            .onSuccess {
+                nowPlayingSongId.value = song.id
+                isPlaying.value = true
+                selectedScreen.value = HomeScreenDestination.NowPlaying
+            }
             .onFailure { error -> refreshError.value = error.message ?: "Playback failed" }
+    }
+
+    fun togglePlayback() {
+        if (nowPlayingSongId.value == null) return
+        runCatching {
+            if (isPlaying.value) startPlayback.pause() else startPlayback.resume()
+        }.onSuccess {
+            isPlaying.value = !isPlaying.value
+        }.onFailure { error ->
+            refreshError.value = error.message ?: "Playback control failed"
+        }
+    }
+
+    fun skipToNext() {
+        moveNowPlaying(offset = 1)
+    }
+
+    fun skipToPrevious() {
+        moveNowPlaying(offset = -1)
+    }
+
+    fun updatePlaybackProgress(progress: Float) {
+        val coercedProgress = progress.coerceIn(0f, 1f)
+        runCatching { startPlayback.seekTo(coercedProgress) }
+            .onSuccess { playbackProgress.value = coercedProgress }
+            .onFailure { error -> refreshError.value = error.message ?: "Seek failed" }
+    }
+
+    fun selectThemeMode(mode: AppThemeMode) {
+        themeMode.value = mode
+    }
+
+    private fun moveNowPlaying(offset: Int) {
+        val songs = uiState.value.songs
+        if (songs.isEmpty()) return
+        val currentIndex = songs.indexOfFirst { it.id == nowPlayingSongId.value }.takeIf { it >= 0 } ?: 0
+        val nextIndex = Math.floorMod(currentIndex + offset, songs.size)
+        playSong(songs[nextIndex])
     }
 
     private fun refreshArtwork(songs: List<Song>) {
@@ -211,6 +293,12 @@ class HomeViewModel(
         SortOrder.MostPlayed -> compareByDescending<Song> { it.playCount }.thenBy { it.title.lowercase() }
     }
 }
+
+private data class PlaybackState(
+    val songId: String?,
+    val isPlaying: Boolean,
+    val progress: Float
+)
 
 /** Factory used until a dependency injection container is introduced. */
 class HomeViewModelFactory(

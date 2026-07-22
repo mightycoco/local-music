@@ -33,8 +33,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -59,6 +62,7 @@ import com.localmusic.player.bluetooth.CarModeDetector
 import com.localmusic.player.domain.model.LibraryFilter
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.SortOrder
+import com.localmusic.player.ui.theme.AppThemeMode
 
 @Composable
 fun HomeRoute(viewModel: HomeViewModel) {
@@ -79,7 +83,7 @@ fun HomeRoute(viewModel: HomeViewModel) {
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
         hasAudioPermission = granted
-        if (granted) viewModel.refreshLibrary()
+        if (granted) viewModel.refreshLibraryOnce()
     }
     val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -120,7 +124,7 @@ fun HomeRoute(viewModel: HomeViewModel) {
     }
 
     LaunchedEffect(hasAudioPermission) {
-        if (hasAudioPermission) viewModel.refreshLibrary()
+        if (hasAudioPermission) viewModel.refreshLibraryOnce()
     }
 
     LaunchedEffect(Unit) {
@@ -143,6 +147,7 @@ fun HomeRoute(viewModel: HomeViewModel) {
         uiState = uiState,
         hasAudioPermission = hasAudioPermission,
         onSearchChange = viewModel::updateSearchQuery,
+        onScreenSelected = viewModel::selectScreen,
         onFilterSelected = viewModel::selectFilter,
         onSortSelected = viewModel::selectSortOrder,
         onAddFolderSource = { folderLauncher.launch(null) },
@@ -150,6 +155,11 @@ fun HomeRoute(viewModel: HomeViewModel) {
         onExportPlaylist = { playlistExportLauncher.launch("local-music-library.m3u") },
         onSongSelected = viewModel::playSong,
         onFavouriteToggle = viewModel::toggleFavourite,
+        onPlayPause = viewModel::togglePlayback,
+        onNext = viewModel::skipToNext,
+        onPrevious = viewModel::skipToPrevious,
+        onProgressChange = viewModel::updatePlaybackProgress,
+        onThemeSelected = viewModel::selectThemeMode,
         onRequestPermission = {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 permissionLauncher.launch(audioPermission)
@@ -164,6 +174,7 @@ fun HomeScreen(
     uiState: HomeUiState,
     hasAudioPermission: Boolean,
     onSearchChange: (String) -> Unit,
+    onScreenSelected: (HomeScreenDestination) -> Unit,
     onFilterSelected: (LibraryFilter) -> Unit,
     onSortSelected: (SortOrder) -> Unit,
     onAddFolderSource: () -> Unit,
@@ -171,6 +182,11 @@ fun HomeScreen(
     onExportPlaylist: () -> Unit,
     onSongSelected: (Song) -> Unit,
     onFavouriteToggle: (Song) -> Unit,
+    onPlayPause: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit,
+    onProgressChange: (Float) -> Unit,
+    onThemeSelected: (AppThemeMode) -> Unit,
     onRequestPermission: () -> Unit
 ) {
     Scaffold(
@@ -184,6 +200,18 @@ fun HomeScreen(
                     )
                 }
             )
+        },
+        bottomBar = {
+            NavigationBar {
+                HomeScreenDestination.entries.forEach { destination ->
+                    NavigationBarItem(
+                        selected = uiState.selectedScreen == destination,
+                        onClick = { onScreenSelected(destination) },
+                        icon = { Text(destination.iconLabel()) },
+                        label = { Text(destination.label) }
+                    )
+                }
+            }
         }
     ) { padding ->
         Column(
@@ -241,13 +269,43 @@ fun HomeScreen(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
             }
-            AdaptiveLibraryContent(
-                uiState = uiState,
-                onSongSelected = onSongSelected,
-                onFavouriteToggle = onFavouriteToggle
-            )
+            when (uiState.selectedScreen) {
+                HomeScreenDestination.Home -> AdaptiveLibraryContent(
+                    uiState = uiState,
+                    onSongSelected = onSongSelected,
+                    onFavouriteToggle = onFavouriteToggle
+                )
+                HomeScreenDestination.NowPlaying -> NowPlayingContent(
+                    uiState = uiState,
+                    onPlayPause = onPlayPause,
+                    onNext = onNext,
+                    onPrevious = onPrevious,
+                    onProgressChange = onProgressChange
+                )
+                HomeScreenDestination.Playlists -> PlaylistContent(uiState = uiState)
+                HomeScreenDestination.Favourites -> SongList(
+                    songs = uiState.songs.filter { it.isFavourite },
+                    artworkBySongId = uiState.artworkBySongId,
+                    emptyTitle = "No favourites yet",
+                    emptyMessage = "Mark local songs as favourites to pin them here.",
+                    onSongSelected = onSongSelected,
+                    onFavouriteToggle = onFavouriteToggle
+                )
+                HomeScreenDestination.Settings -> SettingsContent(
+                    uiState = uiState,
+                    onThemeSelected = onThemeSelected
+                )
+            }
         }
     }
+}
+
+private fun HomeScreenDestination.iconLabel(): String = when (this) {
+    HomeScreenDestination.Home -> "⌂"
+    HomeScreenDestination.NowPlaying -> "▶"
+    HomeScreenDestination.Playlists -> "≡"
+    HomeScreenDestination.Favourites -> "★"
+    HomeScreenDestination.Settings -> "⚙"
 }
 
 @Composable
@@ -335,6 +393,102 @@ private fun AdaptiveLibraryContent(
 }
 
 @Composable
+private fun NowPlayingContent(
+    uiState: HomeUiState,
+    onPlayPause: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit,
+    onProgressChange: (Float) -> Unit
+) {
+    val song = uiState.nowPlayingSong
+    if (song == null) {
+        EmptyState(
+            title = "Nothing playing",
+            message = "Choose a song from Home or Favourites to start playback."
+        )
+        return
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        ArtworkThumbnail(artworkUri = uiState.artworkBySongId[song.id])
+        Text(text = song.title, style = MaterialTheme.typography.headlineMedium)
+        Text(text = "${song.artist} - ${song.album}", style = MaterialTheme.typography.bodyLarge)
+        Slider(
+            value = uiState.playbackProgress,
+            onValueChange = onProgressChange
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Button(onClick = onPrevious) { Text("Previous") }
+            Button(onClick = onPlayPause) { Text(if (uiState.isPlaying) "Pause" else "Play") }
+            Button(onClick = onNext) { Text("Next") }
+        }
+    }
+}
+
+@Composable
+private fun PlaylistContent(uiState: HomeUiState) {
+    if (uiState.importedPlaylists.isEmpty()) {
+        EmptyState(
+            title = "No playlists imported",
+            message = "Use Import M3U on Home to add local playlist files."
+        )
+        return
+    }
+
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(uiState.importedPlaylists) { playlist ->
+            ListItem(
+                headlineContent = { Text(playlist.name) },
+                supportingContent = { Text("${playlist.entries.size} entries") }
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsContent(
+    uiState: HomeUiState,
+    onThemeSelected: (AppThemeMode) -> Unit
+) {
+    Column(
+        modifier = Modifier.padding(top = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(text = "Settings", style = MaterialTheme.typography.headlineSmall)
+        Text(text = "Theme", style = MaterialTheme.typography.bodyLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AppThemeMode.entries.forEach { mode ->
+                AssistChip(
+                    onClick = { onThemeSelected(mode) },
+                    label = { Text(mode.label) },
+                    enabled = mode != uiState.themeMode
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyState(
+    title: String,
+    message: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.padding(top = 48.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(text = title, style = MaterialTheme.typography.headlineSmall)
+        Text(text = message, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+@Composable
 private fun SongList(
     songs: List<Song>,
     artworkBySongId: Map<String, String>,
@@ -364,20 +518,7 @@ private fun SongList(
     onFavouriteToggle: (Song) -> Unit
 ) {
     if (songs.isEmpty()) {
-        Column(
-            modifier = modifier
-                .padding(top = 48.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = emptyTitle,
-                style = MaterialTheme.typography.headlineSmall
-            )
-            Text(
-                text = emptyMessage,
-                style = MaterialTheme.typography.bodyLarge
-            )
-        }
+        EmptyState(title = emptyTitle, message = emptyMessage, modifier = modifier)
         return
     }
 

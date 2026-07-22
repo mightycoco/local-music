@@ -23,6 +23,9 @@ This repository currently contains buildable architecture and feature foundation
 - M3U playlist import/export codec and SAF picker workflows.
 - Embedded album-art extraction, disk cache pruning, and song-list thumbnails.
 - Bluetooth car detection, runtime Bluetooth permission handling, settings import/export, and license foundations.
+- Bottom navigation with Home, Now Playing, Playlists, Favourites, and Settings destinations.
+- Now Playing controls wired through the Media3 playback boundary.
+- Follow System, Dark, and Light theme modes.
 - Unit test for the first use case.
 
 ## Build From VS Code

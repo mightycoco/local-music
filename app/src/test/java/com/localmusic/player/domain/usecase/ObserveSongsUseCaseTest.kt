@@ -87,6 +87,12 @@ class ObserveSongsUseCaseTest {
         override fun play(songs: List<Song>, startSongId: String) {
             startedPlayback = songs to startSongId
         }
+
+        override fun resume() = Unit
+
+        override fun pause() = Unit
+
+        override fun seekTo(progress: Float) = Unit
     }
 
     private fun testSong(id: String): Song = Song(
