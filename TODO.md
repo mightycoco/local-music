@@ -41,3 +41,4 @@
 - [x] The selection of the screen must be at the bottom (Home/Now Playing/Playlists/Favourites/Settings)
 - [x] The default setting for the theme must be "Follow System", other options are Dark, Light
 - [x] The navigation is very slow. The enumeration of media files seems to be done on any UI input
+- [x] Keep Now Playing progress and selected song synchronized with Media3 playback state and external media controls.

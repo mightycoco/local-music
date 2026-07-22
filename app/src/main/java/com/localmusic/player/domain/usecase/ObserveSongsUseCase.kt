@@ -34,6 +34,7 @@ class SetFavouriteUseCase(
 class StartPlaybackUseCase(
     private val playbackController: PlaybackController
 ) {
+    fun observePlayback() = playbackController.observePlayback()
     operator fun invoke(songs: List<Song>, startSongId: String) = playbackController.play(songs, startSongId)
     fun resume() = playbackController.resume()
     fun pause() = playbackController.pause()

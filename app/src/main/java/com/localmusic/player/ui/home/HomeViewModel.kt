@@ -52,6 +52,16 @@ class HomeViewModel(
     private val requestedArtworkSongIds = mutableSetOf<String>()
     private var hasRequestedInitialRefresh = false
 
+    init {
+        viewModelScope.launch {
+            startPlayback.observePlayback().collect { playback ->
+                nowPlayingSongId.value = playback.songId
+                isPlaying.value = playback.isPlaying
+                playbackProgress.value = playback.progress
+            }
+        }
+    }
+
     private val selectionState = combine(
         selectedFilter,
         sortOrder,
@@ -196,6 +206,7 @@ class HomeViewModel(
         val queue = uiState.value.songs
         nowPlayingSongId.value = song.id
         isPlaying.value = true
+        playbackProgress.value = 0f
         selectedScreen.value = HomeScreenDestination.NowPlaying
 
         viewModelScope.launch(Dispatchers.Default) {

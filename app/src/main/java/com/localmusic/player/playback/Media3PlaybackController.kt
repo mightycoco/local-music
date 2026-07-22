@@ -3,11 +3,18 @@ package com.localmusic.player.playback
 import android.content.ComponentName
 import android.content.Context
 import androidx.core.content.ContextCompat
+import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.repository.PlaybackController
+import com.localmusic.player.domain.repository.PlaybackSnapshot
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.launch
 
 /** Sends local queue playback commands to the app Media3 session service. */
 class Media3PlaybackController(
@@ -15,6 +22,38 @@ class Media3PlaybackController(
     private val queueFactory: PlaybackQueueFactory = PlaybackQueueFactory()
 ) : PlaybackController {
     private var controllerFuture: ListenableFuture<MediaController>? = null
+
+    override fun observePlayback(): Flow<PlaybackSnapshot> = callbackFlow {
+        var controller: MediaController? = null
+        var listener: Player.Listener? = null
+
+        withController { mediaController ->
+            controller = mediaController
+            fun emitSnapshot() {
+                trySend(mediaController.toPlaybackSnapshot())
+            }
+
+            listener = object : Player.Listener {
+                override fun onEvents(player: Player, events: Player.Events) {
+                    emitSnapshot()
+                }
+            }
+            mediaController.addListener(listener!!)
+            emitSnapshot()
+        }
+
+        val ticker = launch {
+            while (true) {
+                controller?.let { trySend(it.toPlaybackSnapshot()) }
+                delay(500L)
+            }
+        }
+
+        awaitClose {
+            ticker.cancel()
+            listener?.let { controller?.removeListener(it) }
+        }
+    }
 
     override fun play(songs: List<Song>, startSongId: String) {
         val queue = queueFactory.createQueue(songs, startSongId)
@@ -57,4 +96,11 @@ class Media3PlaybackController(
 
     private fun sessionToken(): SessionToken =
         SessionToken(context, ComponentName(context, LocalMusicPlaybackService::class.java))
+
+    private fun MediaController.toPlaybackSnapshot(): PlaybackSnapshot = PlaybackSnapshot(
+        songId = currentMediaItem?.mediaId,
+        isPlaying = isPlaying,
+        positionMillis = currentPosition.coerceAtLeast(0L),
+        durationMillis = duration.takeIf { it > 0L } ?: 0L
+    )
 }

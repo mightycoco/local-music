@@ -3,6 +3,7 @@ package com.localmusic.player.domain.usecase
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.repository.PlaybackController
 import com.localmusic.player.domain.repository.MusicRepository
+import com.localmusic.player.domain.repository.PlaybackSnapshot
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -83,6 +84,8 @@ class ObserveSongsUseCaseTest {
 
     private class FakePlaybackController : PlaybackController {
         var startedPlayback: Pair<List<Song>, String>? = null
+
+        override fun observePlayback(): Flow<PlaybackSnapshot> = flowOf(PlaybackSnapshot())
 
         override fun play(songs: List<Song>, startSongId: String) {
             startedPlayback = songs to startSongId

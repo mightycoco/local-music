@@ -27,3 +27,4 @@
 - Added Now Playing controls backed by Media3 playback commands for play, pause, next, previous, and seek.
 - Added Follow System, Dark, and Light theme modes with Follow System as the default.
 - Limited automatic library enumeration to the initial ViewModel refresh to keep navigation responsive.
+- Synced Now Playing progress and selected song state from Media3 playback updates, including external media controls.

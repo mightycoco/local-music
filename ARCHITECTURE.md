@@ -35,7 +35,7 @@ MediaStore scanning is implemented behind `MusicRepository`, sorted by `MediaSto
 
 Playback is exposed through a Media3 `MediaSessionService` and a queue factory that converts domain songs into `MediaItem`s. Playlist, artwork, settings, license, and car-mode code starts as focused services so UI screens can be added without moving business rules into Compose.
 
-Favourites are persisted through the repository boundary and toggled from Compose via `SetFavouriteUseCase`. Song taps and Now Playing controls call `StartPlaybackUseCase`, which delegates to a domain `PlaybackController` implemented by the Media3 controller.
+Favourites are persisted through the repository boundary and toggled from Compose via `SetFavouriteUseCase`. Song taps and Now Playing controls call `StartPlaybackUseCase`, which delegates to a domain `PlaybackController` implemented by the Media3 controller. The same playback boundary exposes Media3 playback snapshots so Now Playing can reflect current position, queue item changes, and external media-control updates without coupling Compose to Media3.
 
 Artwork extraction is handled by a focused Android service that uses `MediaMetadataRetriever`, stores embedded artwork in a small disk cache, and exposes file URIs to UI state for thumbnail rendering. Cache pruning is separated into JVM-testable policy code.
 
