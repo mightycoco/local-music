@@ -51,8 +51,8 @@
 - [x] Creating a playlist should just show a modal dialog with a generic TextInput field and Cancel/Create buttons
 - [x] The bottom nav buttons must have a larger icon, no text (home, now playing, playlists, favourites, settings)
 - [x] The media list filters and search bar should only be visible on the home screen, not on the other screens.
-- [ ] Complete offline artwork source priority: embedded artwork, folder.jpg, cover.jpg, then cached artwork.
-- [ ] Add an optional external artwork lookup from a free media/artist artwork provider. Request it only after all offline artwork sources fail, cache successful downloads in Android's cache directory, and recover by downloading again when Android clears the cache.
+- [x] Complete offline artwork source priority: embedded artwork, folder.jpg, cover.jpg, then cached artwork.
+- [x] Add an optional external artwork lookup from a free media/artist artwork provider. Request it only after all offline artwork sources fail, cache successful downloads in Android's cache directory, and recover by downloading again when Android clears the cache.
 - [x] Add a default-enabled Settings switch to opt out of external artwork downloading. This exception applies only to artwork metadata; local audio files remain the sole library and playback source, with no streaming or cloud music library support.
 
 ## Remaining Prompt Requirements
@@ -69,4 +69,4 @@
 - [ ] Complete the requested visual design: Metro-inspired Material 3 styling, large touch targets, responsive portrait/landscape layouts, and purposeful subtle motion.
 - [ ] Add explicit dependency-injection composition guidance or a lightweight DI solution once manual wiring no longer scales; keep UI, domain, and data dependencies directional.
 - [ ] Review class and function size, KDoc coverage, duplicate UI flows, and Mermaid architecture documentation against the production-quality code standards.
-- [ ] Select and integrate a free external artwork provider, such as MusicBrainz and Cover Art Archive, with rate-limit handling, attribution, privacy disclosure, error handling, and cache behavior. It must never supply audio playback or a cloud music library.
+- [x] Select and integrate MusicBrainz and Cover Art Archive with rate-limit handling, attribution, privacy disclosure, error handling, and cache behavior. It must never supply audio playback or a cloud music library.

@@ -50,3 +50,4 @@
 - Added synchronized Media3 shuffle and repeat controls to Now Playing.
 - Added threshold-based horizontal swipe navigation to the Now Playing screen.
 - Added a Now Playing entry point for the device's system equalizer when it is available.
+- Added local-first artwork resolution for embedded, `folder.jpg`, `cover.jpg`, and cached artwork, followed by the optional MusicBrainz and Cover Art Archive lookup.

@@ -1018,7 +1018,7 @@ private fun SettingsContent(
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = "Download missing artwork", style = MaterialTheme.typography.bodyLarge)
                 Text(
-                    text = "Use online artwork only when no local artwork is available.",
+                    text = "After embedded, folder, cover, and cached art fail, use MusicBrainz and Cover Art Archive. Artist and album metadata is sent to these services; artwork is cached locally.",
                     style = MaterialTheme.typography.bodySmall
                 )
             }

@@ -351,7 +351,12 @@ class HomeViewModel(
 
         viewModelScope.launch(Dispatchers.IO) {
             val resolvedArtwork = missingSongs.mapNotNull { song ->
-                runCatching { extractor.artworkFor(song)?.toString() }
+                runCatching {
+                    extractor.artworkFor(
+                        song = song,
+                        allowExternalDownload = isExternalArtworkDownloadEnabled.value
+                    )?.toString()
+                }
                     .getOrNull()
                     ?.let { song.id to it }
             }

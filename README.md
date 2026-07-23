@@ -103,6 +103,7 @@ The CI workflow uploads artifacts for every non-tag run: a debug APK plus unsign
 ## Development Notes
 
 - The app plays local files only; no streaming or cloud integrations are planned.
+- Missing artwork may optionally use MusicBrainz and Cover Art Archive only after embedded, `folder.jpg`, `cover.jpg`, and cached artwork are unavailable. The setting is enabled by default and can be disabled in Settings. Artist and album metadata is sent to those services for lookup; successful images are stored in the app cache and no audio or library data is uploaded or streamed.
 - MediaStore and Storage Access Framework scanning should be implemented behind `MusicRepository`.
 - UI classes must not access MediaStore directly.
 - Keep feature increments small, documented, tested where practical, and buildable.
