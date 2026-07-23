@@ -1137,7 +1137,11 @@ private fun SongList(
                 supportingContent = { Text("${song.artist} - ${song.album}") },
                 trailingContent = {
                     IconButton(onClick = { onFavouriteToggle(song) }) {
-                        Text(if (song.isFavourite) "★" else "☆")
+                        Text(
+                            text = if (song.isFavourite) "★" else "☆",
+                            modifier = Modifier.size(64.dp),
+                            style = MaterialTheme.typography.headlineMedium
+                        )
                     }
                 }
             )
