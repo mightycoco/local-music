@@ -48,3 +48,5 @@ Smart library filters remain pure domain rules applied by the Home ViewModel pro
 Car Mode detection remains a focused Bluetooth service. The UI requests `BLUETOOTH_CONNECT` when required, reads bonded devices only after permission is available, and reflects likely car-audio state through `HomeUiState`.
 
 The Compose shell uses bottom navigation for primary destinations and keeps library refresh one-shot for a ViewModel lifetime so switching tabs, changing settings, and using playback controls do not re-enumerate device media.
+
+CI uses the configured release key for trusted debug and release builds so installed APKs share a stable Android signing identity and can update in place. Secretless pull-request builds retain the normal temporary debug key and are intentionally marked as development-only artifacts.
