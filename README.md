@@ -98,7 +98,7 @@ For GitHub Actions, add these repository secrets under **Settings > Secrets and 
 - `ANDROID_KEY_ALIAS`
 - `ANDROID_KEY_PASSWORD`
 
-The CI workflow produces installable signed release APK and AAB artifacts for tags beginning with `v` only after all four secrets are configured. Keep the keystore and passwords private and backed up; they are required for app updates. Use this key as the upload key when enabling Google Play App Signing.
+The CI workflow uploads artifacts for every non-tag run: a debug APK plus unsigned release APK and AAB files. These temporary artifacts are retained for 24 hours. Tags beginning with `v` run the signed release job instead. After all four secrets are configured, it uploads an installable signed release APK and AAB without specifying an artifact retention period, so GitHub applies the repository default. Keep the keystore and passwords private and backed up; they are required for app updates. Use this key as the upload key when enabling Google Play App Signing.
 
 ## Development Notes
 
