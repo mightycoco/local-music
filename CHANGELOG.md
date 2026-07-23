@@ -44,3 +44,7 @@
 - Added Now Playing elapsed/remaining time and favourite controls.
 - Added Never Played and Last 30 Days smart library filters.
 - Added a persisted, default-enabled Settings control for optional external artwork downloads.
+- Added Home drill-down browsing for artists, albums, and folders.
+- Added persisted MediaStore genre metadata and Genre drill-down browsing with a Room migration.
+- Added a Now Playing queue dialog backed by the persistent local Queue playlist.
+- Added synchronized Media3 shuffle and repeat controls to Now Playing.

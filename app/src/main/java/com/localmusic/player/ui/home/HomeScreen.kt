@@ -67,9 +67,11 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.core.content.ContextCompat
 import com.localmusic.player.bluetooth.CarModeDetector
+import com.localmusic.player.domain.model.LibraryBrowser
 import com.localmusic.player.domain.model.LibraryFilter
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.SortOrder
+import com.localmusic.player.domain.repository.RepeatMode
 import com.localmusic.player.playlist.M3uPlaylist
 import com.localmusic.player.playlist.toM3uEntry
 import com.localmusic.player.ui.theme.AppThemeMode
@@ -168,6 +170,7 @@ fun HomeRoute(viewModel: HomeViewModel) {
         onSearchChange = viewModel::updateSearchQuery,
         onScreenSelected = viewModel::selectScreen,
         onFilterSelected = viewModel::selectFilter,
+        onBrowseValueSelected = viewModel::selectBrowseValue,
         onSortSelected = viewModel::selectSortOrder,
         onAddFolderSource = { folderLauncher.launch(null) },
         onImportPlaylist = { playlistImportLauncher.launch(arrayOf("audio/x-mpegurl", "audio/mpegurl", "text/plain", "application/octet-stream")) },
@@ -200,6 +203,8 @@ fun HomeRoute(viewModel: HomeViewModel) {
         onNext = viewModel::skipToNext,
         onPrevious = viewModel::skipToPrevious,
         onProgressChange = viewModel::updatePlaybackProgress,
+        onShuffleToggle = viewModel::toggleShuffle,
+        onRepeatCycle = viewModel::cycleRepeatMode,
         onThemeSelected = viewModel::selectThemeMode,
         onExternalArtworkDownloadEnabledChange = viewModel::setExternalArtworkDownloadEnabled,
         onRequestPermission = {
@@ -218,6 +223,7 @@ fun HomeScreen(
     onSearchChange: (String) -> Unit,
     onScreenSelected: (HomeScreenDestination) -> Unit,
     onFilterSelected: (LibraryFilter) -> Unit,
+    onBrowseValueSelected: (String?) -> Unit,
     onSortSelected: (SortOrder) -> Unit,
     onAddFolderSource: () -> Unit,
     onImportPlaylist: () -> Unit,
@@ -241,6 +247,8 @@ fun HomeScreen(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onProgressChange: (Float) -> Unit,
+    onShuffleToggle: () -> Unit,
+    onRepeatCycle: () -> Unit,
     onThemeSelected: (AppThemeMode) -> Unit,
     onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit,
     onRequestPermission: () -> Unit
@@ -335,6 +343,7 @@ fun HomeScreen(
             when (uiState.selectedScreen) {
                 HomeScreenDestination.Home -> AdaptiveLibraryContent(
                     uiState = uiState,
+                    onBrowseValueSelected = onBrowseValueSelected,
                     onSongSelected = onSongSelected,
                     onFavouriteToggle = onFavouriteToggle,
                     onCreatePlaylist = onCreatePlaylist,
@@ -347,6 +356,8 @@ fun HomeScreen(
                     onNext = onNext,
                     onPrevious = onPrevious,
                     onProgressChange = onProgressChange,
+                    onShuffleToggle = onShuffleToggle,
+                    onRepeatCycle = onRepeatCycle,
                     onFavouriteToggle = onFavouriteToggle,
                     onCreatePlaylist = onCreatePlaylist,
                     onAddToPlaylist = onAddNowPlayingToPlaylist,
@@ -392,6 +403,13 @@ private fun HomeScreenDestination.iconLabel(): String = when (this) {
     HomeScreenDestination.Favourites -> "★"
     HomeScreenDestination.Settings -> "⚙"
 }
+
+private val BROWSABLE_FILTERS = setOf(
+    LibraryFilter.Artists,
+    LibraryFilter.Albums,
+    LibraryFilter.Genres,
+    LibraryFilter.Folders
+)
 
 @Composable
 private fun PermissionBanner(onRequestPermission: () -> Unit) {
@@ -443,12 +461,27 @@ private fun FilterRow(
 @Composable
 private fun AdaptiveLibraryContent(
     uiState: HomeUiState,
+    onBrowseValueSelected: (String?) -> Unit,
     onSongSelected: (Song) -> Unit,
     onFavouriteToggle: (Song) -> Unit,
     onCreatePlaylist: (String) -> Unit,
     onAddSongToPlaylist: (Song, String) -> Unit,
     onAddSongToQueue: (Song) -> Unit
 ) {
+    if (uiState.selectedFilter in BROWSABLE_FILTERS && uiState.selectedBrowseValue == null) {
+        BrowseFacetList(
+            filter = uiState.selectedFilter,
+            songs = uiState.songs,
+            onBrowseValueSelected = onBrowseValueSelected
+        )
+        return
+    }
+
+    uiState.selectedBrowseValue?.let { value ->
+        TextButton(onClick = { onBrowseValueSelected(null) }) {
+            Text("Back to ${uiState.selectedFilter.label}")
+        }
+    }
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         if (maxWidth >= 840.dp) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -493,12 +526,41 @@ private fun AdaptiveLibraryContent(
 }
 
 @Composable
+private fun BrowseFacetList(
+    filter: LibraryFilter,
+    songs: List<Song>,
+    onBrowseValueSelected: (String) -> Unit
+) {
+    val values = LibraryBrowser.values(songs, filter)
+    if (values.isEmpty()) {
+        EmptyState(
+            title = "No ${filter.label.lowercase()} found",
+            message = "Refresh your local library or choose another filter."
+        )
+        return
+    }
+
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        items(values) { value ->
+            val songCount = songs.count { LibraryBrowser.matches(it, filter, value) }
+            ListItem(
+                modifier = Modifier.clickable { onBrowseValueSelected(value) },
+                headlineContent = { Text(value) },
+                supportingContent = { Text("$songCount songs") }
+            )
+        }
+    }
+}
+
+@Composable
 private fun NowPlayingContent(
     uiState: HomeUiState,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onProgressChange: (Float) -> Unit,
+    onShuffleToggle: () -> Unit,
+    onRepeatCycle: () -> Unit,
     onFavouriteToggle: (Song) -> Unit,
     onCreatePlaylist: (String) -> Unit,
     onAddToPlaylist: (String) -> Unit,
@@ -509,6 +571,7 @@ private fun NowPlayingContent(
     val remainingMillis = ((song?.durationMillis ?: 0L) - elapsedMillis).coerceAtLeast(0L)
     var showPlaylistChooser by remember { mutableStateOf(false) }
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
+        var showQueue by remember { mutableStateOf(false) }
     if (song == null) {
         EmptyState(
             title = "Nothing playing",
@@ -541,6 +604,14 @@ private fun NowPlayingContent(
                 Button(onClick = onPlayPause) { Text(if (uiState.isPlaying) "Pause" else "Play") }
                 Button(onClick = onNext) { Text("Next") }
             }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = onShuffleToggle) {
+                    Text(if (uiState.isShuffleEnabled) "Shuffle on" else "Shuffle off")
+                }
+                TextButton(onClick = onRepeatCycle) {
+                    Text("Repeat ${uiState.repeatMode.label}")
+                }
+            }
             TextButton(onClick = { onFavouriteToggle(song) }) {
                 Text(if (song.isFavourite) "Remove favourite" else "Add favourite")
             }
@@ -550,8 +621,18 @@ private fun NowPlayingContent(
             Button(onClick = onAddToQueue) {
                 Text("Add to queue")
             }
+                TextButton(onClick = { showQueue = true }) {
+                    Text("Show queue")
+                }
         }
     }
+
+        if (showQueue) {
+            NowPlayingQueueDialog(
+                queue = uiState.importedPlaylists.firstOrNull { it.name == M3uPlaylist.QUEUE_NAME },
+                onDismiss = { showQueue = false }
+            )
+        }
 
     if (showPlaylistChooser) {
         AlertDialog(
@@ -601,10 +682,45 @@ private fun NowPlayingContent(
     }
 }
 
+    @Composable
+    private fun NowPlayingQueueDialog(
+        queue: M3uPlaylist?,
+        onDismiss: () -> Unit
+    ) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("Queue") },
+            text = {
+                if (queue == null || queue.entries.isEmpty()) {
+                    Text("Your queue is empty.")
+                } else {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(queue.entries) { entry ->
+                            ListItem(
+                                headlineContent = { Text(entry.title) },
+                                supportingContent = { Text(entry.artist) }
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = onDismiss) { Text("Done") }
+            }
+        )
+    }
+
 private fun formatPlaybackTime(durationMillis: Long): String {
     val totalSeconds = (durationMillis / 1_000L).coerceAtLeast(0L)
     return "%d:%02d".format(totalSeconds / 60L, totalSeconds % 60L)
 }
+
+private val RepeatMode.label: String
+    get() = when (this) {
+        RepeatMode.Off -> "off"
+        RepeatMode.One -> "one"
+        RepeatMode.All -> "all"
+    }
 
 @Composable
 private fun CreatePlaylistDialog(

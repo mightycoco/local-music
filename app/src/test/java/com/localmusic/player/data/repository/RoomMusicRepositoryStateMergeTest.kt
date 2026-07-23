@@ -51,6 +51,7 @@ class RoomMusicRepositoryStateMergeTest {
         title = title,
         artist = "Artist",
         album = "Album",
+        genre = "Rock",
         durationMillis = 180_000,
         dateAddedEpochSeconds = 1_700_000_000,
         folderName = "Music",

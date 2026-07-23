@@ -2,6 +2,7 @@ package com.localmusic.player.domain.usecase
 
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.repository.PlaybackController
+import com.localmusic.player.domain.repository.RepeatMode
 import com.localmusic.player.domain.repository.MusicRepository
 import kotlinx.coroutines.flow.Flow
 
@@ -41,4 +42,6 @@ class StartPlaybackUseCase(
     fun resume() = playbackController.resume()
     fun pause() = playbackController.pause()
     fun seekTo(progress: Float) = playbackController.seekTo(progress)
+    fun setShuffleEnabled(enabled: Boolean) = playbackController.setShuffleEnabled(enabled)
+    fun setRepeatMode(mode: RepeatMode) = playbackController.setRepeatMode(mode)
 }

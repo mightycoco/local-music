@@ -6,9 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.localmusic.player.artwork.ArtworkPreferences
 import com.localmusic.player.artwork.EmbeddedArtworkExtractor
 import com.localmusic.player.domain.model.LibraryFilter
+import com.localmusic.player.domain.model.LibraryBrowser
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.SortOrder
 import com.localmusic.player.domain.model.SmartPlaylistRules
+import com.localmusic.player.domain.repository.RepeatMode
 import com.localmusic.player.domain.usecase.AddFolderSourceUseCase
 import com.localmusic.player.domain.usecase.ObserveSongsUseCase
 import com.localmusic.player.domain.usecase.RefreshMusicLibraryUseCase
@@ -42,12 +44,15 @@ class HomeViewModel(
     private val artworkPreferences: ArtworkPreferences? = null
 ) : ViewModel() {
     private val selectedFilter = MutableStateFlow(LibraryFilter.AllSongs)
+    private val selectedBrowseValue = MutableStateFlow<String?>(null)
     private val sortOrder = MutableStateFlow(SortOrder.NewestAdded)
     private val searchQuery = MutableStateFlow("")
     private val selectedScreen = MutableStateFlow(HomeScreenDestination.Home)
     private val nowPlayingSongId = MutableStateFlow<String?>(null)
     private val isPlaying = MutableStateFlow(false)
     private val playbackProgress = MutableStateFlow(0f)
+    private val isShuffleEnabled = MutableStateFlow(false)
+    private val repeatMode = MutableStateFlow(RepeatMode.Off)
     private val themeMode = MutableStateFlow(AppThemeMode.FollowSystem)
     private val importedPlaylists = MutableStateFlow(playlistStore?.playlists().orEmpty())
     private val artworkBySongId = MutableStateFlow<Map<String, String>>(emptyMap())
@@ -68,18 +73,22 @@ class HomeViewModel(
                 nowPlayingSongId.value = playback.songId
                 isPlaying.value = playback.isPlaying
                 playbackProgress.value = playback.progress
+                isShuffleEnabled.value = playback.isShuffleEnabled
+                repeatMode.value = playback.repeatMode
             }
         }
     }
 
     private val selectionState = combine(
         selectedFilter,
+        selectedBrowseValue,
         sortOrder,
         searchQuery,
         selectedScreen
-    ) { filter, order, query, screen ->
+    ) { filter, browseValue, order, query, screen ->
         HomeUiState(
             selectedFilter = filter,
+            selectedBrowseValue = browseValue,
             sortOrder = order,
             searchQuery = query,
             selectedScreen = screen
@@ -113,12 +122,16 @@ class HomeViewModel(
     private val playbackState = combine(
         nowPlayingSongId,
         isPlaying,
-        playbackProgress
-    ) { songId, playing, progress ->
+        playbackProgress,
+        isShuffleEnabled,
+        repeatMode
+    ) { songId, playing, progress, shuffleEnabled, selectedRepeatMode ->
         PlaybackState(
             songId = songId,
             isPlaying = playing,
-            progress = progress
+            progress = progress,
+            isShuffleEnabled = shuffleEnabled,
+            repeatMode = selectedRepeatMode
         )
     }
 
@@ -162,6 +175,8 @@ class HomeViewModel(
             nowPlayingSong = nowPlaying,
             isPlaying = nowPlaying != null && playback.isPlaying,
             playbackProgress = playback.progress,
+            isShuffleEnabled = playback.isShuffleEnabled,
+            repeatMode = playback.repeatMode,
             artworkBySongId = artwork
         )
     }.stateIn(
@@ -172,6 +187,11 @@ class HomeViewModel(
 
     fun selectFilter(filter: LibraryFilter) {
         selectedFilter.value = filter
+        selectedBrowseValue.value = null
+    }
+
+    fun selectBrowseValue(value: String?) {
+        selectedBrowseValue.value = value
     }
 
     fun selectSortOrder(order: SortOrder) {
@@ -278,6 +298,21 @@ class HomeViewModel(
         runCatching { startPlayback.seekTo(coercedProgress) }
             .onSuccess { playbackProgress.value = coercedProgress }
             .onFailure { error -> refreshError.value = error.message ?: "Seek failed" }
+    }
+
+    fun toggleShuffle() {
+        runCatching { startPlayback.setShuffleEnabled(!isShuffleEnabled.value) }
+            .onFailure { error -> refreshError.value = error.message ?: "Shuffle update failed" }
+    }
+
+    fun cycleRepeatMode() {
+        val nextMode = when (repeatMode.value) {
+            RepeatMode.Off -> RepeatMode.All
+            RepeatMode.All -> RepeatMode.One
+            RepeatMode.One -> RepeatMode.Off
+        }
+        runCatching { startPlayback.setRepeatMode(nextMode) }
+            .onFailure { error -> refreshError.value = error.message ?: "Repeat update failed" }
     }
 
     fun selectThemeMode(mode: AppThemeMode) {
@@ -452,7 +487,9 @@ class HomeViewModel(
     }
 
     private fun List<Song>.applyLibraryProjection(state: HomeUiState): List<Song> = filter { song ->
-        song.matchesSearch(state.searchQuery) && song.matchesFilter(state.selectedFilter)
+        song.matchesSearch(state.searchQuery) &&
+            song.matchesFilter(state.selectedFilter) &&
+            LibraryBrowser.matches(song, state.selectedFilter, state.selectedBrowseValue)
     }.sortedWith(state.sortOrder.comparator())
 
     private fun Song.matchesSearch(query: String): Boolean {
@@ -496,7 +533,9 @@ class HomeViewModel(
 private data class PlaybackState(
     val songId: String?,
     val isPlaying: Boolean,
-    val progress: Float
+    val progress: Float,
+    val isShuffleEnabled: Boolean,
+    val repeatMode: RepeatMode
 )
 
 private data class AppearanceState(

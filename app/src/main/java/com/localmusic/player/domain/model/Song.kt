@@ -7,6 +7,7 @@ data class Song(
     val title: String,
     val artist: String,
     val album: String,
+    val genre: String = "Unknown Genre",
     val durationMillis: Long,
     val dateAddedEpochSeconds: Long,
     val folderName: String,

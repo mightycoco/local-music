@@ -11,6 +11,7 @@ data class SongEntity(
     val title: String,
     val artist: String,
     val album: String,
+    val genre: String,
     val durationMillis: Long,
     val dateAddedEpochSeconds: Long,
     val folderName: String,

@@ -37,7 +37,7 @@
 - [x] Complete playlist management: open/play playlists, rename, duplicate, remove entries, reorder entries, and export an individual playlist.
 - [x] Add album-art extraction, disk cache pruning, and UI image loading.
 - [ ] Complete Car Mode: observe A2DP connection changes, allow marking devices as cars, and apply driving-safe 80-96dp touch targets and simplified controls.
-- [ ] Complete Now Playing: add shuffle, repeat, swipe navigation, equalizer entry point, and queue contents. Elapsed/remaining time and favourite controls are available.
+- [ ] Complete Now Playing: add swipe navigation and an equalizer entry point. Shuffle, repeat, elapsed/remaining time, favourites, and queue contents are available.
 - [x] The selection of the screen must be at the bottom (Home/Now Playing/Playlists/Favourites/Settings)
 - [x] The default setting for the theme must be "Follow System", other options are Dark, Light
 - [x] The navigation is very slow. The enumeration of media files seems to be done on any UI input
@@ -58,7 +58,7 @@
 ## Remaining Prompt Requirements
 
 - [ ] Verify all required local formats on device and document Media3 fallback behavior: MP3, AAC, M4A, FLAC, WAV, AIFF, OGG, and Opus.
-- [ ] Complete Home filters: provide meaningful Artists, Albums, Genres, and Folders browsing rather than treating those filter selections as no-ops.
+- [x] Complete Home filters: Artists, Albums, Genres, and Folders provide local drill-down browsing.
 - [ ] Expand the song metadata model and instant search to include album artist, genre, composer, year, comments, description, and playlist names.
 - [ ] Add the No Artwork smart playlist. Never Played and Last 30 Days are available as Home filters.
 - [ ] Complete Settings: artwork cache controls, default filter/sort, folder management, Car Mode and Bluetooth preferences, About/version, and licenses UI.

@@ -43,6 +43,7 @@ class SafFolderMusicScanner(
             title = title,
             artist = "Unknown Artist",
             album = "Unknown Album",
+            genre = "Unknown Genre",
             durationMillis = 0L,
             dateAddedEpochSeconds = dateAdded,
             folderName = uri.path.orEmpty().substringBeforeLast('/').substringAfterLast('/'),

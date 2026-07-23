@@ -41,7 +41,7 @@ class MainActivity : ComponentActivity() {
             applicationContext,
             LocalMusicDatabase::class.java,
             "local-music.db"
-        ).build()
+        ).addMigrations(LocalMusicDatabase.MIGRATION_1_2).build()
         val safFolderSourceStore = SharedPreferencesSafFolderSourceStore(
             getSharedPreferences("local-music-sources", MODE_PRIVATE)
         )

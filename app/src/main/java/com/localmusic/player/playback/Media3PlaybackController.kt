@@ -10,6 +10,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.repository.PlaybackController
 import com.localmusic.player.domain.repository.PlaybackSnapshot
+import com.localmusic.player.domain.repository.RepeatMode
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -90,6 +91,20 @@ class Media3PlaybackController(
         }
     }
 
+    override fun setShuffleEnabled(enabled: Boolean) {
+        withController { controller -> controller.shuffleModeEnabled = enabled }
+    }
+
+    override fun setRepeatMode(mode: RepeatMode) {
+        withController { controller ->
+            controller.repeatMode = when (mode) {
+                RepeatMode.Off -> Player.REPEAT_MODE_OFF
+                RepeatMode.One -> Player.REPEAT_MODE_ONE
+                RepeatMode.All -> Player.REPEAT_MODE_ALL
+            }
+        }
+    }
+
     private fun withController(command: (MediaController) -> Unit) {
         val future = controllerFuture ?: MediaController.Builder(context, sessionToken()).buildAsync().also {
             controllerFuture = it
@@ -110,6 +125,12 @@ class Media3PlaybackController(
         songId = currentMediaItem?.mediaId,
         isPlaying = isPlaying,
         positionMillis = currentPosition.coerceAtLeast(0L),
-        durationMillis = duration.takeIf { it > 0L } ?: 0L
+        durationMillis = duration.takeIf { it > 0L } ?: 0L,
+        isShuffleEnabled = shuffleModeEnabled,
+        repeatMode = when (repeatMode) {
+            Player.REPEAT_MODE_ONE -> RepeatMode.One
+            Player.REPEAT_MODE_ALL -> RepeatMode.All
+            else -> RepeatMode.Off
+        }
     )
 }

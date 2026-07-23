@@ -33,6 +33,8 @@ flowchart LR
 
 MediaStore scanning is implemented behind `MusicRepository`, sorted by `MediaStore.DATE_ADDED` for the default recently added view. SAF folder scanning is a separate data source merged through `CompositeMusicScanner`, then normalized by the shared duplicate detection pipeline before Room persistence.
 
+The Room library schema retains local browsing metadata including artist, album, genre, and folder. Schema migrations are explicit so installed libraries retain user state as metadata support expands.
+
 Playback is exposed through a Media3 `MediaSessionService` and a queue factory that converts domain songs into `MediaItem`s. `PlaybackController` provides playback, enqueue, and clear-queue commands so the persisted Queue playlist and active Media3 queue remain aligned. Playlist, artwork, settings, license, and car-mode code starts as focused services so UI screens can be added without moving business rules into Compose.
 
 Favourites are persisted through the repository boundary and toggled from Compose via `SetFavouriteUseCase`. Song taps and Now Playing controls call `StartPlaybackUseCase`, which delegates to a domain `PlaybackController` implemented by the Media3 controller. The same playback boundary exposes Media3 playback snapshots so Now Playing can reflect current position, queue item changes, and external media-control updates without coupling Compose to Media3.

@@ -23,6 +23,7 @@ class MediaStoreMusicScanner(
             add(MediaStore.Audio.Media.TITLE)
             add(MediaStore.Audio.Media.ARTIST)
             add(MediaStore.Audio.Media.ALBUM)
+            add(MediaStore.Audio.Media.GENRE)
             add(MediaStore.Audio.Media.DURATION)
             add(MediaStore.Audio.Media.DATE_ADDED)
             add(MediaStore.MediaColumns.SIZE)
@@ -56,6 +57,7 @@ class MediaStoreMusicScanner(
                     title = title,
                     artist = cursor.string(MediaStore.Audio.Media.ARTIST).ifBlank { "Unknown Artist" },
                     album = cursor.string(MediaStore.Audio.Media.ALBUM).ifBlank { "Unknown Album" },
+                    genre = cursor.string(MediaStore.Audio.Media.GENRE).ifBlank { "Unknown Genre" },
                     durationMillis = cursor.long(MediaStore.Audio.Media.DURATION),
                     dateAddedEpochSeconds = cursor.long(MediaStore.Audio.Media.DATE_ADDED),
                     folderName = cursor.folderName(),

@@ -4,6 +4,7 @@ import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.repository.PlaybackController
 import com.localmusic.player.domain.repository.MusicRepository
 import com.localmusic.player.domain.repository.PlaybackSnapshot
+import com.localmusic.player.domain.repository.RepeatMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -76,6 +77,18 @@ class ObserveSongsUseCaseTest {
         assertEquals(true, playbackController.queueWasCleared)
     }
 
+    @Test
+    fun playbackModeCommandsDelegateToPlaybackController() {
+        val playbackController = FakePlaybackController()
+        val useCase = StartPlaybackUseCase(playbackController)
+
+        useCase.setShuffleEnabled(true)
+        useCase.setRepeatMode(RepeatMode.All)
+
+        assertEquals(true, playbackController.shuffleEnabled)
+        assertEquals(RepeatMode.All, playbackController.recordedRepeatMode)
+    }
+
     private class FakeMusicRepository(
         private val songs: List<Song>
     ) : MusicRepository {
@@ -99,6 +112,8 @@ class ObserveSongsUseCaseTest {
         var startedPlayback: Pair<List<Song>, String>? = null
         var enqueuedSong: Song? = null
         var queueWasCleared = false
+        var shuffleEnabled: Boolean? = null
+        var recordedRepeatMode: RepeatMode? = null
 
         override fun observePlayback(): Flow<PlaybackSnapshot> = flowOf(PlaybackSnapshot())
 
@@ -119,6 +134,14 @@ class ObserveSongsUseCaseTest {
         override fun pause() = Unit
 
         override fun seekTo(progress: Float) = Unit
+
+        override fun setShuffleEnabled(enabled: Boolean) {
+            shuffleEnabled = enabled
+        }
+
+        override fun setRepeatMode(mode: RepeatMode) {
+            recordedRepeatMode = mode
+        }
     }
 
     private fun testSong(id: String): Song = Song(
