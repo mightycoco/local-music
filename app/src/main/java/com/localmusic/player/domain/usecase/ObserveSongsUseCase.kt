@@ -36,6 +36,8 @@ class StartPlaybackUseCase(
 ) {
     fun observePlayback() = playbackController.observePlayback()
     operator fun invoke(songs: List<Song>, startSongId: String) = playbackController.play(songs, startSongId)
+    fun enqueue(song: Song) = playbackController.enqueue(song)
+    fun clearQueue() = playbackController.clearQueue()
     fun resume() = playbackController.resume()
     fun pause() = playbackController.pause()
     fun seekTo(progress: Float) = playbackController.seekTo(progress)

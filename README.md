@@ -4,7 +4,7 @@ Local Music is an Android music player focused exclusively on local audio playba
 
 ## Current Increment
 
-This repository currently contains buildable architecture and feature foundations:
+This repository currently contains a buildable local-playback foundation and selected end-user features. The remaining product requirements are tracked explicitly in `TODO.md`.
 
 - Gradle Kotlin DSL Android app module.
 - Compose Material 3 application shell.
@@ -20,13 +20,13 @@ This repository currently contains buildable architecture and feature foundation
 - Instant metadata search, filters, sorting, and adaptive library layout.
 - Persistent favourites with song-row toggle controls.
 - Media3 playback service, queue mapping, and song-tap playback.
-- M3U playlist import/export codec and SAF picker workflows.
+- Persistent M3U playlist import/export, basic creation/deletion, and Queue persistence with Media3 enqueue support.
 - Embedded album-art extraction, disk cache pruning, and song-list thumbnails.
-- Bluetooth car detection, runtime Bluetooth permission handling, settings import/export, and license foundations.
+- Bluetooth car-audio detection, runtime Bluetooth permission handling, settings import/export, and license foundations.
 - Bottom navigation with Home, Now Playing, Playlists, Favourites, and Settings destinations.
-- Now Playing controls wired through the Media3 playback boundary.
+- Now Playing play, pause, previous, next, seek, playlist, and Queue controls wired through the Media3 playback boundary.
 - Follow System, Dark, and Light theme modes.
-- Unit test for the first use case.
+- Unit, repository, playlist persistence, artwork-cache, and settings serialization tests.
 
 ## Build From VS Code
 

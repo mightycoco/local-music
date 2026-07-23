@@ -34,10 +34,10 @@
 
 - [x] Persist and toggle favourites from the song list.
 - [x] Connect song taps to the Media3 playback service.
-- [x] Add full playlist management screens and SAF import/export pickers.
+- [ ] Complete playlist management: open/play playlists, rename, duplicate, remove entries, reorder entries, and export an individual playlist.
 - [x] Add album-art extraction, disk cache pruning, and UI image loading.
-- [x] Add runtime Bluetooth permissions and automatic Car Mode UI switching.
-- [x] Starting a playback opens a detailed view of the song with song controls (next/previous/progress slider control/play/pause)
+- [ ] Complete Car Mode: observe A2DP connection changes, allow marking devices as cars, and apply driving-safe 80-96dp touch targets and simplified controls.
+- [ ] Complete Now Playing: show elapsed/remaining time, favourite, shuffle, repeat, swipe navigation, equalizer entry point, and queue contents.
 - [x] The selection of the screen must be at the bottom (Home/Now Playing/Playlists/Favourites/Settings)
 - [x] The default setting for the theme must be "Follow System", other options are Dark, Light
 - [x] The navigation is very slow. The enumeration of media files seems to be done on any UI input
@@ -45,10 +45,18 @@
 - [x] Favourite songs must be persisted and retained across library refreshes/app restarts.
 - [x] Playlist screen must allow deleting playlists
 - [x] Now Playing must allow adding to a new/existing playlist
-- [x] Queueing of items must be possible. The Queue must behave like a playlist, not be deletable, can be cleared, must be always at the top of the list of playlists
+- [x] Queueing of items must update both the persistent Queue playlist and active Media3 playback queue; Queue cannot be deleted, can be cleared, and is always listed first.
 - [x] Playlists must be persisted and loaded after app restart.
 - [x] Media list items must have a long press menu with the options to queue, add to a new/existing playlist
 - [x] Creating a playlist should just show a modal dialog with a generic TextInput field and Cancel/Create buttons
 - [x] The bottom nav buttons must have a larger icon, no text (home, now playing, playlists, favourites, settings)
 - [x] The media list filters and search bar should only be visible on the home screen, not on the other screens.
-- [x] The now playing screen uses locally available song artwork as a backdrop. Online artwork lookup is intentionally excluded because this is a local-files-only player.
+- [ ] Complete local artwork source priority: embedded artwork, folder.jpg, cover.jpg, then cache. Online artwork lookup is intentionally excluded because this is a local-files-only player.
+
+## Remaining Prompt Requirements
+
+- [ ] Expand the song metadata model and instant search to include album artist, genre, composer, year, comments, description, and playlist names.
+- [ ] Add missing smart playlists: Never Played, Last 30 Days, and No Artwork.
+- [ ] Complete Settings: artwork cache controls, default filter/sort, folder management, Car Mode and Bluetooth preferences, About/version, and licenses UI.
+- [ ] Add accessibility coverage: meaningful semantics, large-font testing, high-contrast behavior, keyboard navigation, and Compose UI tests.
+- [ ] Review the adaptive layouts on tablet, foldable, landscape, and square display configurations.

@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.Flow
 interface PlaybackController {
     fun observePlayback(): Flow<PlaybackSnapshot>
     fun play(songs: List<Song>, startSongId: String)
+    fun enqueue(song: Song)
+    fun clearQueue()
     fun resume()
     fun pause()
     fun seekTo(progress: Float)

@@ -66,6 +66,15 @@ class Media3PlaybackController(
         }
     }
 
+    override fun enqueue(song: Song) {
+        val item = queueFactory.createQueue(listOf(song)).singleOrNull() ?: return
+        withController { controller -> controller.addMediaItem(item) }
+    }
+
+    override fun clearQueue() {
+        withController { controller -> controller.clearMediaItems() }
+    }
+
     override fun resume() {
         withController { controller -> controller.play() }
     }

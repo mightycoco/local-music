@@ -63,6 +63,19 @@ class ObserveSongsUseCaseTest {
         assertEquals(songs to "song-2", playbackController.startedPlayback)
     }
 
+    @Test
+    fun queueCommandsDelegateToPlaybackController() {
+        val song = testSong("song-1")
+        val playbackController = FakePlaybackController()
+        val useCase = StartPlaybackUseCase(playbackController)
+
+        useCase.enqueue(song)
+        useCase.clearQueue()
+
+        assertEquals(song, playbackController.enqueuedSong)
+        assertEquals(true, playbackController.queueWasCleared)
+    }
+
     private class FakeMusicRepository(
         private val songs: List<Song>
     ) : MusicRepository {
@@ -84,11 +97,21 @@ class ObserveSongsUseCaseTest {
 
     private class FakePlaybackController : PlaybackController {
         var startedPlayback: Pair<List<Song>, String>? = null
+        var enqueuedSong: Song? = null
+        var queueWasCleared = false
 
         override fun observePlayback(): Flow<PlaybackSnapshot> = flowOf(PlaybackSnapshot())
 
         override fun play(songs: List<Song>, startSongId: String) {
             startedPlayback = songs to startSongId
+        }
+
+        override fun enqueue(song: Song) {
+            enqueuedSong = song
+        }
+
+        override fun clearQueue() {
+            queueWasCleared = true
         }
 
         override fun resume() = Unit

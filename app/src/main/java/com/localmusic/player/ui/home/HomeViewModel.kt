@@ -319,11 +319,16 @@ class HomeViewModel(
     }
 
     fun addSongToQueue(song: Song) {
-        addSongToPlaylistInternal(song, M3uPlaylist.QUEUE_NAME)
+        if (addSongToPlaylistInternal(song, M3uPlaylist.QUEUE_NAME)) {
+            runCatching { startPlayback.enqueue(song) }
+                .onFailure { error -> refreshError.value = error.message ?: "Queue update failed" }
+        }
     }
 
     fun clearQueue() {
         savePlaylist(M3uPlaylist(name = M3uPlaylist.QUEUE_NAME, entries = emptyList()))
+        runCatching { startPlayback.clearQueue() }
+            .onFailure { error -> refreshError.value = error.message ?: "Queue clear failed" }
     }
 
     private fun ensureQueuePlaylist() {
@@ -332,15 +337,15 @@ class HomeViewModel(
         }
     }
 
-    private fun addSongToPlaylistInternal(song: Song, name: String) {
-        val playlist = importedPlaylists.value.firstOrNull { it.name == name } ?: return
+    private fun addSongToPlaylistInternal(song: Song, name: String): Boolean {
+        val playlist = importedPlaylists.value.firstOrNull { it.name == name } ?: return false
         val entry = song.toM3uEntry()
+        if (playlist.entries.any { it.uri == entry.uri }) return false
         val updatedPlaylist = playlist.copy(
-            entries = playlist.entries.takeUnless { entries -> entries.any { it.uri == entry.uri } }
-                ?.plus(entry)
-                ?: playlist.entries
+            entries = playlist.entries + entry
         )
         savePlaylist(updatedPlaylist)
+        return true
     }
 
     private fun savePlaylist(playlist: M3uPlaylist) {
