@@ -81,7 +81,24 @@ Output:
 app\build\outputs\bundle\release\app-release.aab
 ```
 
-Release APKs and Play Store bundles must be signed before distribution. Configure release signing in Gradle before publishing outside a local debug workflow.
+## Release Signing and CI
+
+Debug APKs are signed with Android's debug key and can be installed for development. Release artifacts are signed only when the following environment variables are available: `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`.
+
+Generate and retain a private release/upload key outside the repository:
+
+```cmd
+keytool -genkeypair -keystore local-music-release.p12 -storetype PKCS12 -alias local-music -keyalg RSA -keysize 4096 -validity 10000
+```
+
+For GitHub Actions, add these repository secrets under **Settings > Secrets and variables > Actions**:
+
+- `ANDROID_KEYSTORE_BASE64`: the base64 encoding of `local-music-release.p12`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
+The CI workflow produces installable signed release APK and AAB artifacts for tags beginning with `v` only after all four secrets are configured. Keep the keystore and passwords private and backed up; they are required for app updates. Use this key as the upload key when enabling Google Play App Signing.
 
 ## Development Notes
 
