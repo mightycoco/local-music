@@ -34,7 +34,7 @@
 
 - [x] Persist and toggle favourites from the song list.
 - [x] Connect song taps to the Media3 playback service.
-- [ ] Complete playlist management: open/play playlists, rename, duplicate, remove entries, reorder entries, and export an individual playlist.
+- [ ] Complete playlist management: open/play playlists, remove entries, reorder entries, and export an individual playlist. Playlist rename and duplication are available from the Playlists screen.
 - [x] Add album-art extraction, disk cache pruning, and UI image loading.
 - [ ] Complete Car Mode: observe A2DP connection changes, allow marking devices as cars, and apply driving-safe 80-96dp touch targets and simplified controls.
 - [ ] Complete Now Playing: show elapsed/remaining time, favourite, shuffle, repeat, swipe navigation, equalizer entry point, and queue contents.

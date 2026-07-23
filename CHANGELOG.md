@@ -37,3 +37,4 @@
 - Added long-press media actions for queueing or adding a song to a new or existing playlist.
 - Added locally embedded artwork as a subtle backdrop on Now Playing while preserving the local-files-only playback boundary.
 - Added GitHub Actions support for test, debug APK, and secret-backed signed release APK/AAB builds.
+- Added playlist rename and duplication actions while preserving Queue playlist protections.

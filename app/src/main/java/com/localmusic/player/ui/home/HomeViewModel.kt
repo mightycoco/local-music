@@ -305,6 +305,28 @@ class HomeViewModel(
             ?: (importedPlaylists.value.filterNot { it.name == normalizedName } + playlist)
     }
 
+    fun renamePlaylist(playlist: M3uPlaylist, newName: String) {
+        if (playlist.name == M3uPlaylist.QUEUE_NAME) return
+        val normalizedName = newName.trim()
+        if (normalizedName.isEmpty() || normalizedName == playlist.name) return
+
+        val renamedPlaylist = playlist.copy(name = normalizedName)
+        playlistStore?.delete(playlist.name)
+        importedPlaylists.value = playlistStore?.save(renamedPlaylist)
+            ?: (importedPlaylists.value.filterNot { it.name == playlist.name || it.name == normalizedName } + renamedPlaylist)
+                .withQueueFirst()
+    }
+
+    fun duplicatePlaylist(playlist: M3uPlaylist, name: String) {
+        if (playlist.name == M3uPlaylist.QUEUE_NAME) return
+        val normalizedName = name.trim()
+        if (normalizedName.isEmpty()) return
+
+        val duplicate = playlist.copy(name = normalizedName)
+        importedPlaylists.value = playlistStore?.save(duplicate)
+            ?: (importedPlaylists.value.filterNot { it.name == normalizedName } + duplicate).withQueueFirst()
+    }
+
     fun addNowPlayingToPlaylist(name: String) {
         val song = uiState.value.nowPlayingSong ?: return
         addSongToPlaylist(song, name)

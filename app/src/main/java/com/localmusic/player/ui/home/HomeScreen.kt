@@ -170,6 +170,8 @@ fun HomeRoute(viewModel: HomeViewModel) {
         onFavouriteToggle = viewModel::toggleFavourite,
         onDeletePlaylist = viewModel::deletePlaylist,
         onCreatePlaylist = viewModel::createPlaylist,
+        onRenamePlaylist = viewModel::renamePlaylist,
+        onDuplicatePlaylist = viewModel::duplicatePlaylist,
         onAddNowPlayingToPlaylist = viewModel::addNowPlayingToPlaylist,
         onAddNowPlayingToQueue = viewModel::addNowPlayingToQueue,
         onClearQueue = viewModel::clearQueue,
@@ -204,6 +206,8 @@ fun HomeScreen(
     onFavouriteToggle: (Song) -> Unit,
     onDeletePlaylist: (M3uPlaylist) -> Unit,
     onCreatePlaylist: (String) -> Unit,
+    onRenamePlaylist: (M3uPlaylist, String) -> Unit,
+    onDuplicatePlaylist: (M3uPlaylist, String) -> Unit,
     onAddNowPlayingToPlaylist: (String) -> Unit,
     onAddNowPlayingToQueue: () -> Unit,
     onClearQueue: () -> Unit,
@@ -325,6 +329,8 @@ fun HomeScreen(
                 HomeScreenDestination.Playlists -> PlaylistContent(
                     uiState = uiState,
                     onDeletePlaylist = onDeletePlaylist,
+                    onRenamePlaylist = onRenamePlaylist,
+                    onDuplicatePlaylist = onDuplicatePlaylist,
                     onClearQueue = onClearQueue
                 )
                 HomeScreenDestination.Favourites -> SongList(
@@ -587,8 +593,13 @@ private fun CreatePlaylistDialog(
 private fun PlaylistContent(
     uiState: HomeUiState,
     onDeletePlaylist: (M3uPlaylist) -> Unit,
+    onRenamePlaylist: (M3uPlaylist, String) -> Unit,
+    onDuplicatePlaylist: (M3uPlaylist, String) -> Unit,
     onClearQueue: () -> Unit
 ) {
+    var playlistToRename by remember { mutableStateOf<M3uPlaylist?>(null) }
+    var playlistToDuplicate by remember { mutableStateOf<M3uPlaylist?>(null) }
+
     if (uiState.importedPlaylists.isEmpty()) {
         EmptyState(
             title = "No playlists imported",
@@ -608,14 +619,81 @@ private fun PlaylistContent(
                             Text("Clear")
                         }
                     } else {
-                        Button(onClick = { onDeletePlaylist(playlist) }) {
-                            Text("Delete")
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            TextButton(onClick = { playlistToRename = playlist }) {
+                                Text("Rename")
+                            }
+                            TextButton(onClick = { playlistToDuplicate = playlist }) {
+                                Text("Duplicate")
+                            }
+                            TextButton(onClick = { onDeletePlaylist(playlist) }) {
+                                Text("Delete")
+                            }
                         }
                     }
                 }
             )
         }
     }
+
+    playlistToRename?.let { playlist ->
+        PlaylistNameDialog(
+            title = "Rename playlist",
+            initialName = playlist.name,
+            confirmLabel = "Rename",
+            onDismiss = { playlistToRename = null },
+            onConfirm = { name ->
+                onRenamePlaylist(playlist, name)
+                playlistToRename = null
+            }
+        )
+    }
+
+    playlistToDuplicate?.let { playlist ->
+        PlaylistNameDialog(
+            title = "Duplicate playlist",
+            initialName = "${playlist.name} copy",
+            confirmLabel = "Duplicate",
+            onDismiss = { playlistToDuplicate = null },
+            onConfirm = { name ->
+                onDuplicatePlaylist(playlist, name)
+                playlistToDuplicate = null
+            }
+        )
+    }
+}
+
+@Composable
+private fun PlaylistNameDialog(
+    title: String,
+    initialName: String,
+    confirmLabel: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var playlistName by remember(initialName) { mutableStateOf(initialName) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            OutlinedTextField(
+                value = playlistName,
+                onValueChange = { playlistName = it },
+                singleLine = true,
+                label = { Text("Playlist name") }
+            )
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(playlistName) },
+                enabled = playlistName.isNotBlank()
+            ) { Text(confirmLabel) }
+        }
+    )
 }
 
 @Composable
