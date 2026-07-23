@@ -52,8 +52,9 @@
 - [x] The bottom nav buttons must have a larger icon, no text (home, now playing, playlists, favourites, settings)
 - [x] The media list filters and search bar should only be visible on the home screen, not on the other screens.
 - [x] Complete offline artwork source priority: embedded artwork, folder.jpg, cover.jpg, then cached artwork.
-- [x] Add an optional external artwork lookup from a free media/artist artwork provider. Request it only after all offline artwork sources fail, cache successful downloads in Android's cache directory, and recover by downloading again when Android clears the cache.
+- [x] Add an optional external artwork lookup from a free media/artist artwork provider. Request it only after all offline artwork sources fail, persist successful downloads, and avoid repeated downloads after app restart.
 - [x] Add a default-enabled Settings switch to opt out of external artwork downloading. This exception applies only to artwork metadata; local audio files remain the sole library and playback source, with no streaming or cloud music library support.
+- [x] Resolve embedded and folder artwork before background online artwork lookups, and limit initial remote fetches to keep the library responsive.
 
 ## Remaining Prompt Requirements
 

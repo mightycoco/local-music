@@ -52,3 +52,4 @@
 - Added a Now Playing entry point for the device's system equalizer when it is available.
 - Added local-first artwork resolution for embedded, `folder.jpg`, `cover.jpg`, and cached artwork, followed by the optional MusicBrainz and Cover Art Archive lookup.
 - Updated trusted CI debug builds to use the configured stable signing key so installable artifacts can update existing app installations.
+- Improved artwork loading by publishing embedded and folder artwork before optional online lookups, limiting initial remote fetches, and persisting downloaded artwork across app restarts.

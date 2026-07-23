@@ -41,7 +41,7 @@ Favourites are persisted through the repository boundary and toggled from Compos
 
 Artwork extraction is handled by a focused Android service that uses `MediaMetadataRetriever`, stores embedded artwork in a small disk cache, and exposes file URIs to UI state for thumbnail rendering. Cache pruning is separated into JVM-testable policy code.
 
-Artwork settings are isolated in `ArtworkPreferences`, a small SharedPreferences-backed boundary. The external-artwork preference defaults to enabled and gates only an optional MusicBrainz and Cover Art Archive metadata lookup after embedded art, `folder.jpg`, `cover.jpg`, and cache sources fail. Successful artwork bytes are cached in the app cache directory; cache eviction or Android cache clearing simply permits a later lookup. Requests are rate-limited and never provide audio playback or a cloud library.
+Artwork settings are isolated in `ArtworkPreferences`, a small SharedPreferences-backed boundary. The external-artwork preference defaults to enabled and gates only an optional MusicBrainz and Cover Art Archive metadata lookup after embedded art, `folder.jpg`, `cover.jpg`, and a previously downloaded image fail. Local artwork is resolved before any network request and published before optional downloads begin. Successful online artwork bytes are stored in app-private persistent storage so they remain available after restarting; requests are rate-limited and never provide audio playback or a cloud library.
 
 Smart library filters remain pure domain rules applied by the Home ViewModel projection. Never Played uses persisted play counts, while Last 30 Days uses persisted playback timestamps, keeping filter behavior independent of Compose and straightforward to unit test.
 
