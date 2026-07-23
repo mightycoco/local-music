@@ -30,7 +30,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AlertDialog
@@ -269,6 +271,8 @@ fun HomeScreen(
     onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit,
     onRequestPermission: () -> Unit
 ) {
+    val libraryListState = rememberLazyListState()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -359,6 +363,7 @@ fun HomeScreen(
             when (uiState.selectedScreen) {
                 HomeScreenDestination.Home -> AdaptiveLibraryContent(
                     uiState = uiState,
+                    listState = libraryListState,
                     onBrowseValueSelected = onBrowseValueSelected,
                     onSongSelected = onSongSelected,
                     onFavouriteToggle = onFavouriteToggle,
@@ -480,6 +485,7 @@ private fun FilterRow(
 @Composable
 private fun AdaptiveLibraryContent(
     uiState: HomeUiState,
+    listState: LazyListState,
     onBrowseValueSelected: (String?) -> Unit,
     onSongSelected: (Song) -> Unit,
     onFavouriteToggle: (Song) -> Unit,
@@ -508,6 +514,7 @@ private fun AdaptiveLibraryContent(
                     songs = uiState.songs,
                     artworkBySongId = uiState.artworkBySongId,
                     nowPlayingSongId = uiState.nowPlayingSong?.id,
+                    listState = listState,
                     modifier = Modifier.weight(1f),
                     onSongSelected = onSongSelected,
                     onFavouriteToggle = onFavouriteToggle,
@@ -536,6 +543,7 @@ private fun AdaptiveLibraryContent(
                 songs = uiState.songs,
                 artworkBySongId = uiState.artworkBySongId,
                 nowPlayingSongId = uiState.nowPlayingSong?.id,
+                listState = listState,
                 onSongSelected = onSongSelected,
                 onFavouriteToggle = onFavouriteToggle,
                 playlists = uiState.importedPlaylists,
@@ -1054,6 +1062,7 @@ private fun SongList(
     songs: List<Song>,
     artworkBySongId: Map<String, String>,
     nowPlayingSongId: String?,
+    listState: LazyListState = rememberLazyListState(),
     modifier: Modifier = Modifier.fillMaxSize(),
     onSongSelected: (Song) -> Unit,
     onFavouriteToggle: (Song) -> Unit,
@@ -1066,6 +1075,7 @@ private fun SongList(
         songs = songs,
         artworkBySongId = artworkBySongId,
         nowPlayingSongId = nowPlayingSongId,
+        listState = listState,
         emptyTitle = "No local songs indexed yet",
         emptyMessage = "Allow audio access to scan MediaStore, or add a folder source.",
         modifier = modifier,
@@ -1084,6 +1094,7 @@ private fun SongList(
     songs: List<Song>,
     artworkBySongId: Map<String, String>,
     nowPlayingSongId: String?,
+    listState: LazyListState = rememberLazyListState(),
     emptyTitle: String,
     emptyMessage: String,
     modifier: Modifier = Modifier,
@@ -1105,6 +1116,7 @@ private fun SongList(
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
+        state = listState,
         modifier = modifier,
         contentPadding = PaddingValues(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
