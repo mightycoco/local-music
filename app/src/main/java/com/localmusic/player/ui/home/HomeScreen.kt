@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.audiofx.AudioEffect
 import android.provider.OpenableColumns
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -13,6 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
@@ -55,6 +57,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -89,6 +92,7 @@ fun HomeRoute(viewModel: HomeViewModel) {
         Manifest.permission.READ_EXTERNAL_STORAGE
     }
     val bluetoothPermission = Manifest.permission.BLUETOOTH_CONNECT
+    var equalizerUnavailable by remember { mutableStateOf(false) }
     var hasAudioPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED
@@ -205,6 +209,16 @@ fun HomeRoute(viewModel: HomeViewModel) {
         onProgressChange = viewModel::updatePlaybackProgress,
         onShuffleToggle = viewModel::toggleShuffle,
         onRepeatCycle = viewModel::cycleRepeatMode,
+        onOpenEqualizer = {
+            val equalizerIntent = Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL)
+                .putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
+                .putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
+            equalizerUnavailable = equalizerIntent.resolveActivity(context.packageManager) == null
+            if (!equalizerUnavailable) {
+                context.startActivity(equalizerIntent)
+            }
+        },
+        isEqualizerUnavailable = equalizerUnavailable,
         onThemeSelected = viewModel::selectThemeMode,
         onExternalArtworkDownloadEnabledChange = viewModel::setExternalArtworkDownloadEnabled,
         onRequestPermission = {
@@ -249,6 +263,8 @@ fun HomeScreen(
     onProgressChange: (Float) -> Unit,
     onShuffleToggle: () -> Unit,
     onRepeatCycle: () -> Unit,
+    onOpenEqualizer: () -> Unit,
+    isEqualizerUnavailable: Boolean,
     onThemeSelected: (AppThemeMode) -> Unit,
     onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit,
     onRequestPermission: () -> Unit
@@ -358,6 +374,8 @@ fun HomeScreen(
                     onProgressChange = onProgressChange,
                     onShuffleToggle = onShuffleToggle,
                     onRepeatCycle = onRepeatCycle,
+                    onOpenEqualizer = onOpenEqualizer,
+                    isEqualizerUnavailable = isEqualizerUnavailable,
                     onFavouriteToggle = onFavouriteToggle,
                     onCreatePlaylist = onCreatePlaylist,
                     onAddToPlaylist = onAddNowPlayingToPlaylist,
@@ -561,11 +579,14 @@ private fun NowPlayingContent(
     onProgressChange: (Float) -> Unit,
     onShuffleToggle: () -> Unit,
     onRepeatCycle: () -> Unit,
+    onOpenEqualizer: () -> Unit,
+    isEqualizerUnavailable: Boolean,
     onFavouriteToggle: (Song) -> Unit,
     onCreatePlaylist: (String) -> Unit,
     onAddToPlaylist: (String) -> Unit,
     onAddToQueue: () -> Unit
 ) {
+    val swipeThreshold = 96.dp
     val song = uiState.nowPlayingSong
     val elapsedMillis = (song?.durationMillis?.times(uiState.playbackProgress) ?: 0f).toLong()
     val remainingMillis = ((song?.durationMillis ?: 0L) - elapsedMillis).coerceAtLeast(0L)
@@ -580,7 +601,32 @@ private fun NowPlayingContent(
         return
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                var totalDrag = 0f
+                var navigationTriggered = false
+                detectHorizontalDragGestures(
+                    onDragStart = {
+                        totalDrag = 0f
+                        navigationTriggered = false
+                    },
+                    onHorizontalDrag = { _, dragAmount ->
+                        if (navigationTriggered) return@detectHorizontalDragGestures
+
+                        totalDrag += dragAmount
+                        if (totalDrag >= swipeThreshold.toPx()) {
+                            onPrevious()
+                            navigationTriggered = true
+                        } else if (totalDrag <= -swipeThreshold.toPx()) {
+                            onNext()
+                            navigationTriggered = true
+                        }
+                    }
+                )
+            }
+    ) {
         ArtworkBackdrop(artworkUri = uiState.artworkBySongId[song.id])
         Column(
             modifier = Modifier
@@ -611,6 +657,15 @@ private fun NowPlayingContent(
                 TextButton(onClick = onRepeatCycle) {
                     Text("Repeat ${uiState.repeatMode.label}")
                 }
+            }
+            TextButton(onClick = onOpenEqualizer) {
+                Text("Equalizer")
+            }
+            if (isEqualizerUnavailable) {
+                Text(
+                    text = "No system equalizer is available on this device.",
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
             TextButton(onClick = { onFavouriteToggle(song) }) {
                 Text(if (song.isFavourite) "Remove favourite" else "Add favourite")

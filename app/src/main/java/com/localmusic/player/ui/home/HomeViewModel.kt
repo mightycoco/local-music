@@ -119,19 +119,28 @@ class HomeViewModel(
         )
     }
 
+    private val playbackModeState = combine(
+        isShuffleEnabled,
+        repeatMode
+    ) { shuffleEnabled, selectedRepeatMode ->
+        PlaybackModeState(
+            isShuffleEnabled = shuffleEnabled,
+            repeatMode = selectedRepeatMode
+        )
+    }
+
     private val playbackState = combine(
         nowPlayingSongId,
         isPlaying,
         playbackProgress,
-        isShuffleEnabled,
-        repeatMode
-    ) { songId, playing, progress, shuffleEnabled, selectedRepeatMode ->
+        playbackModeState
+    ) { songId, playing, progress, playbackMode ->
         PlaybackState(
             songId = songId,
             isPlaying = playing,
             progress = progress,
-            isShuffleEnabled = shuffleEnabled,
-            repeatMode = selectedRepeatMode
+            isShuffleEnabled = playbackMode.isShuffleEnabled,
+            repeatMode = playbackMode.repeatMode
         )
     }
 
@@ -534,6 +543,11 @@ private data class PlaybackState(
     val songId: String?,
     val isPlaying: Boolean,
     val progress: Float,
+    val isShuffleEnabled: Boolean,
+    val repeatMode: RepeatMode
+)
+
+private data class PlaybackModeState(
     val isShuffleEnabled: Boolean,
     val repeatMode: RepeatMode
 )

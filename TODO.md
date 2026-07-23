@@ -37,7 +37,7 @@
 - [x] Complete playlist management: open/play playlists, rename, duplicate, remove entries, reorder entries, and export an individual playlist.
 - [x] Add album-art extraction, disk cache pruning, and UI image loading.
 - [ ] Complete Car Mode: observe A2DP connection changes, allow marking devices as cars, and apply driving-safe 80-96dp touch targets and simplified controls.
-- [ ] Complete Now Playing: add swipe navigation and an equalizer entry point. Shuffle, repeat, elapsed/remaining time, favourites, and queue contents are available.
+- [x] Complete Now Playing: shuffle, repeat, swipe navigation, a system equalizer entry point, elapsed/remaining time, favourites, and queue contents.
 - [x] The selection of the screen must be at the bottom (Home/Now Playing/Playlists/Favourites/Settings)
 - [x] The default setting for the theme must be "Follow System", other options are Dark, Light
 - [x] The navigation is very slow. The enumeration of media files seems to be done on any UI input

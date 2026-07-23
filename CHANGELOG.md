@@ -48,3 +48,5 @@
 - Added persisted MediaStore genre metadata and Genre drill-down browsing with a Room migration.
 - Added a Now Playing queue dialog backed by the persistent local Queue playlist.
 - Added synchronized Media3 shuffle and repeat controls to Now Playing.
+- Added threshold-based horizontal swipe navigation to the Now Playing screen.
+- Added a Now Playing entry point for the device's system equalizer when it is available.
