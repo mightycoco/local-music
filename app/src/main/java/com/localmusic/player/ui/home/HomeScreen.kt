@@ -423,9 +423,9 @@ fun HomeScreen(
 private fun HomeScreenDestination.iconLabel(): String = when (this) {
     HomeScreenDestination.Home -> "⌂"
     HomeScreenDestination.NowPlaying -> "▷"
-    HomeScreenDestination.Playlists -> "⫶"
-    HomeScreenDestination.Favourites -> "✰"
-    HomeScreenDestination.Settings -> "⋮☰"
+    HomeScreenDestination.Playlists -> "⋮☰"
+    HomeScreenDestination.Favourites -> "☆"
+    HomeScreenDestination.Settings -> "⫶"
 }
 
 private val BROWSABLE_FILTERS = setOf(
