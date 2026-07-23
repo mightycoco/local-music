@@ -395,6 +395,7 @@ fun HomeScreen(
                 HomeScreenDestination.Favourites -> SongList(
                     songs = uiState.songs.filter { it.isFavourite },
                     artworkBySongId = uiState.artworkBySongId,
+                    nowPlayingSongId = uiState.nowPlayingSong?.id,
                     emptyTitle = "No favourites yet",
                     emptyMessage = "Mark local songs as favourites to pin them here.",
                     onSongSelected = onSongSelected,
@@ -416,10 +417,10 @@ fun HomeScreen(
 
 private fun HomeScreenDestination.iconLabel(): String = when (this) {
     HomeScreenDestination.Home -> "⌂"
-    HomeScreenDestination.NowPlaying -> "▶"
-    HomeScreenDestination.Playlists -> "≡"
-    HomeScreenDestination.Favourites -> "★"
-    HomeScreenDestination.Settings -> "⚙"
+    HomeScreenDestination.NowPlaying -> "▷"
+    HomeScreenDestination.Playlists -> "⫶"
+    HomeScreenDestination.Favourites -> "✰"
+    HomeScreenDestination.Settings -> "⋮☰"
 }
 
 private val BROWSABLE_FILTERS = setOf(
@@ -506,6 +507,7 @@ private fun AdaptiveLibraryContent(
                 SongList(
                     songs = uiState.songs,
                     artworkBySongId = uiState.artworkBySongId,
+                    nowPlayingSongId = uiState.nowPlayingSong?.id,
                     modifier = Modifier.weight(1f),
                     onSongSelected = onSongSelected,
                     onFavouriteToggle = onFavouriteToggle,
@@ -517,6 +519,7 @@ private fun AdaptiveLibraryContent(
                 SongList(
                     songs = uiState.songs.filter { it.isFavourite },
                     artworkBySongId = uiState.artworkBySongId,
+                    nowPlayingSongId = uiState.nowPlayingSong?.id,
                     emptyTitle = "No favourites yet",
                     emptyMessage = "Mark local songs as favourites to pin them here.",
                     modifier = Modifier.width(320.dp),
@@ -532,6 +535,7 @@ private fun AdaptiveLibraryContent(
             SongList(
                 songs = uiState.songs,
                 artworkBySongId = uiState.artworkBySongId,
+                nowPlayingSongId = uiState.nowPlayingSong?.id,
                 onSongSelected = onSongSelected,
                 onFavouriteToggle = onFavouriteToggle,
                 playlists = uiState.importedPlaylists,
@@ -1049,6 +1053,7 @@ private fun EmptyState(
 private fun SongList(
     songs: List<Song>,
     artworkBySongId: Map<String, String>,
+    nowPlayingSongId: String?,
     modifier: Modifier = Modifier.fillMaxSize(),
     onSongSelected: (Song) -> Unit,
     onFavouriteToggle: (Song) -> Unit,
@@ -1060,6 +1065,7 @@ private fun SongList(
     SongList(
         songs = songs,
         artworkBySongId = artworkBySongId,
+        nowPlayingSongId = nowPlayingSongId,
         emptyTitle = "No local songs indexed yet",
         emptyMessage = "Allow audio access to scan MediaStore, or add a folder source.",
         modifier = modifier,
@@ -1077,6 +1083,7 @@ private fun SongList(
 private fun SongList(
     songs: List<Song>,
     artworkBySongId: Map<String, String>,
+    nowPlayingSongId: String?,
     emptyTitle: String,
     emptyMessage: String,
     modifier: Modifier = Modifier,
@@ -1112,7 +1119,9 @@ private fun SongList(
                     }
                 ),
                 leadingContent = { ArtworkThumbnail(artworkUri = artworkBySongId[song.id]) },
-                headlineContent = { Text(song.title) },
+                headlineContent = {
+                    Text(if (song.id == nowPlayingSongId) "၊၊||၊|။||||။၊|။ ${song.title}" else song.title)
+                },
                 supportingContent = { Text("${song.artist} - ${song.album}") },
                 trailingContent = {
                     IconButton(onClick = { onFavouriteToggle(song) }) {
@@ -1228,8 +1237,8 @@ private fun ArtworkThumbnail(artworkUri: String?) {
         )
     } else {
         Text(
-            text = "♪",
-            modifier = Modifier.size(48.dp),
+            text = "𓇳",
+            modifier = Modifier.size(64.dp),
             style = MaterialTheme.typography.headlineMedium
         )
     }
