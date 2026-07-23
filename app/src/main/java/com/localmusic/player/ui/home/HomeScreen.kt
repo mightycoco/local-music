@@ -42,6 +42,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -70,6 +71,7 @@ import com.localmusic.player.domain.model.LibraryFilter
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.SortOrder
 import com.localmusic.player.playlist.M3uPlaylist
+import com.localmusic.player.playlist.toM3uEntry
 import com.localmusic.player.ui.theme.AppThemeMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -125,13 +127,17 @@ fun HomeRoute(viewModel: HomeViewModel) {
             .orEmpty()
         viewModel.importPlaylist(name, content)
     }
+    var playlistToExport by remember { mutableStateOf<M3uPlaylist?>(null) }
     val playlistExportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("audio/x-mpegurl")
     ) { playlistUri ->
-        playlistUri ?: return@rememberLauncherForActivityResult
-        context.contentResolver.openOutputStream(playlistUri)?.bufferedWriter()?.use { writer ->
-            writer.write(viewModel.exportCurrentPlaylist())
+        val playlist = playlistToExport
+        if (playlistUri != null && playlist != null) {
+            context.contentResolver.openOutputStream(playlistUri)?.bufferedWriter()?.use { writer ->
+                writer.write(viewModel.exportPlaylist(playlist))
+            }
         }
+        playlistToExport = null
     }
 
     LaunchedEffect(hasAudioPermission) {
@@ -165,13 +171,26 @@ fun HomeRoute(viewModel: HomeViewModel) {
         onSortSelected = viewModel::selectSortOrder,
         onAddFolderSource = { folderLauncher.launch(null) },
         onImportPlaylist = { playlistImportLauncher.launch(arrayOf("audio/x-mpegurl", "audio/mpegurl", "text/plain", "application/octet-stream")) },
-        onExportPlaylist = { playlistExportLauncher.launch("local-music-library.m3u") },
+        onExportPlaylist = {
+            playlistToExport = M3uPlaylist(
+                name = "Local Music Library",
+                entries = uiState.songs.map { it.toM3uEntry() }
+            )
+            playlistExportLauncher.launch("local-music-library.m3u")
+        },
+        onExportIndividualPlaylist = { playlist ->
+            playlistToExport = playlist
+            playlistExportLauncher.launch("${playlist.name}.m3u")
+        },
         onSongSelected = viewModel::playSong,
         onFavouriteToggle = viewModel::toggleFavourite,
         onDeletePlaylist = viewModel::deletePlaylist,
         onCreatePlaylist = viewModel::createPlaylist,
         onRenamePlaylist = viewModel::renamePlaylist,
         onDuplicatePlaylist = viewModel::duplicatePlaylist,
+        onPlayPlaylist = viewModel::playPlaylist,
+        onRemovePlaylistEntry = viewModel::removePlaylistEntry,
+        onMovePlaylistEntry = viewModel::movePlaylistEntry,
         onAddNowPlayingToPlaylist = viewModel::addNowPlayingToPlaylist,
         onAddNowPlayingToQueue = viewModel::addNowPlayingToQueue,
         onClearQueue = viewModel::clearQueue,
@@ -182,6 +201,7 @@ fun HomeRoute(viewModel: HomeViewModel) {
         onPrevious = viewModel::skipToPrevious,
         onProgressChange = viewModel::updatePlaybackProgress,
         onThemeSelected = viewModel::selectThemeMode,
+        onExternalArtworkDownloadEnabledChange = viewModel::setExternalArtworkDownloadEnabled,
         onRequestPermission = {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 permissionLauncher.launch(audioPermission)
@@ -202,12 +222,16 @@ fun HomeScreen(
     onAddFolderSource: () -> Unit,
     onImportPlaylist: () -> Unit,
     onExportPlaylist: () -> Unit,
+    onExportIndividualPlaylist: (M3uPlaylist) -> Unit,
     onSongSelected: (Song) -> Unit,
     onFavouriteToggle: (Song) -> Unit,
     onDeletePlaylist: (M3uPlaylist) -> Unit,
     onCreatePlaylist: (String) -> Unit,
     onRenamePlaylist: (M3uPlaylist, String) -> Unit,
     onDuplicatePlaylist: (M3uPlaylist, String) -> Unit,
+    onPlayPlaylist: (M3uPlaylist) -> Unit,
+    onRemovePlaylistEntry: (M3uPlaylist, Int) -> Unit,
+    onMovePlaylistEntry: (M3uPlaylist, Int, Int) -> Unit,
     onAddNowPlayingToPlaylist: (String) -> Unit,
     onAddNowPlayingToQueue: () -> Unit,
     onClearQueue: () -> Unit,
@@ -218,6 +242,7 @@ fun HomeScreen(
     onPrevious: () -> Unit,
     onProgressChange: (Float) -> Unit,
     onThemeSelected: (AppThemeMode) -> Unit,
+    onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit,
     onRequestPermission: () -> Unit
 ) {
     Scaffold(
@@ -322,6 +347,7 @@ fun HomeScreen(
                     onNext = onNext,
                     onPrevious = onPrevious,
                     onProgressChange = onProgressChange,
+                    onFavouriteToggle = onFavouriteToggle,
                     onCreatePlaylist = onCreatePlaylist,
                     onAddToPlaylist = onAddNowPlayingToPlaylist,
                     onAddToQueue = onAddNowPlayingToQueue
@@ -331,6 +357,10 @@ fun HomeScreen(
                     onDeletePlaylist = onDeletePlaylist,
                     onRenamePlaylist = onRenamePlaylist,
                     onDuplicatePlaylist = onDuplicatePlaylist,
+                    onPlayPlaylist = onPlayPlaylist,
+                    onRemovePlaylistEntry = onRemovePlaylistEntry,
+                    onMovePlaylistEntry = onMovePlaylistEntry,
+                    onExportPlaylist = onExportIndividualPlaylist,
                     onClearQueue = onClearQueue
                 )
                 HomeScreenDestination.Favourites -> SongList(
@@ -347,7 +377,8 @@ fun HomeScreen(
                 )
                 HomeScreenDestination.Settings -> SettingsContent(
                     uiState = uiState,
-                    onThemeSelected = onThemeSelected
+                    onThemeSelected = onThemeSelected,
+                    onExternalArtworkDownloadEnabledChange = onExternalArtworkDownloadEnabledChange
                 )
             }
         }
@@ -468,11 +499,14 @@ private fun NowPlayingContent(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onProgressChange: (Float) -> Unit,
+    onFavouriteToggle: (Song) -> Unit,
     onCreatePlaylist: (String) -> Unit,
     onAddToPlaylist: (String) -> Unit,
     onAddToQueue: () -> Unit
 ) {
     val song = uiState.nowPlayingSong
+    val elapsedMillis = (song?.durationMillis?.times(uiState.playbackProgress) ?: 0f).toLong()
+    val remainingMillis = ((song?.durationMillis ?: 0L) - elapsedMillis).coerceAtLeast(0L)
     var showPlaylistChooser by remember { mutableStateOf(false) }
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
     if (song == null) {
@@ -498,10 +532,17 @@ private fun NowPlayingContent(
                 value = uiState.playbackProgress,
                 onValueChange = onProgressChange
             )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(formatPlaybackTime(elapsedMillis), style = MaterialTheme.typography.bodySmall)
+                Text("-${formatPlaybackTime(remainingMillis)}", style = MaterialTheme.typography.bodySmall)
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(onClick = onPrevious) { Text("Previous") }
                 Button(onClick = onPlayPause) { Text(if (uiState.isPlaying) "Pause" else "Play") }
                 Button(onClick = onNext) { Text("Next") }
+            }
+            TextButton(onClick = { onFavouriteToggle(song) }) {
+                Text(if (song.isFavourite) "Remove favourite" else "Add favourite")
             }
             Button(onClick = { showPlaylistChooser = true }) {
                 Text("Add to playlist")
@@ -560,6 +601,11 @@ private fun NowPlayingContent(
     }
 }
 
+private fun formatPlaybackTime(durationMillis: Long): String {
+    val totalSeconds = (durationMillis / 1_000L).coerceAtLeast(0L)
+    return "%d:%02d".format(totalSeconds / 60L, totalSeconds % 60L)
+}
+
 @Composable
 private fun CreatePlaylistDialog(
     onDismiss: () -> Unit,
@@ -595,10 +641,15 @@ private fun PlaylistContent(
     onDeletePlaylist: (M3uPlaylist) -> Unit,
     onRenamePlaylist: (M3uPlaylist, String) -> Unit,
     onDuplicatePlaylist: (M3uPlaylist, String) -> Unit,
+    onPlayPlaylist: (M3uPlaylist) -> Unit,
+    onRemovePlaylistEntry: (M3uPlaylist, Int) -> Unit,
+    onMovePlaylistEntry: (M3uPlaylist, Int, Int) -> Unit,
+    onExportPlaylist: (M3uPlaylist) -> Unit,
     onClearQueue: () -> Unit
 ) {
     var playlistToRename by remember { mutableStateOf<M3uPlaylist?>(null) }
     var playlistToDuplicate by remember { mutableStateOf<M3uPlaylist?>(null) }
+    var openedPlaylistName by remember { mutableStateOf<String?>(null) }
 
     if (uiState.importedPlaylists.isEmpty()) {
         EmptyState(
@@ -611,6 +662,7 @@ private fun PlaylistContent(
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         items(uiState.importedPlaylists) { playlist ->
             ListItem(
+                modifier = Modifier.clickable { openedPlaylistName = playlist.name },
                 headlineContent = { Text(playlist.name) },
                 supportingContent = { Text("${playlist.entries.size} entries") },
                 trailingContent = {
@@ -620,11 +672,20 @@ private fun PlaylistContent(
                         }
                     } else {
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            TextButton(
+                                onClick = { onPlayPlaylist(playlist) },
+                                enabled = playlist.entries.isNotEmpty()
+                            ) {
+                                Text("Play")
+                            }
                             TextButton(onClick = { playlistToRename = playlist }) {
                                 Text("Rename")
                             }
                             TextButton(onClick = { playlistToDuplicate = playlist }) {
                                 Text("Duplicate")
+                            }
+                            TextButton(onClick = { onExportPlaylist(playlist) }) {
+                                Text("Export")
                             }
                             TextButton(onClick = { onDeletePlaylist(playlist) }) {
                                 Text("Delete")
@@ -661,6 +722,68 @@ private fun PlaylistContent(
             }
         )
     }
+
+    openedPlaylistName?.let { playlistName ->
+        val playlist = uiState.importedPlaylists.firstOrNull { it.name == playlistName }
+        if (playlist == null) {
+            openedPlaylistName = null
+        } else {
+            PlaylistEntriesDialog(
+                playlist = playlist,
+                onDismiss = { openedPlaylistName = null },
+                onRemoveEntry = onRemovePlaylistEntry,
+                onMoveEntry = onMovePlaylistEntry
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlaylistEntriesDialog(
+    playlist: M3uPlaylist,
+    onDismiss: () -> Unit,
+    onRemoveEntry: (M3uPlaylist, Int) -> Unit,
+    onMoveEntry: (M3uPlaylist, Int, Int) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(playlist.name) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (playlist.entries.isEmpty()) {
+                    Text("No entries")
+                } else {
+                    playlist.entries.forEachIndexed { index, entry ->
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(entry.title, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                "${entry.artist} - ${entry.durationSeconds}s",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            if (playlist.name != M3uPlaylist.QUEUE_NAME) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    TextButton(
+                                        onClick = { onMoveEntry(playlist, index, -1) },
+                                        enabled = index > 0
+                                    ) { Text("Up") }
+                                    TextButton(
+                                        onClick = { onMoveEntry(playlist, index, 1) },
+                                        enabled = index < playlist.entries.lastIndex
+                                    ) { Text("Down") }
+                                    TextButton(onClick = { onRemoveEntry(playlist, index) }) {
+                                        Text("Remove")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Done") }
+        }
+    )
 }
 
 @Composable
@@ -699,7 +822,8 @@ private fun PlaylistNameDialog(
 @Composable
 private fun SettingsContent(
     uiState: HomeUiState,
-    onThemeSelected: (AppThemeMode) -> Unit
+    onThemeSelected: (AppThemeMode) -> Unit,
+    onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit
 ) {
     Column(
         modifier = Modifier.padding(top = 24.dp),
@@ -715,6 +839,22 @@ private fun SettingsContent(
                     enabled = mode != uiState.themeMode
                 )
             }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = "Download missing artwork", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text = "Use online artwork only when no local artwork is available.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            Switch(
+                checked = uiState.isExternalArtworkDownloadEnabled,
+                onCheckedChange = onExternalArtworkDownloadEnabledChange
+            )
         }
     }
 }

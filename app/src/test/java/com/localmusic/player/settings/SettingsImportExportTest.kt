@@ -11,9 +11,17 @@ class SettingsImportExportTest {
         val bundle = SettingsBundle(
             folderUris = listOf("content://tree/music", "content://tree/downloads"),
             carModeEnabled = true,
-            lastSelectedSort = "NewestAdded"
+            lastSelectedSort = "NewestAdded",
+            externalArtworkDownloadEnabled = false
         )
 
         assertEquals(bundle, codec.parse(codec.export(bundle)))
+    }
+
+    @Test
+    fun missingExternalArtworkSettingDefaultsToEnabled() {
+        val parsed = codec.parse("folderUris=\ncarModeEnabled=false\nlastSelectedSort=Name\n")
+
+        assertEquals(true, parsed.externalArtworkDownloadEnabled)
     }
 }

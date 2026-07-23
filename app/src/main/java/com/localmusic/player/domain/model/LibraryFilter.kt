@@ -10,5 +10,7 @@ enum class LibraryFilter(val label: String) {
     Favourites("Favourites"),
     RecentlyAdded("Recently Added"),
     RecentlyPlayed("Recently Played"),
-    MostPlayed("Most Played")
+    MostPlayed("Most Played"),
+    NeverPlayed("Never Played"),
+    LastThirtyDays("Last 30 Days")
 }

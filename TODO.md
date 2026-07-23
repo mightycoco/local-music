@@ -34,10 +34,10 @@
 
 - [x] Persist and toggle favourites from the song list.
 - [x] Connect song taps to the Media3 playback service.
-- [ ] Complete playlist management: open/play playlists, remove entries, reorder entries, and export an individual playlist. Playlist rename and duplication are available from the Playlists screen.
+- [x] Complete playlist management: open/play playlists, rename, duplicate, remove entries, reorder entries, and export an individual playlist.
 - [x] Add album-art extraction, disk cache pruning, and UI image loading.
 - [ ] Complete Car Mode: observe A2DP connection changes, allow marking devices as cars, and apply driving-safe 80-96dp touch targets and simplified controls.
-- [ ] Complete Now Playing: show elapsed/remaining time, favourite, shuffle, repeat, swipe navigation, equalizer entry point, and queue contents.
+- [ ] Complete Now Playing: add shuffle, repeat, swipe navigation, equalizer entry point, and queue contents. Elapsed/remaining time and favourite controls are available.
 - [x] The selection of the screen must be at the bottom (Home/Now Playing/Playlists/Favourites/Settings)
 - [x] The default setting for the theme must be "Follow System", other options are Dark, Light
 - [x] The navigation is very slow. The enumeration of media files seems to be done on any UI input
@@ -53,14 +53,14 @@
 - [x] The media list filters and search bar should only be visible on the home screen, not on the other screens.
 - [ ] Complete offline artwork source priority: embedded artwork, folder.jpg, cover.jpg, then cached artwork.
 - [ ] Add an optional external artwork lookup from a free media/artist artwork provider. Request it only after all offline artwork sources fail, cache successful downloads in Android's cache directory, and recover by downloading again when Android clears the cache.
-- [ ] Add a default-enabled Settings switch to opt out of external artwork downloading. This exception applies only to artwork metadata; local audio files remain the sole library and playback source, with no streaming or cloud music library support.
+- [x] Add a default-enabled Settings switch to opt out of external artwork downloading. This exception applies only to artwork metadata; local audio files remain the sole library and playback source, with no streaming or cloud music library support.
 
 ## Remaining Prompt Requirements
 
 - [ ] Verify all required local formats on device and document Media3 fallback behavior: MP3, AAC, M4A, FLAC, WAV, AIFF, OGG, and Opus.
 - [ ] Complete Home filters: provide meaningful Artists, Albums, Genres, and Folders browsing rather than treating those filter selections as no-ops.
 - [ ] Expand the song metadata model and instant search to include album artist, genre, composer, year, comments, description, and playlist names.
-- [ ] Add missing smart playlists: Never Played, Last 30 Days, and No Artwork.
+- [ ] Add the No Artwork smart playlist. Never Played and Last 30 Days are available as Home filters.
 - [ ] Complete Settings: artwork cache controls, default filter/sort, folder management, Car Mode and Bluetooth preferences, About/version, and licenses UI.
 - [ ] Add accessibility coverage: meaningful semantics, large-font testing, high-contrast behavior, keyboard navigation, and Compose UI tests.
 - [ ] Review the adaptive layouts on tablet, foldable, landscape, and square display configurations.

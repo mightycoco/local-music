@@ -9,6 +9,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.room.Room
 import com.localmusic.player.artwork.ArtworkDiskCache
+import com.localmusic.player.artwork.ArtworkPreferences
 import com.localmusic.player.artwork.EmbeddedArtworkExtractor
 import com.localmusic.player.data.database.LocalMusicDatabase
 import com.localmusic.player.data.mediastore.CompositeMusicScanner
@@ -72,6 +73,9 @@ class MainActivity : ComponentActivity() {
             artworkExtractor = EmbeddedArtworkExtractor(
                 context = applicationContext,
                 cache = ArtworkDiskCache(cacheDir)
+            ),
+            artworkPreferences = ArtworkPreferences(
+                getSharedPreferences("local-music-artwork", MODE_PRIVATE)
             )
         )
 

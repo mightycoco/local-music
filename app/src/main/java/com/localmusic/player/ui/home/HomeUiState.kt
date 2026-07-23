@@ -15,6 +15,7 @@ data class HomeUiState(
     val isPlaying: Boolean = false,
     val playbackProgress: Float = 0f,
     val themeMode: AppThemeMode = AppThemeMode.FollowSystem,
+    val isExternalArtworkDownloadEnabled: Boolean = true,
     val selectedFilter: LibraryFilter = LibraryFilter.AllSongs,
     val sortOrder: SortOrder = SortOrder.NewestAdded,
     val searchQuery: String = "",

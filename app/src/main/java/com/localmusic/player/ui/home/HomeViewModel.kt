@@ -3,10 +3,12 @@ package com.localmusic.player.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.localmusic.player.artwork.ArtworkPreferences
 import com.localmusic.player.artwork.EmbeddedArtworkExtractor
 import com.localmusic.player.domain.model.LibraryFilter
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.SortOrder
+import com.localmusic.player.domain.model.SmartPlaylistRules
 import com.localmusic.player.domain.usecase.AddFolderSourceUseCase
 import com.localmusic.player.domain.usecase.ObserveSongsUseCase
 import com.localmusic.player.domain.usecase.RefreshMusicLibraryUseCase
@@ -36,7 +38,8 @@ class HomeViewModel(
     private val setFavourite: SetFavouriteUseCase,
     private val startPlayback: StartPlaybackUseCase,
     private val playlistStore: PlaylistStore? = null,
-    private val artworkExtractor: EmbeddedArtworkExtractor? = null
+    private val artworkExtractor: EmbeddedArtworkExtractor? = null,
+    private val artworkPreferences: ArtworkPreferences? = null
 ) : ViewModel() {
     private val selectedFilter = MutableStateFlow(LibraryFilter.AllSongs)
     private val sortOrder = MutableStateFlow(SortOrder.NewestAdded)
@@ -48,6 +51,9 @@ class HomeViewModel(
     private val themeMode = MutableStateFlow(AppThemeMode.FollowSystem)
     private val importedPlaylists = MutableStateFlow(playlistStore?.playlists().orEmpty())
     private val artworkBySongId = MutableStateFlow<Map<String, String>>(emptyMap())
+    private val isExternalArtworkDownloadEnabled = MutableStateFlow(
+        artworkPreferences?.isExternalArtworkDownloadEnabled() ?: true
+    )
     private val isCarMode = MutableStateFlow(false)
     private val isRefreshing = MutableStateFlow(false)
     private val refreshError = MutableStateFlow<String?>(null)
@@ -80,17 +86,25 @@ class HomeViewModel(
         )
     }
 
+    private val appearanceState = combine(
+        themeMode,
+        isExternalArtworkDownloadEnabled
+    ) { mode, externalArtworkEnabled ->
+        AppearanceState(mode, externalArtworkEnabled)
+    }
+
     private val statusState = combine(
         importedPlaylists,
         isCarMode,
-        themeMode,
+        appearanceState,
         isRefreshing,
         refreshError
-    ) { playlists, carMode, mode, refreshing, error ->
+    ) { playlists, carMode, appearance, refreshing, error ->
         HomeUiState(
             importedPlaylists = playlists,
             isCarMode = carMode,
-            themeMode = mode,
+            themeMode = appearance.themeMode,
+            isExternalArtworkDownloadEnabled = appearance.isExternalArtworkDownloadEnabled,
             isRefreshing = refreshing,
             refreshError = error
         )
@@ -116,6 +130,7 @@ class HomeViewModel(
             importedPlaylists = status.importedPlaylists,
             isCarMode = status.isCarMode,
             themeMode = status.themeMode,
+            isExternalArtworkDownloadEnabled = status.isExternalArtworkDownloadEnabled,
             isRefreshing = status.isRefreshing,
             refreshError = status.refreshError
         )
@@ -207,14 +222,29 @@ class HomeViewModel(
     }
 
     fun playSong(song: Song) {
-        val queue = uiState.value.songs
-        nowPlayingSongId.value = song.id
+        playSongs(queue = uiState.value.songs, startSong = song)
+    }
+
+    fun playPlaylist(playlist: M3uPlaylist) {
+        val songsByUri = uiState.value.songs.associateBy(Song::uri)
+        val playlistSongs = playlist.entries.mapNotNull { entry -> songsByUri[entry.uri] }
+        val firstSong = playlistSongs.firstOrNull()
+        if (firstSong == null) {
+            refreshError.value = "No available local songs found in ${playlist.name}"
+            return
+        }
+
+        playSongs(queue = playlistSongs, startSong = firstSong)
+    }
+
+    private fun playSongs(queue: List<Song>, startSong: Song) {
+        nowPlayingSongId.value = startSong.id
         isPlaying.value = true
         playbackProgress.value = 0f
         selectedScreen.value = HomeScreenDestination.NowPlaying
 
         viewModelScope.launch(Dispatchers.Default) {
-            runCatching { startPlayback(queue, song.id) }
+            runCatching { startPlayback(queue, startSong.id) }
                 .onFailure { error ->
                     withContext(Dispatchers.Main) {
                         isPlaying.value = false
@@ -252,6 +282,11 @@ class HomeViewModel(
 
     fun selectThemeMode(mode: AppThemeMode) {
         themeMode.value = mode
+    }
+
+    fun setExternalArtworkDownloadEnabled(enabled: Boolean) {
+        artworkPreferences?.setExternalArtworkDownloadEnabled(enabled)
+        isExternalArtworkDownloadEnabled.value = enabled
     }
 
     private fun moveNowPlaying(offset: Int) {
@@ -327,6 +362,24 @@ class HomeViewModel(
             ?: (importedPlaylists.value.filterNot { it.name == normalizedName } + duplicate).withQueueFirst()
     }
 
+    fun removePlaylistEntry(playlist: M3uPlaylist, entryIndex: Int) {
+        updatePlaylistEntries(playlist, entryIndex) { entries ->
+            entries.filterIndexed { index, _ -> index != entryIndex }
+        }
+    }
+
+    fun movePlaylistEntry(playlist: M3uPlaylist, entryIndex: Int, offset: Int) {
+        updatePlaylistEntries(playlist, entryIndex) { entries ->
+            val targetIndex = entryIndex + offset
+            if (targetIndex !in entries.indices) return@updatePlaylistEntries entries
+
+            entries.toMutableList().also { mutableEntries ->
+                val entry = mutableEntries.removeAt(entryIndex)
+                mutableEntries.add(targetIndex, entry)
+            }
+        }
+    }
+
     fun addNowPlayingToPlaylist(name: String) {
         val song = uiState.value.nowPlayingSong ?: return
         addSongToPlaylist(song, name)
@@ -370,6 +423,16 @@ class HomeViewModel(
         return true
     }
 
+    private fun updatePlaylistEntries(
+        playlist: M3uPlaylist,
+        entryIndex: Int,
+        transform: (List<com.localmusic.player.playlist.M3uPlaylistEntry>) -> List<com.localmusic.player.playlist.M3uPlaylistEntry>
+    ) {
+        if (playlist.name == M3uPlaylist.QUEUE_NAME || entryIndex !in playlist.entries.indices) return
+        val currentPlaylist = importedPlaylists.value.firstOrNull { it.name == playlist.name } ?: return
+        savePlaylist(currentPlaylist.copy(entries = transform(currentPlaylist.entries)))
+    }
+
     private fun savePlaylist(playlist: M3uPlaylist) {
         importedPlaylists.value = playlistStore?.save(playlist)
             ?: (importedPlaylists.value.filterNot { it.name == playlist.name } + playlist).withQueueFirst()
@@ -381,6 +444,8 @@ class HomeViewModel(
             entries = uiState.value.songs.map { it.toM3uEntry() }
         )
     )
+
+    fun exportPlaylist(playlist: M3uPlaylist): String = playlistCodec.export(playlist)
 
     fun updateCarMode(enabled: Boolean) {
         isCarMode.value = enabled
@@ -408,6 +473,11 @@ class HomeViewModel(
         LibraryFilter.RecentlyAdded -> dateAddedEpochSeconds > 0L
         LibraryFilter.RecentlyPlayed -> lastPlayedEpochMillis != null
         LibraryFilter.MostPlayed -> playCount > 0
+        LibraryFilter.NeverPlayed -> SmartPlaylistRules.isNeverPlayed(this)
+        LibraryFilter.LastThirtyDays -> SmartPlaylistRules.wasPlayedWithinLastThirtyDays(
+            song = this,
+            nowEpochMillis = System.currentTimeMillis()
+        )
         LibraryFilter.Favourites -> isFavourite
     }
 
@@ -429,6 +499,11 @@ private data class PlaybackState(
     val progress: Float
 )
 
+private data class AppearanceState(
+    val themeMode: AppThemeMode,
+    val isExternalArtworkDownloadEnabled: Boolean
+)
+
 private data class ProjectedSongs(
     val allSongs: List<Song>,
     val visibleSongs: List<Song>
@@ -444,7 +519,8 @@ class HomeViewModelFactory(
     private val setFavourite: SetFavouriteUseCase,
     private val startPlayback: StartPlaybackUseCase,
     private val playlistStore: PlaylistStore? = null,
-    private val artworkExtractor: EmbeddedArtworkExtractor? = null
+    private val artworkExtractor: EmbeddedArtworkExtractor? = null,
+    private val artworkPreferences: ArtworkPreferences? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -456,7 +532,8 @@ class HomeViewModelFactory(
             setFavourite,
             startPlayback,
             playlistStore,
-            artworkExtractor
+            artworkExtractor,
+            artworkPreferences
         ) as T
     }
 }

@@ -39,6 +39,10 @@ Favourites are persisted through the repository boundary and toggled from Compos
 
 Artwork extraction is handled by a focused Android service that uses `MediaMetadataRetriever`, stores embedded artwork in a small disk cache, and exposes file URIs to UI state for thumbnail rendering. Cache pruning is separated into JVM-testable policy code.
 
+Artwork settings are isolated in `ArtworkPreferences`, a small SharedPreferences-backed boundary. The external-artwork preference defaults to enabled, is persisted independently of the library, and is intended to gate only a future metadata-artwork lookup after embedded, folder, and cache sources fail; playback and library scanning remain local-only.
+
+Smart library filters remain pure domain rules applied by the Home ViewModel projection. Never Played uses persisted play counts, while Last 30 Days uses persisted playback timestamps, keeping filter behavior independent of Compose and straightforward to unit test.
+
 Car Mode detection remains a focused Bluetooth service. The UI requests `BLUETOOTH_CONNECT` when required, reads bonded devices only after permission is available, and reflects likely car-audio state through `HomeUiState`.
 
 The Compose shell uses bottom navigation for primary destinations and keeps library refresh one-shot for a ViewModel lifetime so switching tabs, changing settings, and using playback controls do not re-enumerate device media.

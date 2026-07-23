@@ -38,3 +38,9 @@
 - Added locally embedded artwork as a subtle backdrop on Now Playing while preserving the local-files-only playback boundary.
 - Added GitHub Actions support for test, debug APK, and secret-backed signed release APK/AAB builds.
 - Added playlist rename and duplication actions while preserving Queue playlist protections.
+- Added individual playlist M3U export from the Playlists screen.
+- Added playback of saved playlists using their locally available songs in playlist order.
+- Added playlist entry browsing, removal, and reordering from the Playlists screen.
+- Added Now Playing elapsed/remaining time and favourite controls.
+- Added Never Played and Last 30 Days smart library filters.
+- Added a persisted, default-enabled Settings control for optional external artwork downloads.

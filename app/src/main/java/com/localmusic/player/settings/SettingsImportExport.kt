@@ -6,6 +6,7 @@ class SettingsImportExport {
         appendLine("folderUris=${bundle.folderUris.joinToString(";")}")
         appendLine("carModeEnabled=${bundle.carModeEnabled}")
         appendLine("lastSelectedSort=${bundle.lastSelectedSort}")
+        appendLine("externalArtworkDownloadEnabled=${bundle.externalArtworkDownloadEnabled}")
     }
 
     fun parse(content: String): SettingsBundle {
@@ -20,7 +21,8 @@ class SettingsImportExport {
         return SettingsBundle(
             folderUris = values["folderUris"]?.split(';')?.filter { it.isNotBlank() }.orEmpty(),
             carModeEnabled = values["carModeEnabled"].toBoolean(),
-            lastSelectedSort = values["lastSelectedSort"].orEmpty()
+            lastSelectedSort = values["lastSelectedSort"].orEmpty(),
+            externalArtworkDownloadEnabled = values["externalArtworkDownloadEnabled"]?.toBoolean() ?: true
         )
     }
 }
