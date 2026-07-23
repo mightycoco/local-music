@@ -51,12 +51,22 @@
 - [x] Creating a playlist should just show a modal dialog with a generic TextInput field and Cancel/Create buttons
 - [x] The bottom nav buttons must have a larger icon, no text (home, now playing, playlists, favourites, settings)
 - [x] The media list filters and search bar should only be visible on the home screen, not on the other screens.
-- [ ] Complete local artwork source priority: embedded artwork, folder.jpg, cover.jpg, then cache. Online artwork lookup is intentionally excluded because this is a local-files-only player.
+- [ ] Complete offline artwork source priority: embedded artwork, folder.jpg, cover.jpg, then cached artwork.
+- [ ] Add an optional external artwork lookup from a free media/artist artwork provider. Request it only after all offline artwork sources fail, cache successful downloads in Android's cache directory, and recover by downloading again when Android clears the cache.
+- [ ] Add a default-enabled Settings switch to opt out of external artwork downloading. This exception applies only to artwork metadata; local audio files remain the sole library and playback source, with no streaming or cloud music library support.
 
 ## Remaining Prompt Requirements
 
+- [ ] Verify all required local formats on device and document Media3 fallback behavior: MP3, AAC, M4A, FLAC, WAV, AIFF, OGG, and Opus.
+- [ ] Complete Home filters: provide meaningful Artists, Albums, Genres, and Folders browsing rather than treating those filter selections as no-ops.
 - [ ] Expand the song metadata model and instant search to include album artist, genre, composer, year, comments, description, and playlist names.
 - [ ] Add missing smart playlists: Never Played, Last 30 Days, and No Artwork.
 - [ ] Complete Settings: artwork cache controls, default filter/sort, folder management, Car Mode and Bluetooth preferences, About/version, and licenses UI.
 - [ ] Add accessibility coverage: meaningful semantics, large-font testing, high-contrast behavior, keyboard navigation, and Compose UI tests.
 - [ ] Review the adaptive layouts on tablet, foldable, landscape, and square display configurations.
+- [ ] Prepare integration boundaries for notification controls, lock-screen controls, home-screen widgets, and Android Auto without implementing the surfaces yet.
+- [ ] Validate performance with a 50,000+ song library: pagination or bounded loading, indexed filtering/sorting, bounded artwork work, and measurable UI responsiveness.
+- [ ] Complete the requested visual design: Metro-inspired Material 3 styling, large touch targets, responsive portrait/landscape layouts, and purposeful subtle motion.
+- [ ] Add explicit dependency-injection composition guidance or a lightweight DI solution once manual wiring no longer scales; keep UI, domain, and data dependencies directional.
+- [ ] Review class and function size, KDoc coverage, duplicate UI flows, and Mermaid architecture documentation against the production-quality code standards.
+- [ ] Select and integrate a free external artwork provider, such as MusicBrainz and Cover Art Archive, with rate-limit handling, attribution, privacy disclosure, error handling, and cache behavior. It must never supply audio playback or a cloud music library.
