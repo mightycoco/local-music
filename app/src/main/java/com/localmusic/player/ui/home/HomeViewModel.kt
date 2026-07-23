@@ -16,6 +16,7 @@ import com.localmusic.player.playlist.M3uPlaylist
 import com.localmusic.player.playlist.M3uPlaylistCodec
 import com.localmusic.player.playlist.PlaylistStore
 import com.localmusic.player.playlist.toM3uEntry
+import com.localmusic.player.playlist.withQueueFirst
 import com.localmusic.player.ui.theme.AppThemeMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,6 +56,7 @@ class HomeViewModel(
     private var hasRequestedInitialRefresh = false
 
     init {
+        ensureQueuePlaylist()
         viewModelScope.launch {
             startPlayback.observePlayback().collect { playback ->
                 nowPlayingSongId.value = playback.songId
@@ -289,8 +291,61 @@ class HomeViewModel(
     }
 
     fun deletePlaylist(playlist: M3uPlaylist) {
+        if (playlist.name == M3uPlaylist.QUEUE_NAME) return
         importedPlaylists.value = playlistStore?.delete(playlist.name)
             ?: importedPlaylists.value.filterNot { it.name == playlist.name }
+    }
+
+    fun createPlaylist(name: String) {
+        val normalizedName = name.trim()
+        if (normalizedName.isEmpty()) return
+
+        val playlist = M3uPlaylist(name = normalizedName, entries = emptyList())
+        importedPlaylists.value = playlistStore?.save(playlist)
+            ?: (importedPlaylists.value.filterNot { it.name == normalizedName } + playlist)
+    }
+
+    fun addNowPlayingToPlaylist(name: String) {
+        val song = uiState.value.nowPlayingSong ?: return
+        addSongToPlaylist(song, name)
+    }
+
+    fun addNowPlayingToQueue() {
+        uiState.value.nowPlayingSong?.let(::addSongToQueue)
+    }
+
+    fun addSongToPlaylist(song: Song, name: String) {
+        addSongToPlaylistInternal(song, name)
+    }
+
+    fun addSongToQueue(song: Song) {
+        addSongToPlaylistInternal(song, M3uPlaylist.QUEUE_NAME)
+    }
+
+    fun clearQueue() {
+        savePlaylist(M3uPlaylist(name = M3uPlaylist.QUEUE_NAME, entries = emptyList()))
+    }
+
+    private fun ensureQueuePlaylist() {
+        if (importedPlaylists.value.none { it.name == M3uPlaylist.QUEUE_NAME }) {
+            savePlaylist(M3uPlaylist(name = M3uPlaylist.QUEUE_NAME, entries = emptyList()))
+        }
+    }
+
+    private fun addSongToPlaylistInternal(song: Song, name: String) {
+        val playlist = importedPlaylists.value.firstOrNull { it.name == name } ?: return
+        val entry = song.toM3uEntry()
+        val updatedPlaylist = playlist.copy(
+            entries = playlist.entries.takeUnless { entries -> entries.any { it.uri == entry.uri } }
+                ?.plus(entry)
+                ?: playlist.entries
+        )
+        savePlaylist(updatedPlaylist)
+    }
+
+    private fun savePlaylist(playlist: M3uPlaylist) {
+        importedPlaylists.value = playlistStore?.save(playlist)
+            ?: (importedPlaylists.value.filterNot { it.name == playlist.name } + playlist).withQueueFirst()
     }
 
     fun exportCurrentPlaylist(): String = playlistCodec.export(

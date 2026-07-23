@@ -39,6 +39,22 @@ class SharedPreferencesPlaylistStoreTest {
         assertEquals(listOf("Focus"), store.playlists().map { it.name })
     }
 
+    @Test
+    fun playlistsRestoresQueueBeforeAlphabeticalPlaylists() {
+        val preferences = FakeSharedPreferences()
+        val store = SharedPreferencesPlaylistStore(preferences)
+        store.save(testPlaylist(name = "Road"))
+        store.save(testPlaylist(name = M3uPlaylist.QUEUE_NAME))
+        store.save(testPlaylist(name = "Focus"))
+
+        val restored = SharedPreferencesPlaylistStore(preferences).playlists()
+
+        assertEquals(
+            listOf(M3uPlaylist.QUEUE_NAME, "Focus", "Road"),
+            restored.map { it.name }
+        )
+    }
+
     private fun testPlaylist(
         name: String,
         uri: String = "content://music/song-1"

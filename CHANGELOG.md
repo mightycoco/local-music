@@ -32,3 +32,7 @@
 - Scoped library search, filters, and import/export actions to the Home screen.
 - Persisted imported playlists locally and added delete actions on the Playlists screen.
 - Fixed favourite retention during library refresh and made playlist writes durable before returning.
+- Added a playlist creation dialog and Now Playing actions to add the current song to new or existing playlists.
+- Added a protected Queue playlist that is always listed first, can be cleared, and accepts songs from Now Playing and long-press library actions.
+- Added long-press media actions for queueing or adding a song to a new or existing playlist.
+- Added locally embedded artwork as a subtle backdrop on Now Playing while preserving the local-files-only playback boundary.

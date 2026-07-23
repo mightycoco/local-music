@@ -13,11 +13,11 @@ class SharedPreferencesPlaylistStore(
         .getStringSet(KEY_PLAYLISTS, emptySet())
         .orEmpty()
         .mapNotNull { entry -> entry.decodePlaylist() }
-        .sortedBy { it.name.lowercase() }
+        .withQueueFirst()
 
     override fun save(playlist: M3uPlaylist): List<M3uPlaylist> {
         val updatedPlaylists = (playlists().filterNot { it.name == playlist.name } + playlist)
-            .sortedBy { it.name.lowercase() }
+            .withQueueFirst()
         sharedPreferences.edit()
             .putStringSet(KEY_PLAYLISTS, updatedPlaylists.map { it.encodePlaylist() }.toSet())
             .commit()

@@ -44,11 +44,11 @@
 - [x] Keep Now Playing progress and selected song synchronized with Media3 playback state and external media controls.
 - [x] Favourite songs must be persisted and retained across library refreshes/app restarts.
 - [x] Playlist screen must allow deleting playlists
-- [ ] Now Playing must allow adding to a new/existing playlist
-- [ ] Queueing of items must be possible. The Queue must behave like a playlist, not be deletable, can be cleared, must be always at the top of the list of playlists
+- [x] Now Playing must allow adding to a new/existing playlist
+- [x] Queueing of items must be possible. The Queue must behave like a playlist, not be deletable, can be cleared, must be always at the top of the list of playlists
 - [x] Playlists must be persisted and loaded after app restart.
-- [ ] Media list items must have a long press menu with the options to queue, add to a new/existing playlist
-- [ ] Creating a playlist should just show a modal dialog with a generic TextInput field and Cancle/Create buttons
+- [x] Media list items must have a long press menu with the options to queue, add to a new/existing playlist
+- [x] Creating a playlist should just show a modal dialog with a generic TextInput field and Cancel/Create buttons
 - [x] The bottom nav buttons must have a larger icon, no text (home, now playing, playlists, favourites, settings)
 - [x] The media list filters and search bar should only be visible on the home screen, not on the other screens.
-- [ ] The now playing screen should have the song, album or artist image as a backdrop. If none is available, try to use the online service.
+- [x] The now playing screen uses locally available song artwork as a backdrop. Online artwork lookup is intentionally excluded because this is a local-files-only player.

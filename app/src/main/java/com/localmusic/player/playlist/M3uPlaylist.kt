@@ -5,6 +5,15 @@ import com.localmusic.player.domain.model.Song
 data class M3uPlaylist(
     val name: String,
     val entries: List<M3uPlaylistEntry>
+) {
+    companion object {
+        const val QUEUE_NAME = "Queue"
+    }
+}
+
+fun List<M3uPlaylist>.withQueueFirst(): List<M3uPlaylist> = sortedWith(
+    compareBy<M3uPlaylist> { it.name != M3uPlaylist.QUEUE_NAME }
+        .thenBy { it.name.lowercase() }
 )
 
 data class M3uPlaylistEntry(

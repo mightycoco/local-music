@@ -10,8 +10,11 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Column
@@ -28,6 +31,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
@@ -39,6 +43,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +53,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -163,6 +169,12 @@ fun HomeRoute(viewModel: HomeViewModel) {
         onSongSelected = viewModel::playSong,
         onFavouriteToggle = viewModel::toggleFavourite,
         onDeletePlaylist = viewModel::deletePlaylist,
+        onCreatePlaylist = viewModel::createPlaylist,
+        onAddNowPlayingToPlaylist = viewModel::addNowPlayingToPlaylist,
+        onAddNowPlayingToQueue = viewModel::addNowPlayingToQueue,
+        onClearQueue = viewModel::clearQueue,
+        onAddSongToPlaylist = viewModel::addSongToPlaylist,
+        onAddSongToQueue = viewModel::addSongToQueue,
         onPlayPause = viewModel::togglePlayback,
         onNext = viewModel::skipToNext,
         onPrevious = viewModel::skipToPrevious,
@@ -191,6 +203,12 @@ fun HomeScreen(
     onSongSelected: (Song) -> Unit,
     onFavouriteToggle: (Song) -> Unit,
     onDeletePlaylist: (M3uPlaylist) -> Unit,
+    onCreatePlaylist: (String) -> Unit,
+    onAddNowPlayingToPlaylist: (String) -> Unit,
+    onAddNowPlayingToQueue: () -> Unit,
+    onClearQueue: () -> Unit,
+    onAddSongToPlaylist: (Song, String) -> Unit,
+    onAddSongToQueue: (Song) -> Unit,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
@@ -289,18 +307,25 @@ fun HomeScreen(
                 HomeScreenDestination.Home -> AdaptiveLibraryContent(
                     uiState = uiState,
                     onSongSelected = onSongSelected,
-                    onFavouriteToggle = onFavouriteToggle
+                    onFavouriteToggle = onFavouriteToggle,
+                    onCreatePlaylist = onCreatePlaylist,
+                    onAddSongToPlaylist = onAddSongToPlaylist,
+                    onAddSongToQueue = onAddSongToQueue
                 )
                 HomeScreenDestination.NowPlaying -> NowPlayingContent(
                     uiState = uiState,
                     onPlayPause = onPlayPause,
                     onNext = onNext,
                     onPrevious = onPrevious,
-                    onProgressChange = onProgressChange
+                    onProgressChange = onProgressChange,
+                    onCreatePlaylist = onCreatePlaylist,
+                    onAddToPlaylist = onAddNowPlayingToPlaylist,
+                    onAddToQueue = onAddNowPlayingToQueue
                 )
                 HomeScreenDestination.Playlists -> PlaylistContent(
                     uiState = uiState,
-                    onDeletePlaylist = onDeletePlaylist
+                    onDeletePlaylist = onDeletePlaylist,
+                    onClearQueue = onClearQueue
                 )
                 HomeScreenDestination.Favourites -> SongList(
                     songs = uiState.songs.filter { it.isFavourite },
@@ -308,7 +333,11 @@ fun HomeScreen(
                     emptyTitle = "No favourites yet",
                     emptyMessage = "Mark local songs as favourites to pin them here.",
                     onSongSelected = onSongSelected,
-                    onFavouriteToggle = onFavouriteToggle
+                    onFavouriteToggle = onFavouriteToggle,
+                    playlists = uiState.importedPlaylists,
+                    onCreatePlaylist = onCreatePlaylist,
+                    onAddSongToPlaylist = onAddSongToPlaylist,
+                    onAddSongToQueue = onAddSongToQueue
                 )
                 HomeScreenDestination.Settings -> SettingsContent(
                     uiState = uiState,
@@ -378,7 +407,10 @@ private fun FilterRow(
 private fun AdaptiveLibraryContent(
     uiState: HomeUiState,
     onSongSelected: (Song) -> Unit,
-    onFavouriteToggle: (Song) -> Unit
+    onFavouriteToggle: (Song) -> Unit,
+    onCreatePlaylist: (String) -> Unit,
+    onAddSongToPlaylist: (Song, String) -> Unit,
+    onAddSongToQueue: (Song) -> Unit
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         if (maxWidth >= 840.dp) {
@@ -388,7 +420,11 @@ private fun AdaptiveLibraryContent(
                     artworkBySongId = uiState.artworkBySongId,
                     modifier = Modifier.weight(1f),
                     onSongSelected = onSongSelected,
-                    onFavouriteToggle = onFavouriteToggle
+                    onFavouriteToggle = onFavouriteToggle,
+                    playlists = uiState.importedPlaylists,
+                    onCreatePlaylist = onCreatePlaylist,
+                    onAddSongToPlaylist = onAddSongToPlaylist,
+                    onAddSongToQueue = onAddSongToQueue
                 )
                 SongList(
                     songs = uiState.songs.filter { it.isFavourite },
@@ -397,7 +433,11 @@ private fun AdaptiveLibraryContent(
                     emptyMessage = "Mark local songs as favourites to pin them here.",
                     modifier = Modifier.width(320.dp),
                     onSongSelected = onSongSelected,
-                    onFavouriteToggle = onFavouriteToggle
+                    onFavouriteToggle = onFavouriteToggle,
+                    playlists = uiState.importedPlaylists,
+                    onCreatePlaylist = onCreatePlaylist,
+                    onAddSongToPlaylist = onAddSongToPlaylist,
+                    onAddSongToQueue = onAddSongToQueue
                 )
             }
         } else {
@@ -405,7 +445,11 @@ private fun AdaptiveLibraryContent(
                 songs = uiState.songs,
                 artworkBySongId = uiState.artworkBySongId,
                 onSongSelected = onSongSelected,
-                onFavouriteToggle = onFavouriteToggle
+                onFavouriteToggle = onFavouriteToggle,
+                playlists = uiState.importedPlaylists,
+                onCreatePlaylist = onCreatePlaylist,
+                onAddSongToPlaylist = onAddSongToPlaylist,
+                onAddSongToQueue = onAddSongToQueue
             )
         }
     }
@@ -417,9 +461,14 @@ private fun NowPlayingContent(
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
-    onProgressChange: (Float) -> Unit
+    onProgressChange: (Float) -> Unit,
+    onCreatePlaylist: (String) -> Unit,
+    onAddToPlaylist: (String) -> Unit,
+    onAddToQueue: () -> Unit
 ) {
     val song = uiState.nowPlayingSong
+    var showPlaylistChooser by remember { mutableStateOf(false) }
+    var showCreatePlaylistDialog by remember { mutableStateOf(false) }
     if (song == null) {
         EmptyState(
             title = "Nothing playing",
@@ -428,31 +477,117 @@ private fun NowPlayingContent(
         return
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(top = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        ArtworkThumbnail(artworkUri = uiState.artworkBySongId[song.id])
-        Text(text = song.title, style = MaterialTheme.typography.headlineMedium)
-        Text(text = "${song.artist} - ${song.album}", style = MaterialTheme.typography.bodyLarge)
-        Slider(
-            value = uiState.playbackProgress,
-            onValueChange = onProgressChange
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = onPrevious) { Text("Previous") }
-            Button(onClick = onPlayPause) { Text(if (uiState.isPlaying) "Pause" else "Play") }
-            Button(onClick = onNext) { Text("Next") }
+    Box(modifier = Modifier.fillMaxSize()) {
+        ArtworkBackdrop(artworkUri = uiState.artworkBySongId[song.id])
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            ArtworkThumbnail(artworkUri = uiState.artworkBySongId[song.id])
+            Text(text = song.title, style = MaterialTheme.typography.headlineMedium)
+            Text(text = "${song.artist} - ${song.album}", style = MaterialTheme.typography.bodyLarge)
+            Slider(
+                value = uiState.playbackProgress,
+                onValueChange = onProgressChange
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(onClick = onPrevious) { Text("Previous") }
+                Button(onClick = onPlayPause) { Text(if (uiState.isPlaying) "Pause" else "Play") }
+                Button(onClick = onNext) { Text("Next") }
+            }
+            Button(onClick = { showPlaylistChooser = true }) {
+                Text("Add to playlist")
+            }
+            Button(onClick = onAddToQueue) {
+                Text("Add to queue")
+            }
         }
     }
+
+    if (showPlaylistChooser) {
+        AlertDialog(
+            onDismissRequest = { showPlaylistChooser = false },
+            title = { Text("Add to playlist") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (uiState.importedPlaylists.isEmpty()) {
+                        Text("Create a playlist to save this song.")
+                    } else {
+                        uiState.importedPlaylists.forEach { playlist ->
+                            TextButton(
+                                onClick = {
+                                    onAddToPlaylist(playlist.name)
+                                    showPlaylistChooser = false
+                                }
+                            ) {
+                                Text(playlist.name)
+                            }
+                        }
+                    }
+                    Button(onClick = {
+                        showPlaylistChooser = false
+                        showCreatePlaylistDialog = true
+                    }) {
+                        Text("New playlist")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showPlaylistChooser = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showCreatePlaylistDialog) {
+        CreatePlaylistDialog(
+            onDismiss = { showCreatePlaylistDialog = false },
+            onCreate = { name ->
+                onCreatePlaylist(name)
+                onAddToPlaylist(name.trim())
+                showCreatePlaylistDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun CreatePlaylistDialog(
+    onDismiss: () -> Unit,
+    onCreate: (String) -> Unit
+) {
+    var playlistName by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("New playlist") },
+        text = {
+            OutlinedTextField(
+                value = playlistName,
+                onValueChange = { playlistName = it },
+                singleLine = true,
+                label = { Text("Playlist name") }
+            )
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onCreate(playlistName) },
+                enabled = playlistName.isNotBlank()
+            ) { Text("Create") }
+        }
+    )
 }
 
 @Composable
 private fun PlaylistContent(
     uiState: HomeUiState,
-    onDeletePlaylist: (M3uPlaylist) -> Unit
+    onDeletePlaylist: (M3uPlaylist) -> Unit,
+    onClearQueue: () -> Unit
 ) {
     if (uiState.importedPlaylists.isEmpty()) {
         EmptyState(
@@ -468,8 +603,14 @@ private fun PlaylistContent(
                 headlineContent = { Text(playlist.name) },
                 supportingContent = { Text("${playlist.entries.size} entries") },
                 trailingContent = {
-                    Button(onClick = { onDeletePlaylist(playlist) }) {
-                        Text("Delete")
+                    if (playlist.name == M3uPlaylist.QUEUE_NAME) {
+                        Button(onClick = onClearQueue) {
+                            Text("Clear")
+                        }
+                    } else {
+                        Button(onClick = { onDeletePlaylist(playlist) }) {
+                            Text("Delete")
+                        }
                     }
                 }
             )
@@ -521,7 +662,11 @@ private fun SongList(
     artworkBySongId: Map<String, String>,
     modifier: Modifier = Modifier.fillMaxSize(),
     onSongSelected: (Song) -> Unit,
-    onFavouriteToggle: (Song) -> Unit
+    onFavouriteToggle: (Song) -> Unit,
+    playlists: List<M3uPlaylist>,
+    onCreatePlaylist: (String) -> Unit,
+    onAddSongToPlaylist: (Song, String) -> Unit,
+    onAddSongToQueue: (Song) -> Unit
 ) {
     SongList(
         songs = songs,
@@ -530,10 +675,15 @@ private fun SongList(
         emptyMessage = "Allow audio access to scan MediaStore, or add a folder source.",
         modifier = modifier,
         onSongSelected = onSongSelected,
-        onFavouriteToggle = onFavouriteToggle
+        onFavouriteToggle = onFavouriteToggle,
+        playlists = playlists,
+        onCreatePlaylist = onCreatePlaylist,
+        onAddSongToPlaylist = onAddSongToPlaylist,
+        onAddSongToQueue = onAddSongToQueue
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SongList(
     songs: List<Song>,
@@ -542,12 +692,21 @@ private fun SongList(
     emptyMessage: String,
     modifier: Modifier = Modifier,
     onSongSelected: (Song) -> Unit,
-    onFavouriteToggle: (Song) -> Unit
+    onFavouriteToggle: (Song) -> Unit,
+    playlists: List<M3uPlaylist>,
+    onCreatePlaylist: (String) -> Unit,
+    onAddSongToPlaylist: (Song, String) -> Unit,
+    onAddSongToQueue: (Song) -> Unit
 ) {
     if (songs.isEmpty()) {
         EmptyState(title = emptyTitle, message = emptyMessage, modifier = modifier)
         return
     }
+
+    var selectedSong by remember { mutableStateOf<Song?>(null) }
+    var showActionMenu by remember { mutableStateOf(false) }
+    var showPlaylistChooser by remember { mutableStateOf(false) }
+    var showCreatePlaylistDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = modifier,
@@ -556,7 +715,13 @@ private fun SongList(
     ) {
         items(items = songs, key = { it.id }) { song ->
             ListItem(
-                modifier = Modifier.clickable { onSongSelected(song) },
+                modifier = Modifier.combinedClickable(
+                    onClick = { onSongSelected(song) },
+                    onLongClick = {
+                        selectedSong = song
+                        showActionMenu = true
+                    }
+                ),
                 leadingContent = { ArtworkThumbnail(artworkUri = artworkBySongId[song.id]) },
                 headlineContent = { Text(song.title) },
                 supportingContent = { Text("${song.artist} - ${song.album}") },
@@ -567,6 +732,84 @@ private fun SongList(
                 }
             )
         }
+    }
+
+    if (showActionMenu) selectedSong?.let { song ->
+        AlertDialog(
+            onDismissRequest = {
+                selectedSong = null
+                showActionMenu = false
+            },
+            title = { Text(song.title) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = {
+                        onAddSongToQueue(song)
+                        selectedSong = null
+                        showActionMenu = false
+                    }) { Text("Add to queue") }
+                    TextButton(onClick = {
+                        showActionMenu = false
+                        showPlaylistChooser = true
+                    }) {
+                        Text("Add to playlist")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    selectedSong = null
+                    showActionMenu = false
+                }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showPlaylistChooser) {
+        AlertDialog(
+            onDismissRequest = {
+                showPlaylistChooser = false
+                selectedSong = null
+            },
+            title = { Text("Add to playlist") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    playlists.filterNot { it.name == M3uPlaylist.QUEUE_NAME }.forEach { playlist ->
+                        TextButton(onClick = {
+                            selectedSong?.let { song -> onAddSongToPlaylist(song, playlist.name) }
+                            selectedSong = null
+                            showPlaylistChooser = false
+                        }) { Text(playlist.name) }
+                    }
+                    Button(onClick = {
+                        showPlaylistChooser = false
+                        showCreatePlaylistDialog = true
+                    }) { Text("New playlist") }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showPlaylistChooser = false
+                    selectedSong = null
+                }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showCreatePlaylistDialog) {
+        CreatePlaylistDialog(
+            onDismiss = {
+                selectedSong = null
+                showCreatePlaylistDialog = false
+            },
+            onCreate = { name ->
+                val normalizedName = name.trim()
+                onCreatePlaylist(normalizedName)
+                selectedSong?.let { song -> onAddSongToPlaylist(song, normalizedName) }
+                selectedSong = null
+                showCreatePlaylistDialog = false
+            }
+        )
     }
 }
 
@@ -599,6 +842,31 @@ private fun ArtworkThumbnail(artworkUri: String?) {
             text = "♪",
             modifier = Modifier.size(48.dp),
             style = MaterialTheme.typography.headlineMedium
+        )
+    }
+}
+
+@Composable
+private fun ArtworkBackdrop(artworkUri: String?) {
+    val context = LocalContext.current
+    var bitmap by remember(artworkUri) { mutableStateOf<android.graphics.Bitmap?>(null) }
+
+    LaunchedEffect(artworkUri) {
+        bitmap = artworkUri?.let { uri ->
+            withContext(Dispatchers.IO) {
+                context.contentResolver.openInputStream(Uri.parse(uri))?.use(BitmapFactory::decodeStream)
+            }
+        }
+    }
+
+    bitmap?.let { artwork ->
+        Image(
+            bitmap = artwork.asImageBitmap(),
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxSize()
+                .alpha(0.16f),
+            contentScale = ContentScale.Crop
         )
     }
 }
