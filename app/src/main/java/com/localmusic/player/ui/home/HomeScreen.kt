@@ -10,6 +10,7 @@ import android.media.audiofx.AudioEffect
 import android.net.Uri
 import android.os.Build
 import android.provider.OpenableColumns
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -41,6 +42,7 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -81,6 +83,22 @@ import com.localmusic.player.ui.theme.AppThemeMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
+
+enum class Glyphs(val glyph: String) {
+    HOME("⌂"),
+    NOW_PLAYING("▷"),
+    PLAYLISTS("⋮☰"),
+    FAVOURITE("☆"),
+    FAVOURITE_FULL("★"),
+    SETTINGS("⫶"),
+    PLAYINGINDICATOR("၊၊||၊|။||||။၊|။"),
+    PLAYER_PREVIOUS("⏮"),
+    PLAYER_NEXT("⏭"),
+    PLAYER_PLAY("▶"),
+    PLAYER_PAUSE("၊၊"),
+    PLAYER_SHUFFLE("⇌"),
+    PLAYER_NOSHUFFLE("⇉"),
+}
 
 @Composable
 fun HomeRoute(viewModel: HomeViewModel) {
@@ -295,18 +313,43 @@ fun HomeScreen(
         onRequestPermission: () -> Unit
 ) {
     val libraryListState = rememberLazyListState()
+    val swipeThreshold = 96.dp
+    val showTopBar =
+            uiState.selectedScreen != HomeScreenDestination.NowPlaying || !uiState.isPlaying
+
+    BackHandler(enabled = uiState.selectedScreen != HomeScreenDestination.Home) {
+        onScreenSelected(HomeScreenDestination.Home)
+    }
 
     Scaffold(
             topBar = {
-                TopAppBar(
-                        title = {
-                            Text(
-                                    text = "Local Music",
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = FontWeight.Light
-                            )
-                        }
-                )
+                if (showTopBar) {
+                    TopAppBar(
+                            title = {
+                                val nowPlayingSong = uiState.nowPlayingSong
+                                if (nowPlayingSong == null) {
+                                    Text(
+                                            text = "Local Music",
+                                            style = MaterialTheme.typography.headlineMedium,
+                                            fontWeight = FontWeight.Light
+                                    )
+                                } else {
+                                    MiniPlayer(
+                                            song = nowPlayingSong,
+                                            artworkUri = uiState.artworkBySongId[nowPlayingSong.id],
+                                            isPlaying = uiState.isPlaying,
+                                            progress = uiState.playbackProgress,
+                                            onOpenNowPlaying = {
+                                                onScreenSelected(HomeScreenDestination.NowPlaying)
+                                            },
+                                            onPrevious = onPrevious,
+                                            onPlayPause = onPlayPause,
+                                            onNext = onNext
+                                    )
+                                }
+                            }
+                    )
+                }
             },
             bottomBar = {
                 NavigationBar {
@@ -321,7 +364,38 @@ fun HomeScreen(
                 }
             }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
+        Column(
+                modifier =
+                        Modifier.fillMaxSize()
+                                .padding(padding)
+                                .padding(horizontal = 16.dp)
+                                .pointerInput(uiState.selectedScreen) {
+                                    var totalDrag = 0f
+                                    var navigationTriggered = false
+                                    detectHorizontalDragGestures(
+                                            onDragStart = {
+                                                totalDrag = 0f
+                                                navigationTriggered = false
+                                            },
+                                            onHorizontalDrag = { _, dragAmount ->
+                                                if (navigationTriggered) {
+                                                    return@detectHorizontalDragGestures
+                                                }
+
+                                                totalDrag += dragAmount
+                                                if (totalDrag >= swipeThreshold.toPx()) {
+                                                    onScreenSelected(
+                                                            uiState.selectedScreen.previous()
+                                                    )
+                                                    navigationTriggered = true
+                                                } else if (totalDrag <= -swipeThreshold.toPx()) {
+                                                    onScreenSelected(uiState.selectedScreen.next())
+                                                    navigationTriggered = true
+                                                }
+                                            }
+                                    )
+                                }
+        ) {
             if (!hasAudioPermission) {
                 PermissionBanner(onRequestPermission = onRequestPermission)
                 Spacer(modifier = Modifier.height(12.dp))
@@ -437,14 +511,61 @@ fun HomeScreen(
     }
 }
 
+@Composable
+private fun MiniPlayer(
+        song: Song,
+        artworkUri: String?,
+        isPlaying: Boolean,
+        progress: Float,
+        onOpenNowPlaying: () -> Unit,
+        onPrevious: () -> Unit,
+        onPlayPause: () -> Unit,
+        onNext: () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            ArtworkThumbnail(artworkUri = artworkUri)
+            Column(
+                    modifier = Modifier.weight(1f).clickable(onClick = onOpenNowPlaying),
+                    verticalArrangement = Arrangement.Center
+            ) {
+                Text(text = song.title, maxLines = 1, style = MaterialTheme.typography.titleSmall)
+                Text(text = song.album, maxLines = 1, style = MaterialTheme.typography.bodySmall)
+            }
+            IconButton(onClick = onPrevious) { Text(Glyphs.PLAYER_PREVIOUS.glyph) }
+            IconButton(onClick = onPlayPause) {
+                Text(if (isPlaying) Glyphs.PLAYER_PAUSE.glyph else Glyphs.PLAYER_PLAY.glyph)
+            }
+            IconButton(onClick = onNext) { Text(Glyphs.PLAYER_NEXT.glyph) }
+        }
+        LinearProgressIndicator(
+                progress = progress.coerceIn(0f, 1f),
+                modifier = Modifier.fillMaxWidth().height(2.dp)
+        )
+    }
+}
+
 private fun HomeScreenDestination.iconLabel(): String =
         when (this) {
-            HomeScreenDestination.Home -> "⌂"
-            HomeScreenDestination.NowPlaying -> "▷"
-            HomeScreenDestination.Playlists -> "⋮☰"
-            HomeScreenDestination.Favourites -> "☆"
-            HomeScreenDestination.Settings -> "⫶"
+            HomeScreenDestination.Home -> Glyphs.HOME.glyph
+            HomeScreenDestination.NowPlaying -> Glyphs.NOW_PLAYING.glyph
+            HomeScreenDestination.Playlists -> Glyphs.PLAYLISTS.glyph
+            HomeScreenDestination.Favourites -> Glyphs.FAVOURITE.glyph
+            HomeScreenDestination.Settings -> Glyphs.SETTINGS.glyph
         }
+
+private fun HomeScreenDestination.previous(): HomeScreenDestination {
+    val destinations = HomeScreenDestination.entries
+    return destinations[(ordinal - 1 + destinations.size) % destinations.size]
+}
+
+private fun HomeScreenDestination.next(): HomeScreenDestination {
+    val destinations = HomeScreenDestination.entries
+    return destinations[(ordinal + 1) % destinations.size]
+}
 
 private val BROWSABLE_FILTERS =
         setOf(
@@ -615,7 +736,6 @@ private fun NowPlayingContent(
         onAddToPlaylist: (String) -> Unit,
         onAddToQueue: () -> Unit
 ) {
-    val swipeThreshold = 96.dp
     val song = uiState.nowPlayingSong
     val elapsedMillis = (song?.durationMillis?.times(uiState.playbackProgress) ?: 0f).toLong()
     val remainingMillis = ((song?.durationMillis ?: 0L) - elapsedMillis).coerceAtLeast(0L)
@@ -630,31 +750,7 @@ private fun NowPlayingContent(
         return
     }
 
-    Box(
-            modifier =
-                    Modifier.fillMaxSize().pointerInput(Unit) {
-                        var totalDrag = 0f
-                        var navigationTriggered = false
-                        detectHorizontalDragGestures(
-                                onDragStart = {
-                                    totalDrag = 0f
-                                    navigationTriggered = false
-                                },
-                                onHorizontalDrag = { _, dragAmount ->
-                                    if (navigationTriggered) return@detectHorizontalDragGestures
-
-                                    totalDrag += dragAmount
-                                    if (totalDrag >= swipeThreshold.toPx()) {
-                                        onPrevious()
-                                        navigationTriggered = true
-                                    } else if (totalDrag <= -swipeThreshold.toPx()) {
-                                        onNext()
-                                        navigationTriggered = true
-                                    }
-                                }
-                        )
-                    }
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
         ArtworkBackdrop(artworkUri = uiState.artworkBySongId[song.id])
         Column(
                 modifier = Modifier.fillMaxSize().padding(top = 24.dp),
@@ -679,14 +775,23 @@ private fun NowPlayingContent(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 // ▶︎ •၊၊||၊|။|||| | ↻ ◁ || ▷ ↺  ⩇⩇:⩇⩇
-                Button(onClick = onPrevious, modifier = Modifier.size(96.dp)) { Text("⏮") }
-                Button(onClick = onPlayPause, modifier = Modifier.size(96.dp)) {
-                    Text(if (uiState.isPlaying) "၊၊" else "▶")
+                Button(onClick = onPrevious, modifier = Modifier.size(96.dp)) {
+                    Text(Glyphs.PLAYER_PREVIOUS.glyph)
                 }
-                Button(onClick = onNext, modifier = Modifier.size(96.dp)) { Text("⏭") }
+                Button(onClick = onPlayPause, modifier = Modifier.size(96.dp)) {
+                    Text(
+                            if (uiState.isPlaying) Glyphs.PLAYER_PAUSE.glyph
+                            else Glyphs.PLAYER_PLAY.glyph
+                    )
+                }
+                Button(onClick = onNext, modifier = Modifier.size(96.dp)) {
+                    Text(Glyphs.PLAYER_NEXT.glyph)
+                }
                 TextButton(onClick = { onFavouriteToggle(song) }) {
                     Text(
-                            text = if (song.isFavourite) "★" else "☆",
+                            text =
+                                    if (song.isFavourite) Glyphs.FAVOURITE_FULL.glyph
+                                    else Glyphs.FAVOURITE.glyph,
                             modifier = Modifier.size(96.dp),
                             style = MaterialTheme.typography.headlineMedium
                     )
@@ -694,7 +799,10 @@ private fun NowPlayingContent(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = onShuffleToggle, modifier = Modifier.size(96.dp)) {
-                    Text(if (uiState.isShuffleEnabled) "⇌" else "⇉")
+                    Text(
+                            if (uiState.isShuffleEnabled) Glyphs.PLAYER_SHUFFLE.glyph
+                            else Glyphs.PLAYER_NOSHUFFLE.glyph
+                    )
                 }
                 TextButton(onClick = onRepeatCycle, modifier = Modifier.size(96.dp)) {
                     Text(uiState.repeatMode.label)
@@ -1128,7 +1236,8 @@ private fun SongList(
                     leadingContent = { ArtworkThumbnail(artworkUri = artworkBySongId[song.id]) },
                     headlineContent = {
                         Text(
-                                if (song.id == nowPlayingSongId) "၊၊||၊|။||||။၊|။ ${song.title}"
+                                if (song.id == nowPlayingSongId)
+                                        "${Glyphs.PLAYINGINDICATOR.glyph} ${song.title}"
                                 else song.title
                         )
                     },
@@ -1136,7 +1245,9 @@ private fun SongList(
                     trailingContent = {
                         IconButton(onClick = { onFavouriteToggle(song) }) {
                             Text(
-                                    text = if (song.isFavourite) "★" else "☆",
+                                    text =
+                                            if (song.isFavourite) Glyphs.FAVOURITE_FULL.glyph
+                                            else Glyphs.FAVOURITE.glyph,
                                     modifier = Modifier.size(64.dp),
                                     style = MaterialTheme.typography.headlineMedium
                             )
