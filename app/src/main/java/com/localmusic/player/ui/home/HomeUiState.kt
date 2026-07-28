@@ -36,5 +36,6 @@ enum class HomeScreenDestination(val label: String) {
     NowPlaying("Now Playing"),
     Playlists("Playlists"),
     Favourites("Favourites"),
-    Settings("Settings")
+    Settings("Settings"),
+    PlaylistEditor("Playlist Editor")
 }

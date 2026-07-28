@@ -15,6 +15,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -31,6 +32,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -75,8 +77,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -85,10 +89,12 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -102,6 +108,7 @@ import com.localmusic.player.domain.repository.RepeatMode
 import com.localmusic.player.playlist.M3uPlaylist
 import com.localmusic.player.playlist.toM3uEntry
 import com.localmusic.player.ui.theme.AppThemeMode
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
@@ -124,7 +131,8 @@ enum class Glyphs(val glyph: String) {
     PLAYER_NOSHUFFLE("⇉"),
     PLAYER_QUEUE("≡"),
     MORE("⋮"),
-    NO_ARTWORK("╭∩╮( •̀_•́ )╭∩╮")
+    NO_ARTWORK("╭∩╮( •̀_•́ )╭∩╮"),
+    REORDER("≡")
 }
 
 @Composable
@@ -265,6 +273,7 @@ fun HomeRoute(viewModel: HomeViewModel) {
             onAddNowPlayingToPlaylist = viewModel::addNowPlayingToPlaylist,
             onAddNowPlayingToQueue = viewModel::addNowPlayingToQueue,
             onClearQueue = viewModel::clearQueue,
+            onClearPlaylist = viewModel::clearPlaylist,
             onAddSongToPlaylist = viewModel::addSongToPlaylist,
             onAddSongToQueue = viewModel::addSongToQueue,
             onPlayPause = viewModel::togglePlayback,
@@ -310,6 +319,7 @@ fun HomeScreen(
         onAddNowPlayingToPlaylist: (String) -> Unit,
         onAddNowPlayingToQueue: () -> Unit,
         onClearQueue: () -> Unit,
+        onClearPlaylist: (M3uPlaylist) -> Unit,
         onAddSongToPlaylist: (Song, String) -> Unit,
         onAddSongToQueue: (Song) -> Unit,
         onPlayPause: () -> Unit,
@@ -326,9 +336,25 @@ fun HomeScreen(
     val libraryListState = rememberLazyListState()
     val swipeThreshold = 96.dp
     val showTopBar = uiState.selectedScreen != HomeScreenDestination.NowPlaying
+    var playlistEditorName by remember { mutableStateOf<String?>(null) }
+    var playlistEditorReturnDestination by remember {
+        mutableStateOf(HomeScreenDestination.Playlists)
+    }
+
+    fun openPlaylistEditor(name: String, returnDestination: HomeScreenDestination) {
+        playlistEditorName = name
+        playlistEditorReturnDestination = returnDestination
+        onScreenSelected(HomeScreenDestination.PlaylistEditor)
+    }
 
     BackHandler(enabled = uiState.selectedScreen != HomeScreenDestination.Home) {
-        onScreenSelected(HomeScreenDestination.Home)
+        onScreenSelected(
+                if (uiState.selectedScreen == HomeScreenDestination.PlaylistEditor) {
+                    playlistEditorReturnDestination
+                } else {
+                    HomeScreenDestination.Home
+                }
+        )
     }
 
     Scaffold(
@@ -362,14 +388,18 @@ fun HomeScreen(
                 }
             },
             bottomBar = {
-                NavigationBar {
-                    HomeScreenDestination.entries.forEach { destination ->
-                        NavigationBarItem(
-                                selected = uiState.selectedScreen == destination,
-                                onClick = { onScreenSelected(destination) },
-                                icon = { Text(text = destination.iconLabel(), fontSize = 28.sp) },
-                                label = null
-                        )
+                if (uiState.selectedScreen != HomeScreenDestination.PlaylistEditor) {
+                    NavigationBar {
+                        navigationDestinations.forEach { destination ->
+                            NavigationBarItem(
+                                    selected = uiState.selectedScreen == destination,
+                                    onClick = { onScreenSelected(destination) },
+                                    icon = {
+                                        Text(text = destination.iconLabel(), fontSize = 28.sp)
+                                    },
+                                    label = null
+                            )
+                        }
                     }
                 }
             }
@@ -507,6 +537,12 @@ fun HomeScreen(
                                         onCreatePlaylist = onCreatePlaylist,
                                         onAddToPlaylist = onAddNowPlayingToPlaylist,
                                         onAddToQueue = onAddNowPlayingToQueue,
+                                        onShowQueue = {
+                                            openPlaylistEditor(
+                                                    M3uPlaylist.QUEUE_NAME,
+                                                    HomeScreenDestination.NowPlaying
+                                            )
+                                        },
                                         onReturnHome = {
                                             onScreenSelected(HomeScreenDestination.Home)
                                         }
@@ -521,7 +557,14 @@ fun HomeScreen(
                                         onRemovePlaylistEntry = onRemovePlaylistEntry,
                                         onMovePlaylistEntry = onMovePlaylistEntry,
                                         onExportPlaylist = onExportIndividualPlaylist,
-                                        onClearQueue = onClearQueue
+                                        onClearQueue = onClearQueue,
+                                        onClearPlaylist = onClearPlaylist,
+                                        onOpenPlaylistEditor = { playlist ->
+                                            openPlaylistEditor(
+                                                    playlist.name,
+                                                    HomeScreenDestination.Playlists
+                                            )
+                                        }
                                 )
                         HomeScreenDestination.Favourites ->
                                 SongList(
@@ -545,6 +588,28 @@ fun HomeScreen(
                                         onExternalArtworkDownloadEnabledChange =
                                                 onExternalArtworkDownloadEnabledChange
                                 )
+                        HomeScreenDestination.PlaylistEditor -> {
+                            val playlist =
+                                    uiState.importedPlaylists.firstOrNull {
+                                        it.name == playlistEditorName
+                                    }
+                            if (playlist == null) {
+                                LaunchedEffect(playlistEditorName) {
+                                    onScreenSelected(playlistEditorReturnDestination)
+                                }
+                            } else {
+                                PlaylistEditorContent(
+                                        playlist = playlist,
+                                        onBack = {
+                                            onScreenSelected(playlistEditorReturnDestination)
+                                        },
+                                        onRemoveEntry = onRemovePlaylistEntry,
+                                        onMoveEntry = onMovePlaylistEntry,
+                                        onClearPlaylist = onClearPlaylist,
+                                        onDeletePlaylist = onDeletePlaylist
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -596,20 +661,24 @@ private fun HomeScreenDestination.iconLabel(): String =
             HomeScreenDestination.Playlists -> Glyphs.PLAYLISTS.glyph
             HomeScreenDestination.Favourites -> Glyphs.FAVOURITE.glyph
             HomeScreenDestination.Settings -> Glyphs.SETTINGS.glyph
+            HomeScreenDestination.PlaylistEditor -> Glyphs.PLAYLISTS.glyph
         }
 
 private fun HomeScreenDestination.previous(): HomeScreenDestination {
-    val destinations = HomeScreenDestination.entries
+    val destinations = navigationDestinations
     return destinations[(ordinal - 1 + destinations.size) % destinations.size]
 }
 
 private fun HomeScreenDestination.next(): HomeScreenDestination {
-    val destinations = HomeScreenDestination.entries
+    val destinations = navigationDestinations
     return destinations[(ordinal + 1) % destinations.size]
 }
 
 private fun HomeScreenDestination.movesForwardTo(target: HomeScreenDestination): Boolean =
         target == next() || (target != previous() && target.ordinal > ordinal)
+
+private val navigationDestinations =
+        HomeScreenDestination.entries.filterNot { it == HomeScreenDestination.PlaylistEditor }
 
 private val BROWSABLE_FILTERS =
         setOf(
@@ -783,6 +852,7 @@ private fun NowPlayingContent(
         onCreatePlaylist: (String) -> Unit,
         onAddToPlaylist: (String) -> Unit,
         onAddToQueue: () -> Unit,
+        onShowQueue: () -> Unit,
         onReturnHome: () -> Unit
 ) {
     val song = uiState.nowPlayingSong
@@ -792,7 +862,6 @@ private fun NowPlayingContent(
     val remainingMillis = (durationMillis - elapsedMillis).coerceAtLeast(0L)
     var showPlaylistChooser by remember { mutableStateOf(false) }
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
-    var showQueue by remember { mutableStateOf(false) }
     var showMoreActions by remember { mutableStateOf(false) }
     if (song == null) {
         EmptyState(
@@ -946,20 +1015,13 @@ private fun NowPlayingContent(
                         modifier =
                                 Modifier.clickable {
                                     showMoreActions = false
-                                    showQueue = true
+                                    onShowQueue()
                                 },
                         headlineContent = { Text("Show queue") },
                         leadingContent = { Text(Glyphs.PLAYER_QUEUE.glyph, fontSize = 24.sp) }
                 )
             }
         }
-    }
-
-    if (showQueue) {
-        NowPlayingQueueDialog(
-                queue = uiState.importedPlaylists.firstOrNull { it.name == M3uPlaylist.QUEUE_NAME },
-                onDismiss = { showQueue = false }
-        )
     }
 
     if (showPlaylistChooser) {
@@ -1004,29 +1066,6 @@ private fun NowPlayingContent(
                 }
         )
     }
-}
-
-@Composable
-private fun NowPlayingQueueDialog(queue: M3uPlaylist?, onDismiss: () -> Unit) {
-    AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { Text("Queue") },
-            text = {
-                if (queue == null || queue.entries.isEmpty()) {
-                    Text("Your queue is empty.")
-                } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(queue.entries) { entry ->
-                            ListItem(
-                                    headlineContent = { Text(entry.title) },
-                                    supportingContent = { Text(entry.artist) }
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } }
-    )
 }
 
 private fun formatPlaybackTime(durationMillis: Long): String {
@@ -1076,11 +1115,12 @@ private fun PlaylistContent(
         onRemovePlaylistEntry: (M3uPlaylist, Int) -> Unit,
         onMovePlaylistEntry: (M3uPlaylist, Int, Int) -> Unit,
         onExportPlaylist: (M3uPlaylist) -> Unit,
-        onClearQueue: () -> Unit
+        onClearQueue: () -> Unit,
+        onClearPlaylist: (M3uPlaylist) -> Unit,
+        onOpenPlaylistEditor: (M3uPlaylist) -> Unit
 ) {
     var playlistToRename by remember { mutableStateOf<M3uPlaylist?>(null) }
     var playlistToDuplicate by remember { mutableStateOf<M3uPlaylist?>(null) }
-    var openedPlaylistName by remember { mutableStateOf<String?>(null) }
 
     if (uiState.importedPlaylists.isEmpty()) {
         EmptyState(
@@ -1092,30 +1132,65 @@ private fun PlaylistContent(
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         items(uiState.importedPlaylists) { playlist ->
+            var showActions by remember(playlist.name) { mutableStateOf(false) }
             ListItem(
-                    modifier = Modifier.clickable { openedPlaylistName = playlist.name },
+                    modifier = Modifier.clickable { onOpenPlaylistEditor(playlist) },
                     headlineContent = { Text(playlist.name) },
                     supportingContent = { Text("${playlist.entries.size} entries") },
                     trailingContent = {
-                        if (playlist.name == M3uPlaylist.QUEUE_NAME) {
-                            Button(onClick = onClearQueue) { Text("Clear") }
-                        } else {
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                TextButton(
-                                        onClick = { onPlayPlaylist(playlist) },
-                                        enabled = playlist.entries.isNotEmpty()
-                                ) { Text("Play") }
-                                TextButton(onClick = { playlistToRename = playlist }) {
-                                    Text("Rename")
-                                }
-                                TextButton(onClick = { playlistToDuplicate = playlist }) {
-                                    Text("Duplicate")
-                                }
-                                TextButton(onClick = { onExportPlaylist(playlist) }) {
-                                    Text("Export")
-                                }
-                                TextButton(onClick = { onDeletePlaylist(playlist) }) {
-                                    Text("Delete")
+                        Box {
+                            IconButton(onClick = { showActions = true }) {
+                                Text(Glyphs.MORE.glyph, fontSize = 24.sp)
+                            }
+                            DropdownMenu(
+                                    expanded = showActions,
+                                    onDismissRequest = { showActions = false }
+                            ) {
+                                if (playlist.name == M3uPlaylist.QUEUE_NAME) {
+                                    DropdownMenuItem(
+                                            text = { Text("Clear") },
+                                            onClick = {
+                                                onClearQueue()
+                                                showActions = false
+                                            }
+                                    )
+                                } else {
+                                    DropdownMenuItem(
+                                            text = { Text("Play") },
+                                            enabled = playlist.entries.isNotEmpty(),
+                                            onClick = {
+                                                onPlayPlaylist(playlist)
+                                                showActions = false
+                                            }
+                                    )
+                                    DropdownMenuItem(
+                                            text = { Text("Rename") },
+                                            onClick = {
+                                                playlistToRename = playlist
+                                                showActions = false
+                                            }
+                                    )
+                                    DropdownMenuItem(
+                                            text = { Text("Duplicate") },
+                                            onClick = {
+                                                playlistToDuplicate = playlist
+                                                showActions = false
+                                            }
+                                    )
+                                    DropdownMenuItem(
+                                            text = { Text("Export") },
+                                            onClick = {
+                                                onExportPlaylist(playlist)
+                                                showActions = false
+                                            }
+                                    )
+                                    DropdownMenuItem(
+                                            text = { Text("Delete") },
+                                            onClick = {
+                                                onDeletePlaylist(playlist)
+                                                showActions = false
+                                            }
+                                    )
                                 }
                             }
                         }
@@ -1149,65 +1224,207 @@ private fun PlaylistContent(
                 }
         )
     }
+}
 
-    openedPlaylistName?.let { playlistName ->
-        val playlist = uiState.importedPlaylists.firstOrNull { it.name == playlistName }
-        if (playlist == null) {
-            openedPlaylistName = null
-        } else {
-            PlaylistEntriesDialog(
-                    playlist = playlist,
-                    onDismiss = { openedPlaylistName = null },
-                    onRemoveEntry = onRemovePlaylistEntry,
-                    onMoveEntry = onMovePlaylistEntry
-            )
+@Composable
+private fun PlaylistEditorContent(
+        playlist: M3uPlaylist,
+        onBack: () -> Unit,
+        onRemoveEntry: (M3uPlaylist, Int) -> Unit,
+        onMoveEntry: (M3uPlaylist, Int, Int) -> Unit,
+        onClearPlaylist: (M3uPlaylist) -> Unit,
+        onDeletePlaylist: (M3uPlaylist) -> Unit
+) {
+    var showClearConfirmation by remember { mutableStateOf(false) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var draggedEntryUri by remember { mutableStateOf<String?>(null) }
+    var draggingIndex by remember { mutableStateOf<Int?>(null) }
+    var dragOffset by remember { mutableStateOf(0f) }
+    val playlistRowHeight = 64.dp
+    val playlistRowSpacing = 4.dp
+    val rowPitchPx = with(LocalDensity.current) { (playlistRowHeight + playlistRowSpacing).toPx() }
+    val currentPlaylist by rememberUpdatedState(playlist)
+    val currentOnMoveEntry by rememberUpdatedState(onMoveEntry)
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) { Text(Glyphs.HOME.glyph, fontSize = 26.sp) }
+            Text(playlist.name, style = MaterialTheme.typography.headlineSmall, maxLines = 1)
+            Spacer(modifier = Modifier.size(48.dp))
         }
+        Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Button(
+                    onClick = { showClearConfirmation = true },
+                    enabled = playlist.entries.isNotEmpty()
+            ) { Text("Clear") }
+            if (playlist.name != M3uPlaylist.QUEUE_NAME) {
+                Button(onClick = { showDeleteConfirmation = true }) { Text("Delete") }
+            }
+        }
+        if (playlist.entries.isEmpty()) {
+            EmptyState(title = "No entries", message = "Add songs to start this list.")
+        } else {
+            LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(playlistRowSpacing)
+            ) {
+                items(playlist.entries.size, key = { playlist.entries[it].uri }) { index ->
+                    val entry = playlist.entries[index]
+                    var previousIndex by remember { mutableIntStateOf(index) }
+                    val isDragged = entry.uri == draggedEntryUri
+                    val placementOffset by
+                            animateIntAsState(
+                                    targetValue =
+                                            if (isDragged || previousIndex == index) 0
+                                            else (previousIndex - index) * rowPitchPx.roundToInt(),
+                                    label = "playlist-entry-placement"
+                            )
+                    LaunchedEffect(index) { previousIndex = index }
+                    Row(
+                            modifier =
+                                    Modifier.fillMaxWidth()
+                                            .height(playlistRowHeight)
+                                            .padding(horizontal = 16.dp)
+                                            .graphicsLayer {
+                                                translationY =
+                                                        if (isDragged) dragOffset
+                                                        else placementOffset.toFloat()
+                                            },
+                            verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(entry.title, maxLines = 1)
+                            Text(
+                                    entry.artist,
+                                    maxLines = 1,
+                                    style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        Box(
+                                modifier =
+                                        Modifier.size(48.dp).pointerInput(entry.uri) {
+                                            detectVerticalDragGestures(
+                                                    onDragStart = {
+                                                        val currentIndex =
+                                                                currentPlaylist.entries
+                                                                        .indexOfFirst {
+                                                                            it.uri == entry.uri
+                                                                        }
+                                                        if (currentIndex < 0)
+                                                                return@detectVerticalDragGestures
+                                                        draggedEntryUri = entry.uri
+                                                        draggingIndex = currentIndex
+                                                        dragOffset = 0f
+                                                    },
+                                                    onVerticalDrag = { change, amount ->
+                                                        change.consume()
+                                                        dragOffset += amount
+                                                        val draggedUri =
+                                                                draggedEntryUri
+                                                                        ?: return@detectVerticalDragGestures
+                                                        val currentIndex =
+                                                                currentPlaylist.entries
+                                                                        .indexOfFirst {
+                                                                            it.uri == draggedUri
+                                                                        }
+                                                        if (currentIndex < 0) {
+                                                            return@detectVerticalDragGestures
+                                                        }
+                                                        draggingIndex = currentIndex
+                                                        if (dragOffset > rowPitchPx / 2f &&
+                                                                        currentIndex <
+                                                                                currentPlaylist
+                                                                                        .entries
+                                                                                        .lastIndex
+                                                        ) {
+                                                            currentOnMoveEntry(
+                                                                    currentPlaylist,
+                                                                    currentIndex,
+                                                                    1
+                                                            )
+                                                            draggingIndex = currentIndex + 1
+                                                            dragOffset -= rowPitchPx
+                                                        } else if (dragOffset < -rowPitchPx / 2f &&
+                                                                        currentIndex > 0
+                                                        ) {
+                                                            currentOnMoveEntry(
+                                                                    currentPlaylist,
+                                                                    currentIndex,
+                                                                    -1
+                                                            )
+                                                            draggingIndex = currentIndex - 1
+                                                            dragOffset += rowPitchPx
+                                                        }
+                                                    },
+                                                    onDragEnd = {
+                                                        draggedEntryUri = null
+                                                        draggingIndex = null
+                                                        dragOffset = 0f
+                                                    },
+                                                    onDragCancel = {
+                                                        draggedEntryUri = null
+                                                        draggingIndex = null
+                                                        dragOffset = 0f
+                                                    }
+                                            )
+                                        },
+                                contentAlignment = Alignment.Center
+                        ) { Text(text = Glyphs.REORDER.glyph, fontSize = 22.sp) }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showClearConfirmation) {
+        ConfirmPlaylistActionDialog(
+                title = "Clear ${playlist.name}?",
+                message = "This removes every song from this list.",
+                confirmLabel = "Clear",
+                onDismiss = { showClearConfirmation = false },
+                onConfirm = {
+                    onClearPlaylist(playlist)
+                    showClearConfirmation = false
+                }
+        )
+    }
+    if (showDeleteConfirmation) {
+        ConfirmPlaylistActionDialog(
+                title = "Delete ${playlist.name}?",
+                message = "This deletes the playlist and its contents.",
+                confirmLabel = "Delete",
+                onDismiss = { showDeleteConfirmation = false },
+                onConfirm = {
+                    onDeletePlaylist(playlist)
+                    showDeleteConfirmation = false
+                    onBack()
+                }
+        )
     }
 }
 
 @Composable
-private fun PlaylistEntriesDialog(
-        playlist: M3uPlaylist,
+private fun ConfirmPlaylistActionDialog(
+        title: String,
+        message: String,
+        confirmLabel: String,
         onDismiss: () -> Unit,
-        onRemoveEntry: (M3uPlaylist, Int) -> Unit,
-        onMoveEntry: (M3uPlaylist, Int, Int) -> Unit
+        onConfirm: () -> Unit
 ) {
     AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text(playlist.name) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (playlist.entries.isEmpty()) {
-                        Text("No entries")
-                    } else {
-                        playlist.entries.forEachIndexed { index, entry ->
-                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(entry.title, style = MaterialTheme.typography.bodyLarge)
-                                Text(
-                                        "${entry.artist} - ${entry.durationSeconds}s",
-                                        style = MaterialTheme.typography.bodySmall
-                                )
-                                if (playlist.name != M3uPlaylist.QUEUE_NAME) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        TextButton(
-                                                onClick = { onMoveEntry(playlist, index, -1) },
-                                                enabled = index > 0
-                                        ) { Text("Up") }
-                                        TextButton(
-                                                onClick = { onMoveEntry(playlist, index, 1) },
-                                                enabled = index < playlist.entries.lastIndex
-                                        ) { Text("Down") }
-                                        TextButton(onClick = { onRemoveEntry(playlist, index) }) {
-                                            Text("Remove")
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } }
+            title = { Text(title) },
+            text = { Text(message) },
+            dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+            confirmButton = { TextButton(onClick = onConfirm) { Text(confirmLabel) } }
     )
 }
 

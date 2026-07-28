@@ -469,6 +469,10 @@ class HomeViewModel(
         }
     }
 
+    fun clearPlaylist(playlist: M3uPlaylist) {
+        updatePlaylistEntries(playlist, 0) { emptyList() }
+    }
+
     fun movePlaylistEntry(playlist: M3uPlaylist, entryIndex: Int, offset: Int) {
         updatePlaylistEntries(playlist, entryIndex) { entries ->
             val targetIndex = entryIndex + offset
