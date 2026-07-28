@@ -49,4 +49,6 @@ Car Mode detection remains a focused Bluetooth service. The UI requests `BLUETOO
 
 The Compose shell uses bottom navigation for primary destinations and keeps library refresh one-shot for a ViewModel lifetime so switching tabs, changing settings, and using playback controls do not re-enumerate device media.
 
+The home UI keeps routing, permissions, and shared navigation chrome in `HomeScreen.kt`. Destination rendering is split into focused Compose files under `ui/home`: `LibraryScreen.kt`, `PlaylistScreen.kt`, `SettingsScreen.kt`, and `NowPlayingScreen.kt`. Reusable song-list, empty-state, and playlist-creation controls live in `HomeComponents.kt`, `PlayerComponents.kt` owns the compact global mini-player, and `ArtworkComponents.kt` owns artwork thumbnail, backdrop, and no-artwork visualizer rendering. Each screen remains callback-driven by `HomeViewModel` state and actions.
+
 CI uses the configured release key for trusted debug and release builds so installed APKs share a stable Android signing identity and can update in place. Secretless pull-request builds retain the normal temporary debug key and are intentionally marked as development-only artifacts.

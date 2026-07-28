@@ -68,7 +68,6 @@
 - [ ] Review the adaptive layouts on tablet, foldable, landscape, and square display configurations.
 - [ ] Prepare integration boundaries for notification controls, lock-screen controls, home-screen widgets, and Android Auto without implementing the surfaces yet.
 - [ ] Validate performance with a 50,000+ song library: pagination or bounded loading, indexed filtering/sorting, bounded artwork work, and measurable UI responsiveness.
-- [ ] Complete the requested visual design: Metro-inspired Material 3 styling, large touch targets, responsive portrait/landscape layouts, and purposeful subtle motion.
 - [ ] Add explicit dependency-injection composition guidance or a lightweight DI solution once manual wiring no longer scales; keep UI, domain, and data dependencies directional.
-- [ ] Review class and function size, KDoc coverage, duplicate UI flows, and Mermaid architecture documentation against the production-quality code standards.
+- [ ] Continue the class/function-size, KDoc coverage, duplicate UI-flow, and Mermaid documentation review. The home shell now delegates library, playlist, settings, Now Playing, shared song-list, artwork/visualizer, and mini-player UI to focused Compose files.
 - [x] Select and integrate MusicBrainz and Cover Art Archive with rate-limit handling, attribution, privacy disclosure, error handling, and cache behavior. It must never supply audio playback or a cloud music library.
