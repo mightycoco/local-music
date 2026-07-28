@@ -96,7 +96,7 @@ enum class Glyphs(val glyph: String) {
     PLAYER_PREVIOUS("⏮"),
     PLAYER_NEXT("⏭"),
     PLAYER_PLAY("▶"),
-    PLAYER_PAUSE("❚❚"),
+    PLAYER_PAUSE("☐"),
     PLAYER_SHUFFLE("⇌"),
     PLAYER_NOSHUFFLE("⇉"),
 }
