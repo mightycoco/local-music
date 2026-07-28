@@ -316,8 +316,7 @@ fun HomeScreen(
 ) {
     val libraryListState = rememberLazyListState()
     val swipeThreshold = 96.dp
-    val showTopBar =
-            uiState.selectedScreen != HomeScreenDestination.NowPlaying || !uiState.isPlaying
+    val showTopBar = uiState.selectedScreen != HomeScreenDestination.NowPlaying
 
     BackHandler(enabled = uiState.selectedScreen != HomeScreenDestination.Home) {
         onScreenSelected(HomeScreenDestination.Home)
