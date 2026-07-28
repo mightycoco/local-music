@@ -97,7 +97,7 @@ enum class Glyphs(val glyph: String) {
     PLAYER_PREVIOUS("⏮"),
     PLAYER_NEXT("⏭"),
     PLAYER_PLAY("▶"),
-    PLAYER_PAUSE("၊၊"),
+    PLAYER_PAUSE("❚❚"),
     PLAYER_SHUFFLE("⇌"),
     PLAYER_NOSHUFFLE("⇉"),
 }
@@ -553,7 +553,7 @@ private fun MiniPlayer(
             IconButton(onClick = onNext) { Text(Glyphs.PLAYER_NEXT.glyph) }
         }
         LinearProgressIndicator(
-                progress = progress.coerceIn(0f, 1f),
+                progress = { progress.coerceIn(0f, 1f) },
                 modifier = Modifier.fillMaxWidth().height(2.dp)
         )
     }
@@ -655,7 +655,7 @@ private fun AdaptiveLibraryContent(
         return
     }
 
-    uiState.selectedBrowseValue?.let { value ->
+    uiState.selectedBrowseValue?.let { _value ->
         TextButton(onClick = { onBrowseValueSelected(null) }) {
             Text("Back to ${uiState.selectedFilter.label}")
         }
