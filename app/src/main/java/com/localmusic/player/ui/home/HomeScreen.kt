@@ -12,8 +12,14 @@ import android.provider.OpenableColumns
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -64,10 +70,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -104,6 +114,7 @@ enum class Glyphs(val glyph: String) {
     PLAYER_NOSHUFFLE("⇉"),
     PLAYER_QUEUE("≡"),
     MORE("⋮"),
+    NO_ARTWORK("╭∩╮( •̀_•́ )╭∩╮")
 }
 
 @Composable
@@ -117,9 +128,16 @@ fun HomeRoute(viewModel: HomeViewModel) {
                 Manifest.permission.READ_EXTERNAL_STORAGE
             }
     val bluetoothPermission = Manifest.permission.BLUETOOTH_CONNECT
+    val visualizerPermission = Manifest.permission.RECORD_AUDIO
     var hasAudioPermission by remember {
         mutableStateOf(
                 ContextCompat.checkSelfPermission(context, audioPermission) ==
+                        PackageManager.PERMISSION_GRANTED
+        )
+    }
+    var hasVisualizerPermission by remember {
+        mutableStateOf(
+                ContextCompat.checkSelfPermission(context, visualizerPermission) ==
                         PackageManager.PERMISSION_GRANTED
         )
     }
@@ -134,6 +152,10 @@ fun HomeRoute(viewModel: HomeViewModel) {
             rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.RequestPermission()
             ) { granted -> if (granted) viewModel.updateCarMode(context.isConnectedToCarAudio()) }
+    val visualizerPermissionLauncher =
+            rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestPermission()
+            ) { granted -> hasVisualizerPermission = granted }
     val folderLauncher =
             rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.OpenDocumentTree()
@@ -204,6 +226,7 @@ fun HomeRoute(viewModel: HomeViewModel) {
     HomeScreen(
             uiState = uiState,
             hasAudioPermission = hasAudioPermission,
+            hasVisualizerPermission = hasVisualizerPermission,
             onSearchChange = viewModel::updateSearchQuery,
             onScreenSelected = viewModel::selectScreen,
             onFilterSelected = viewModel::selectFilter,
@@ -254,6 +277,11 @@ fun HomeRoute(viewModel: HomeViewModel) {
             onRepeatCycle = viewModel::cycleRepeatMode,
             onThemeSelected = viewModel::selectThemeMode,
             onExternalArtworkDownloadEnabledChange = viewModel::setExternalArtworkDownloadEnabled,
+            onRequestVisualizerPermission = {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    visualizerPermissionLauncher.launch(visualizerPermission)
+                }
+            },
             onRequestPermission = {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     permissionLauncher.launch(audioPermission)
@@ -267,6 +295,7 @@ fun HomeRoute(viewModel: HomeViewModel) {
 fun HomeScreen(
         uiState: HomeUiState,
         hasAudioPermission: Boolean,
+        hasVisualizerPermission: Boolean,
         onSearchChange: (String) -> Unit,
         onScreenSelected: (HomeScreenDestination) -> Unit,
         onFilterSelected: (LibraryFilter) -> Unit,
@@ -298,6 +327,7 @@ fun HomeScreen(
         onRepeatCycle: () -> Unit,
         onThemeSelected: (AppThemeMode) -> Unit,
         onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit,
+        onRequestVisualizerPermission: () -> Unit,
         onRequestPermission: () -> Unit
 ) {
     val libraryListState = rememberLazyListState()
@@ -467,9 +497,9 @@ fun HomeScreen(
                                 onCreatePlaylist = onCreatePlaylist,
                                 onAddToPlaylist = onAddNowPlayingToPlaylist,
                                 onAddToQueue = onAddNowPlayingToQueue,
-                                onReturnHome = {
-                                    onScreenSelected(HomeScreenDestination.Home)
-                                }
+                                hasVisualizerPermission = hasVisualizerPermission,
+                                onRequestVisualizerPermission = onRequestVisualizerPermission,
+                                onReturnHome = { onScreenSelected(HomeScreenDestination.Home) }
                         )
                 HomeScreenDestination.Playlists ->
                         PlaylistContent(
@@ -736,6 +766,8 @@ private fun NowPlayingContent(
         onCreatePlaylist: (String) -> Unit,
         onAddToPlaylist: (String) -> Unit,
         onAddToQueue: () -> Unit,
+        hasVisualizerPermission: Boolean,
+        onRequestVisualizerPermission: () -> Unit,
         onReturnHome: () -> Unit
 ) {
     val song = uiState.nowPlayingSong
@@ -756,51 +788,56 @@ private fun NowPlayingContent(
     Box(modifier = Modifier.fillMaxSize()) {
         ArtworkBackdrop(artworkUri = uiState.artworkBySongId[song.id])
         Column(
-            modifier = Modifier.fillMaxSize().padding(vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+                modifier = Modifier.fillMaxSize().padding(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
             ) {
-            IconButton(onClick = onReturnHome) {
-                Text(Glyphs.HOME.glyph, fontSize = 26.sp)
-            }
-            Text(
-                text = "NOW PLAYING",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold
-            )
-            IconButton(onClick = { showMoreActions = true }) {
-                Text(Glyphs.MORE.glyph, fontSize = 28.sp)
-            }
+                IconButton(onClick = onReturnHome) { Text(Glyphs.HOME.glyph, fontSize = 26.sp) }
+                Text(
+                        text = "NOW PLAYING",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold
+                )
+                IconButton(onClick = { showMoreActions = true }) {
+                    Text(Glyphs.MORE.glyph, fontSize = 28.sp)
+                }
             }
             ArtworkThumbnail(
-                artworkUri = uiState.artworkBySongId[song.id],
-                modifier =
-                    Modifier.fillMaxWidth()
-                        .weight(1f, fill = false)
-                        .aspectRatio(1f)
-                        .clip(MaterialTheme.shapes.large)
+                    artworkUri = uiState.artworkBySongId[song.id],
+                    visualizerLevels = uiState.visualizerLevels,
+                    isPlaying = uiState.isPlaying,
+                    hasVisualizerPermission = hasVisualizerPermission,
+                    onRequestVisualizerPermission = onRequestVisualizerPermission,
+                    allowVisualizerToggle = true,
+                    modifier =
+                            Modifier.fillMaxWidth()
+                                    .weight(1f, fill = false)
+                                    .aspectRatio(1f)
+                                    .clip(MaterialTheme.shapes.large)
             )
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = song.title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1
-            )
-            Text(
-                text = listOf(song.artist, song.album).filter { it.isNotBlank() }
-                    .joinToString(" • "),
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1
-            )
+                Text(
+                        text = song.title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1
+                )
+                Text(
+                        text =
+                                listOf(song.artist, song.album)
+                                        .filter { it.isNotBlank() }
+                                        .joinToString(" • "),
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 1
+                )
             }
             Slider(
-                value = uiState.playbackProgress.coerceIn(0f, 1f),
-                onValueChange = onProgressChange,
-                modifier = Modifier.fillMaxWidth()
+                    value = uiState.playbackProgress.coerceIn(0f, 1f),
+                    onValueChange = onProgressChange,
+                    modifier = Modifier.fillMaxWidth()
             )
             Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -840,7 +877,10 @@ private fun NowPlayingContent(
                 ListItem(
                         modifier = Modifier.clickable { onFavouriteToggle(song) },
                         headlineContent = {
-                            Text(if (song.isFavourite) "Remove from favourites" else "Add to favourites")
+                            Text(
+                                    if (song.isFavourite) "Remove from favourites"
+                                    else "Add to favourites"
+                            )
                         },
                         leadingContent = {
                             Text(
@@ -853,9 +893,7 @@ private fun NowPlayingContent(
                 ListItem(
                         modifier = Modifier.clickable { onShuffleToggle() },
                         headlineContent = { Text("Shuffle") },
-                        supportingContent = {
-                            Text(if (uiState.isShuffleEnabled) "On" else "Off")
-                        },
+                        supportingContent = { Text(if (uiState.isShuffleEnabled) "On" else "Off") },
                         leadingContent = {
                             Text(
                                     if (uiState.isShuffleEnabled) Glyphs.PLAYER_SHUFFLE.glyph
@@ -1429,12 +1467,23 @@ private fun SongList(
 }
 
 @Composable
-private fun ArtworkThumbnail(artworkUri: String?, modifier: Modifier = Modifier.size(48.dp)) {
+private fun ArtworkThumbnail(
+        artworkUri: String?,
+        modifier: Modifier = Modifier.size(48.dp),
+        visualizerLevels: List<Float> = emptyList(),
+        isPlaying: Boolean = false,
+        hasVisualizerPermission: Boolean = true,
+        onRequestVisualizerPermission: () -> Unit = {},
+        allowVisualizerToggle: Boolean = false
+) {
     val context = LocalContext.current
     var bitmap by remember(artworkUri) { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var isArtworkLoading by remember(artworkUri) { mutableStateOf(artworkUri != null) }
+    var showVisualizer by remember(artworkUri) { mutableStateOf(artworkUri == null) }
 
     LaunchedEffect(artworkUri) {
         bitmap = null
+        isArtworkLoading = artworkUri != null
         if (artworkUri != null) {
             bitmap =
                     withContext(Dispatchers.IO) {
@@ -1444,23 +1493,160 @@ private fun ArtworkThumbnail(artworkUri: String?, modifier: Modifier = Modifier.
                         }
                     }
         }
+        isArtworkLoading = false
+        if (bitmap == null) showVisualizer = true
     }
 
     val thumbnail = bitmap
-    if (thumbnail != null) {
+    val canShowVisualizer = allowVisualizerToggle && showVisualizer
+    val toggleModifier =
+            if (allowVisualizerToggle && !isArtworkLoading) {
+                Modifier.clickable { showVisualizer = !showVisualizer }
+            } else {
+                Modifier
+            }
+    if (canShowVisualizer) {
+        NoArtworkVisualizer(
+                levels = visualizerLevels,
+                isPlaying = isPlaying,
+                hasVisualizerPermission = hasVisualizerPermission,
+                onRequestVisualizerPermission = onRequestVisualizerPermission,
+                modifier = modifier.then(toggleModifier)
+        )
+    } else if (thumbnail != null) {
         Image(
                 bitmap = thumbnail.asImageBitmap(),
                 contentDescription = null,
-                modifier = modifier,
+                modifier = modifier.then(toggleModifier),
                 contentScale = ContentScale.Crop
         )
     } else {
-        Text(
-                text = "𓇳",
-            modifier = modifier,
-                style = MaterialTheme.typography.headlineMedium
+        ArtworkPlaceholder(
+                modifier = modifier.then(toggleModifier),
+                onRequestVisualizerPermission =
+                        if (allowVisualizerToggle && !hasVisualizerPermission) {
+                            onRequestVisualizerPermission
+                        } else {
+                            null
+                        }
         )
     }
+}
+
+@Composable
+private fun ArtworkPlaceholder(
+        modifier: Modifier,
+        onRequestVisualizerPermission: (() -> Unit)? = null
+) {
+    Box(
+            modifier =
+                    modifier.background(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.88f),
+                            shape = MaterialTheme.shapes.large
+                    ),
+            contentAlignment = Alignment.Center
+    ) {
+        if (onRequestVisualizerPermission == null) {
+            Text(text = Glyphs.NO_ARTWORK.glyph, style = MaterialTheme.typography.displayMedium)
+        } else {
+            Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(text = Glyphs.NO_ARTWORK.glyph, style = MaterialTheme.typography.displayMedium)
+                TextButton(onClick = onRequestVisualizerPermission) { Text("Enable visualizer") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NoArtworkVisualizer(
+        levels: List<Float>,
+        isPlaying: Boolean,
+        hasVisualizerPermission: Boolean,
+        onRequestVisualizerPermission: () -> Unit,
+        modifier: Modifier
+) {
+    val showVisualizer = hasVisualizerPermission && isPlaying && levels.isNotEmpty()
+    Box(
+            modifier =
+                    modifier.background(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.88f),
+                            shape = MaterialTheme.shapes.large
+                    ),
+            contentAlignment = Alignment.Center
+    ) {
+        if (showVisualizer) {
+            val colorTransition = rememberInfiniteTransition(label = "visualizerColors")
+            val colorProgress by
+                    colorTransition.animateFloat(
+                            initialValue = 0f,
+                            targetValue = 1f,
+                            animationSpec =
+                                    infiniteRepeatable(
+                                            animation =
+                                                    tween(
+                                                            durationMillis = 12_000,
+                                                            easing = LinearEasing
+                                                    )
+                                    ),
+                            label = "visualizerColorProgress"
+                    )
+            val visualizerColor = visualizerColorAt(colorProgress)
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                val barHeights =
+                        levels.map { level ->
+                            (maxHeight.value * (0.16f + 0.68f * level.coerceIn(0f, 1f))).dp
+                        }
+                VisualizerBars(
+                        heights = barHeights,
+                        color = visualizerColor,
+                        modifier = Modifier.fillMaxSize().alpha(0.82f).blur(radius = 52.dp)
+                )
+                VisualizerBars(
+                        heights = barHeights,
+                        color = visualizerColor,
+                        modifier = Modifier.fillMaxSize()
+                )
+            }
+        } else if (!hasVisualizerPermission) {
+            ArtworkPlaceholder(modifier = Modifier.fillMaxSize(), onRequestVisualizerPermission)
+        } else {
+            Text(text = Glyphs.NO_ARTWORK.glyph, style = MaterialTheme.typography.displayMedium)
+        }
+    }
+}
+
+@Composable
+private fun VisualizerBars(
+        heights: List<androidx.compose.ui.unit.Dp>,
+        color: Color,
+        modifier: Modifier
+) {
+    Row(
+            modifier = modifier.fillMaxWidth(0.82f),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+    ) {
+        heights.forEach { height ->
+            Box(
+                    modifier =
+                            Modifier.weight(1f)
+                                    .padding(horizontal = 4.dp)
+                                    .height(height)
+                                    .clip(MaterialTheme.shapes.extraSmall)
+                                    .background(color)
+            )
+        }
+    }
+}
+
+private fun visualizerColorAt(progress: Float): Color {
+    val palette = listOf(Color(0xFF00B8A9), Color(0xFFFF6B6B), Color(0xFFFFC857), Color(0xFF00B8A9))
+    val position = progress.coerceIn(0f, 1f) * (palette.size - 1)
+    val index = position.toInt().coerceAtMost(palette.lastIndex - 1)
+    return lerp(palette[index], palette[index + 1], position - index)
 }
 
 @Composable

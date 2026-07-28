@@ -51,6 +51,7 @@ class HomeViewModel(
     private val nowPlayingSongId = MutableStateFlow<String?>(null)
     private val isPlaying = MutableStateFlow(false)
     private val playbackProgress = MutableStateFlow(0f)
+    private val visualizerLevels = MutableStateFlow<List<Float>>(emptyList())
     private val isShuffleEnabled = MutableStateFlow(false)
     private val repeatMode = MutableStateFlow(RepeatMode.Off)
     private val themeMode = MutableStateFlow(AppThemeMode.FollowSystem)
@@ -72,6 +73,7 @@ class HomeViewModel(
                 nowPlayingSongId.value = playback.songId
                 isPlaying.value = playback.isPlaying
                 playbackProgress.value = playback.progress
+                visualizerLevels.value = playback.visualizerLevels
                 isShuffleEnabled.value = playback.isShuffleEnabled
                 repeatMode.value = playback.repeatMode
             }
@@ -126,15 +128,18 @@ class HomeViewModel(
             }
 
     private val playbackState =
-            combine(nowPlayingSongId, isPlaying, playbackProgress, playbackModeState) {
-                    songId,
-                    playing,
-                    progress,
-                    playbackMode ->
+            combine(
+                    nowPlayingSongId,
+                    isPlaying,
+                    playbackProgress,
+                    visualizerLevels,
+                    playbackModeState
+            ) { songId, playing, progress, levels, playbackMode ->
                 PlaybackState(
                         songId = songId,
                         isPlaying = playing,
                         progress = progress,
+                        visualizerLevels = levels,
                         isShuffleEnabled = playbackMode.isShuffleEnabled,
                         repeatMode = playbackMode.repeatMode
                 )
@@ -177,6 +182,7 @@ class HomeViewModel(
                                 nowPlayingSong = nowPlaying,
                                 isPlaying = nowPlaying != null && playback.isPlaying,
                                 playbackProgress = playback.progress,
+                                visualizerLevels = playback.visualizerLevels,
                                 isShuffleEnabled = playback.isShuffleEnabled,
                                 repeatMode = playback.repeatMode,
                                 artworkBySongId = artwork
@@ -605,6 +611,7 @@ private data class PlaybackState(
         val songId: String?,
         val isPlaying: Boolean,
         val progress: Float,
+        val visualizerLevels: List<Float>,
         val isShuffleEnabled: Boolean,
         val repeatMode: RepeatMode
 )

@@ -11,47 +11,62 @@ import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.repository.PlaybackController
 import com.localmusic.player.domain.repository.PlaybackSnapshot
 import com.localmusic.player.domain.repository.RepeatMode
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 /** Sends local queue playback commands to the app Media3 session service. */
 class Media3PlaybackController(
-    private val context: Context,
-    private val queueFactory: PlaybackQueueFactory = PlaybackQueueFactory()
+        private val context: Context,
+        private val queueFactory: PlaybackQueueFactory = PlaybackQueueFactory()
 ) : PlaybackController {
     private var controllerFuture: ListenableFuture<MediaController>? = null
 
     override fun observePlayback(): Flow<PlaybackSnapshot> = callbackFlow {
         var controller: MediaController? = null
         var listener: Player.Listener? = null
+        val visualizerLevels = AtomicReference<List<Float>>(emptyList())
+
+        fun emitSnapshot() {
+            controller?.let { mediaController ->
+                trySend(mediaController.toPlaybackSnapshot(visualizerLevels.get()))
+            }
+        }
 
         withController { mediaController ->
             controller = mediaController
-            fun emitSnapshot() {
-                trySend(mediaController.toPlaybackSnapshot())
-            }
 
-            listener = object : Player.Listener {
-                override fun onEvents(player: Player, events: Player.Events) {
-                    emitSnapshot()
-                }
-            }
+            listener =
+                    object : Player.Listener {
+                        override fun onEvents(player: Player, events: Player.Events) {
+                            emitSnapshot()
+                        }
+                    }
             mediaController.addListener(listener!!)
             emitSnapshot()
         }
 
+        val visualizerCollector = launch {
+            PlaybackVisualizer.levels.collect { levels ->
+                visualizerLevels.set(levels)
+                emitSnapshot()
+            }
+        }
+
         val ticker = launch {
             while (true) {
-                controller?.let { trySend(it.toPlaybackSnapshot()) }
+                emitSnapshot()
                 delay(500L)
             }
         }
 
         awaitClose {
             ticker.cancel()
+            visualizerCollector.cancel()
             listener?.let { controller?.removeListener(it) }
         }
     }
@@ -97,40 +112,48 @@ class Media3PlaybackController(
 
     override fun setRepeatMode(mode: RepeatMode) {
         withController { controller ->
-            controller.repeatMode = when (mode) {
-                RepeatMode.Off -> Player.REPEAT_MODE_OFF
-                RepeatMode.One -> Player.REPEAT_MODE_ONE
-                RepeatMode.All -> Player.REPEAT_MODE_ALL
-            }
+            controller.repeatMode =
+                    when (mode) {
+                        RepeatMode.Off -> Player.REPEAT_MODE_OFF
+                        RepeatMode.One -> Player.REPEAT_MODE_ONE
+                        RepeatMode.All -> Player.REPEAT_MODE_ALL
+                    }
         }
     }
 
     private fun withController(command: (MediaController) -> Unit) {
-        val future = controllerFuture ?: MediaController.Builder(context, sessionToken()).buildAsync().also {
-            controllerFuture = it
-        }
+        val future =
+                controllerFuture
+                        ?: MediaController.Builder(context, sessionToken()).buildAsync().also {
+                            controllerFuture = it
+                        }
         future.addListener(
-            {
-                val controller = future.get()
-                command(controller)
-            },
-            ContextCompat.getMainExecutor(context)
+                {
+                    val controller = future.get()
+                    command(controller)
+                },
+                ContextCompat.getMainExecutor(context)
         )
     }
 
     private fun sessionToken(): SessionToken =
-        SessionToken(context, ComponentName(context, LocalMusicPlaybackService::class.java))
+            SessionToken(context, ComponentName(context, LocalMusicPlaybackService::class.java))
 
-    private fun MediaController.toPlaybackSnapshot(): PlaybackSnapshot = PlaybackSnapshot(
-        songId = currentMediaItem?.mediaId,
-        isPlaying = isPlaying,
-        positionMillis = currentPosition.coerceAtLeast(0L),
-        durationMillis = duration.takeIf { it > 0L } ?: 0L,
-        isShuffleEnabled = shuffleModeEnabled,
-        repeatMode = when (repeatMode) {
-            Player.REPEAT_MODE_ONE -> RepeatMode.One
-            Player.REPEAT_MODE_ALL -> RepeatMode.All
-            else -> RepeatMode.Off
-        }
-    )
+    private fun MediaController.toPlaybackSnapshot(
+            visualizerLevels: List<Float>
+    ): PlaybackSnapshot =
+            PlaybackSnapshot(
+                    songId = currentMediaItem?.mediaId,
+                    isPlaying = isPlaying,
+                    positionMillis = currentPosition.coerceAtLeast(0L),
+                    durationMillis = duration.takeIf { it > 0L } ?: 0L,
+                    isShuffleEnabled = shuffleModeEnabled,
+                    repeatMode =
+                            when (repeatMode) {
+                                Player.REPEAT_MODE_ONE -> RepeatMode.One
+                                Player.REPEAT_MODE_ALL -> RepeatMode.All
+                                else -> RepeatMode.Off
+                            },
+                    visualizerLevels = visualizerLevels
+            )
 }
