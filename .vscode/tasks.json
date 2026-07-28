@@ -1,76 +1,102 @@
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "Gradle: Assemble Debug APK",
-            "type": "shell",
-            "command": "cmd.exe",
-            "args": [
-                "/d",
-                "/v:on",
-                "/c",
-                "set \"JAVA_HOME=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\" & set \"PATH=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin;%PATH%\" & gradlew.bat assembleDebug"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder:local-music}"
-            },
-            "group": "build",
-            "problemMatcher": []
-        },
-        {
-            "label": "Android: Build and Install Debug APK",
-            "dependsOrder": "sequence",
-            "dependsOn": [
-                "Gradle: Assemble Debug APK",
-                "Android: Install Debug APK on Emulator"
-            ],
-            "problemMatcher": []
-        },
-        {
-            "label": "Android: Install Debug APK on Emulator",
-            "type": "shell",
-            "command": "cmd.exe",
-            "args": [
-                "/d",
-                "/c",
-                "\"%LOCALAPPDATA%\\Android\\Sdk\\platform-tools\\adb.exe\" install -r app\\build\\outputs\\apk\\debug\\app-debug.apk"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder:local-music}"
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "Gradle: Assemble Release APK",
-            "type": "shell",
-            "command": "cmd.exe",
-            "args": [
-                "/d",
-                "/v:on",
-                "/c",
-                "set \"JAVA_HOME=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\" & set \"PATH=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin;%PATH%\" & gradlew.bat assembleRelease"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder:local-music}"
-            },
-            "group": "build",
-            "problemMatcher": []
-        },
-        {
-            "label": "Gradle: Bundle Release AAB",
-            "type": "shell",
-            "command": "cmd.exe",
-            "args": [
-                "/d",
-                "/v:on",
-                "/c",
-                "set \"JAVA_HOME=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\" & set \"PATH=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin;%PATH%\" & gradlew.bat bundleRelease"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder:local-music}"
-            },
-            "group": "build",
-            "problemMatcher": []
-        }
-    ]
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Gradle: Assemble Debug APK",
+			"type": "shell",
+			"command": "cmd.exe",
+			"args": [
+				"/d",
+				"/v:on",
+				"/c",
+				"set \"JAVA_HOME=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\" & set \"PATH=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin;%PATH%\" & gradlew.bat assembleDebug"
+			],
+			"options": {
+				"cwd": "${workspaceFolder:local-music}"
+			},
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "Android: Build and Install Debug APK",
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"Gradle: Assemble Debug APK",
+				"Android: Install Debug APK on Emulator"
+			],
+			"problemMatcher": []
+		},
+		{
+			"label": "Android: Install Debug APK on Emulator",
+			"type": "shell",
+			"command": "cmd.exe",
+			"args": [
+				"/d",
+				"/c",
+				"\"%LOCALAPPDATA%\\Android\\Sdk\\platform-tools\\adb.exe\" install -r app\\build\\outputs\\apk\\debug\\app-debug.apk"
+			],
+			"options": {
+				"cwd": "${workspaceFolder:local-music}"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Gradle: Assemble Release APK",
+			"type": "shell",
+			"command": "cmd.exe",
+			"args": [
+				"/d",
+				"/v:on",
+				"/c",
+				"set \"JAVA_HOME=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\" & set \"PATH=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin;%PATH%\" & gradlew.bat assembleRelease"
+			],
+			"options": {
+				"cwd": "${workspaceFolder:local-music}"
+			},
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "Gradle: Bundle Release AAB",
+			"type": "shell",
+			"command": "cmd.exe",
+			"args": [
+				"/d",
+				"/v:on",
+				"/c",
+				"set \"JAVA_HOME=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\" & set \"PATH=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin;%PATH%\" & gradlew.bat bundleRelease"
+			],
+			"options": {
+				"cwd": "${workspaceFolder:local-music}"
+			},
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "Android: Install Debug APK on Emulator",
+			"type": "shell",
+			"command": "cmd.exe",
+			"args": [
+				"/d",
+				"/c",
+				"\"%LOCALAPPDATA%\\Android\\Sdk\\platform-tools\\adb.exe\" install -r app\\build\\outputs\\apk\\debug\\app-debug.apk"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Android: Install Debug APK on Emulator",
+			"type": "shell",
+			"command": "cmd.exe",
+			"args": [
+				"/d",
+				"/c",
+				"\"%LOCALAPPDATA%\\Android\\Sdk\\platform-tools\\adb.exe\" install -r app\\build\\outputs\\apk\\debug\\app-debug.apk"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
 }

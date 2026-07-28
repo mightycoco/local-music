@@ -14,6 +14,7 @@ interface PlaybackController {
     fun seekTo(progress: Float)
     fun setShuffleEnabled(enabled: Boolean)
     fun setRepeatMode(mode: RepeatMode)
+    fun setVisualizerEnabled(enabled: Boolean)
 }
 
 enum class RepeatMode {

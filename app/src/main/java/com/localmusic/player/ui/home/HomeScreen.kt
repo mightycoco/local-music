@@ -98,6 +98,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 
+internal const val VISUALIZER_FPS = 20
+
 enum class Glyphs(val glyph: String) {
     HOME("⌂"),
     NOW_PLAYING("▷"),
@@ -128,16 +130,9 @@ fun HomeRoute(viewModel: HomeViewModel) {
                 Manifest.permission.READ_EXTERNAL_STORAGE
             }
     val bluetoothPermission = Manifest.permission.BLUETOOTH_CONNECT
-    val visualizerPermission = Manifest.permission.RECORD_AUDIO
     var hasAudioPermission by remember {
         mutableStateOf(
                 ContextCompat.checkSelfPermission(context, audioPermission) ==
-                        PackageManager.PERMISSION_GRANTED
-        )
-    }
-    var hasVisualizerPermission by remember {
-        mutableStateOf(
-                ContextCompat.checkSelfPermission(context, visualizerPermission) ==
                         PackageManager.PERMISSION_GRANTED
         )
     }
@@ -152,10 +147,6 @@ fun HomeRoute(viewModel: HomeViewModel) {
             rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.RequestPermission()
             ) { granted -> if (granted) viewModel.updateCarMode(context.isConnectedToCarAudio()) }
-    val visualizerPermissionLauncher =
-            rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.RequestPermission()
-            ) { granted -> hasVisualizerPermission = granted }
     val folderLauncher =
             rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.OpenDocumentTree()
@@ -226,7 +217,6 @@ fun HomeRoute(viewModel: HomeViewModel) {
     HomeScreen(
             uiState = uiState,
             hasAudioPermission = hasAudioPermission,
-            hasVisualizerPermission = hasVisualizerPermission,
             onSearchChange = viewModel::updateSearchQuery,
             onScreenSelected = viewModel::selectScreen,
             onFilterSelected = viewModel::selectFilter,
@@ -275,13 +265,9 @@ fun HomeRoute(viewModel: HomeViewModel) {
             onProgressChange = viewModel::updatePlaybackProgress,
             onShuffleToggle = viewModel::toggleShuffle,
             onRepeatCycle = viewModel::cycleRepeatMode,
+            onVisualizerEnabledChange = viewModel::setVisualizerEnabled,
             onThemeSelected = viewModel::selectThemeMode,
             onExternalArtworkDownloadEnabledChange = viewModel::setExternalArtworkDownloadEnabled,
-            onRequestVisualizerPermission = {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    visualizerPermissionLauncher.launch(visualizerPermission)
-                }
-            },
             onRequestPermission = {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     permissionLauncher.launch(audioPermission)
@@ -295,7 +281,6 @@ fun HomeRoute(viewModel: HomeViewModel) {
 fun HomeScreen(
         uiState: HomeUiState,
         hasAudioPermission: Boolean,
-        hasVisualizerPermission: Boolean,
         onSearchChange: (String) -> Unit,
         onScreenSelected: (HomeScreenDestination) -> Unit,
         onFilterSelected: (LibraryFilter) -> Unit,
@@ -325,9 +310,9 @@ fun HomeScreen(
         onProgressChange: (Float) -> Unit,
         onShuffleToggle: () -> Unit,
         onRepeatCycle: () -> Unit,
+        onVisualizerEnabledChange: (Boolean) -> Unit,
         onThemeSelected: (AppThemeMode) -> Unit,
         onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit,
-        onRequestVisualizerPermission: () -> Unit,
         onRequestPermission: () -> Unit
 ) {
     val libraryListState = rememberLazyListState()
@@ -493,12 +478,11 @@ fun HomeScreen(
                                 onProgressChange = onProgressChange,
                                 onShuffleToggle = onShuffleToggle,
                                 onRepeatCycle = onRepeatCycle,
+                                onVisualizerEnabledChange = onVisualizerEnabledChange,
                                 onFavouriteToggle = onFavouriteToggle,
                                 onCreatePlaylist = onCreatePlaylist,
                                 onAddToPlaylist = onAddNowPlayingToPlaylist,
                                 onAddToQueue = onAddNowPlayingToQueue,
-                                hasVisualizerPermission = hasVisualizerPermission,
-                                onRequestVisualizerPermission = onRequestVisualizerPermission,
                                 onReturnHome = { onScreenSelected(HomeScreenDestination.Home) }
                         )
                 HomeScreenDestination.Playlists ->
@@ -762,17 +746,18 @@ private fun NowPlayingContent(
         onProgressChange: (Float) -> Unit,
         onShuffleToggle: () -> Unit,
         onRepeatCycle: () -> Unit,
+        onVisualizerEnabledChange: (Boolean) -> Unit,
         onFavouriteToggle: (Song) -> Unit,
         onCreatePlaylist: (String) -> Unit,
         onAddToPlaylist: (String) -> Unit,
         onAddToQueue: () -> Unit,
-        hasVisualizerPermission: Boolean,
-        onRequestVisualizerPermission: () -> Unit,
         onReturnHome: () -> Unit
 ) {
     val song = uiState.nowPlayingSong
-    val elapsedMillis = (song?.durationMillis?.times(uiState.playbackProgress) ?: 0f).toLong()
-    val remainingMillis = ((song?.durationMillis ?: 0L) - elapsedMillis).coerceAtLeast(0L)
+    val durationMillis =
+            uiState.playbackDurationMillis.takeIf { it > 0L } ?: song?.durationMillis ?: 0L
+    val elapsedMillis = (durationMillis * uiState.playbackProgress).toLong()
+    val remainingMillis = (durationMillis - elapsedMillis).coerceAtLeast(0L)
     var showPlaylistChooser by remember { mutableStateOf(false) }
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
     var showQueue by remember { mutableStateOf(false) }
@@ -809,9 +794,8 @@ private fun NowPlayingContent(
                     artworkUri = uiState.artworkBySongId[song.id],
                     visualizerLevels = uiState.visualizerLevels,
                     isPlaying = uiState.isPlaying,
-                    hasVisualizerPermission = hasVisualizerPermission,
-                    onRequestVisualizerPermission = onRequestVisualizerPermission,
                     allowVisualizerToggle = true,
+                    onVisualizerEnabledChange = onVisualizerEnabledChange,
                     modifier =
                             Modifier.fillMaxWidth()
                                     .weight(1f, fill = false)
@@ -1472,9 +1456,8 @@ private fun ArtworkThumbnail(
         modifier: Modifier = Modifier.size(48.dp),
         visualizerLevels: List<Float> = emptyList(),
         isPlaying: Boolean = false,
-        hasVisualizerPermission: Boolean = true,
-        onRequestVisualizerPermission: () -> Unit = {},
-        allowVisualizerToggle: Boolean = false
+        allowVisualizerToggle: Boolean = false,
+        onVisualizerEnabledChange: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     var bitmap by remember(artworkUri) { mutableStateOf<android.graphics.Bitmap?>(null) }
@@ -1497,6 +1480,12 @@ private fun ArtworkThumbnail(
         if (bitmap == null) showVisualizer = true
     }
 
+    LaunchedEffect(allowVisualizerToggle, isArtworkLoading, showVisualizer) {
+        if (allowVisualizerToggle && !isArtworkLoading) {
+            onVisualizerEnabledChange(showVisualizer)
+        }
+    }
+
     val thumbnail = bitmap
     val canShowVisualizer = allowVisualizerToggle && showVisualizer
     val toggleModifier =
@@ -1509,8 +1498,6 @@ private fun ArtworkThumbnail(
         NoArtworkVisualizer(
                 levels = visualizerLevels,
                 isPlaying = isPlaying,
-                hasVisualizerPermission = hasVisualizerPermission,
-                onRequestVisualizerPermission = onRequestVisualizerPermission,
                 modifier = modifier.then(toggleModifier)
         )
     } else if (thumbnail != null) {
@@ -1521,23 +1508,25 @@ private fun ArtworkThumbnail(
                 contentScale = ContentScale.Crop
         )
     } else {
-        ArtworkPlaceholder(
-                modifier = modifier.then(toggleModifier),
-                onRequestVisualizerPermission =
-                        if (allowVisualizerToggle && !hasVisualizerPermission) {
-                            onRequestVisualizerPermission
-                        } else {
-                            null
-                        }
-        )
+        ArtworkPlaceholder(modifier = modifier.then(toggleModifier))
     }
 }
 
 @Composable
-private fun ArtworkPlaceholder(
-        modifier: Modifier,
-        onRequestVisualizerPermission: (() -> Unit)? = null
-) {
+private fun ArtworkPlaceholder(modifier: Modifier) {
+    Box(
+            modifier =
+                    modifier.background(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.88f),
+                            shape = MaterialTheme.shapes.large
+                    ),
+            contentAlignment = Alignment.Center
+    ) { Text(text = Glyphs.NO_ARTWORK.glyph, style = MaterialTheme.typography.displayMedium) }
+}
+
+@Composable
+private fun NoArtworkVisualizer(levels: List<Float>, isPlaying: Boolean, modifier: Modifier) {
+    val displayLevels = if (levels.isEmpty()) List(9) { 0f } else levels
     Box(
             modifier =
                     modifier.background(
@@ -1546,38 +1535,7 @@ private fun ArtworkPlaceholder(
                     ),
             contentAlignment = Alignment.Center
     ) {
-        if (onRequestVisualizerPermission == null) {
-            Text(text = Glyphs.NO_ARTWORK.glyph, style = MaterialTheme.typography.displayMedium)
-        } else {
-            Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(text = Glyphs.NO_ARTWORK.glyph, style = MaterialTheme.typography.displayMedium)
-                TextButton(onClick = onRequestVisualizerPermission) { Text("Enable visualizer") }
-            }
-        }
-    }
-}
-
-@Composable
-private fun NoArtworkVisualizer(
-        levels: List<Float>,
-        isPlaying: Boolean,
-        hasVisualizerPermission: Boolean,
-        onRequestVisualizerPermission: () -> Unit,
-        modifier: Modifier
-) {
-    val showVisualizer = hasVisualizerPermission && isPlaying && levels.isNotEmpty()
-    Box(
-            modifier =
-                    modifier.background(
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.88f),
-                            shape = MaterialTheme.shapes.large
-                    ),
-            contentAlignment = Alignment.Center
-    ) {
-        if (showVisualizer) {
+        if (isPlaying) {
             val colorTransition = rememberInfiniteTransition(label = "visualizerColors")
             val colorProgress by
                     colorTransition.animateFloat(
@@ -1596,13 +1554,13 @@ private fun NoArtworkVisualizer(
             val visualizerColor = visualizerColorAt(colorProgress)
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 val barHeights =
-                        levels.map { level ->
+                        displayLevels.map { level ->
                             (maxHeight.value * (0.16f + 0.68f * level.coerceIn(0f, 1f))).dp
                         }
                 VisualizerBars(
                         heights = barHeights,
                         color = visualizerColor,
-                        modifier = Modifier.fillMaxSize().alpha(0.82f).blur(radius = 52.dp)
+                        modifier = Modifier.fillMaxSize().alpha(0.88f).blur(radius = 16.dp)
                 )
                 VisualizerBars(
                         heights = barHeights,
@@ -1610,10 +1568,8 @@ private fun NoArtworkVisualizer(
                         modifier = Modifier.fillMaxSize()
                 )
             }
-        } else if (!hasVisualizerPermission) {
-            ArtworkPlaceholder(modifier = Modifier.fillMaxSize(), onRequestVisualizerPermission)
         } else {
-            Text(text = Glyphs.NO_ARTWORK.glyph, style = MaterialTheme.typography.displayMedium)
+            ArtworkPlaceholder(modifier = Modifier.fillMaxSize())
         }
     }
 }

@@ -15,6 +15,7 @@ data class HomeUiState(
         val nowPlayingSong: Song? = null,
         val isPlaying: Boolean = false,
         val playbackProgress: Float = 0f,
+        val playbackDurationMillis: Long = 0L,
         val visualizerLevels: List<Float> = emptyList(),
         val isShuffleEnabled: Boolean = false,
         val repeatMode: RepeatMode = RepeatMode.Off,

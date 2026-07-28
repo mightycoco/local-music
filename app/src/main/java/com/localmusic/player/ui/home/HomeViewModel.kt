@@ -51,6 +51,7 @@ class HomeViewModel(
     private val nowPlayingSongId = MutableStateFlow<String?>(null)
     private val isPlaying = MutableStateFlow(false)
     private val playbackProgress = MutableStateFlow(0f)
+    private val playbackDurationMillis = MutableStateFlow(0L)
     private val visualizerLevels = MutableStateFlow<List<Float>>(emptyList())
     private val isShuffleEnabled = MutableStateFlow(false)
     private val repeatMode = MutableStateFlow(RepeatMode.Off)
@@ -73,6 +74,7 @@ class HomeViewModel(
                 nowPlayingSongId.value = playback.songId
                 isPlaying.value = playback.isPlaying
                 playbackProgress.value = playback.progress
+                playbackDurationMillis.value = playback.durationMillis
                 visualizerLevels.value = playback.visualizerLevels
                 isShuffleEnabled.value = playback.isShuffleEnabled
                 repeatMode.value = playback.repeatMode
@@ -129,21 +131,26 @@ class HomeViewModel(
 
     private val playbackState =
             combine(
-                    nowPlayingSongId,
-                    isPlaying,
-                    playbackProgress,
-                    visualizerLevels,
-                    playbackModeState
-            ) { songId, playing, progress, levels, playbackMode ->
+                            nowPlayingSongId,
+                            isPlaying,
+                            playbackProgress,
+                            playbackDurationMillis,
+                            visualizerLevels
+                    ) { songId, playing, progress, durationMillis, levels ->
                 PlaybackState(
                         songId = songId,
                         isPlaying = playing,
                         progress = progress,
-                        visualizerLevels = levels,
-                        isShuffleEnabled = playbackMode.isShuffleEnabled,
-                        repeatMode = playbackMode.repeatMode
+                        durationMillis = durationMillis,
+                        visualizerLevels = levels
                 )
             }
+                    .combine(playbackModeState) { playback, playbackMode ->
+                        playback.copy(
+                                isShuffleEnabled = playbackMode.isShuffleEnabled,
+                                repeatMode = playbackMode.repeatMode
+                        )
+                    }
 
     private val controlsState =
             combine(selectionState, statusState) { selection, status ->
@@ -182,6 +189,7 @@ class HomeViewModel(
                                 nowPlayingSong = nowPlaying,
                                 isPlaying = nowPlaying != null && playback.isPlaying,
                                 playbackProgress = playback.progress,
+                                playbackDurationMillis = playback.durationMillis,
                                 visualizerLevels = playback.visualizerLevels,
                                 isShuffleEnabled = playback.isShuffleEnabled,
                                 repeatMode = playback.repeatMode,
@@ -213,6 +221,9 @@ class HomeViewModel(
 
     fun selectScreen(destination: HomeScreenDestination) {
         selectedScreen.value = destination
+        if (destination != HomeScreenDestination.NowPlaying) {
+            startPlayback.setVisualizerEnabled(false)
+        }
     }
 
     fun refreshLibraryOnce() {
@@ -273,6 +284,7 @@ class HomeViewModel(
         nowPlayingSongId.value = startSong.id
         isPlaying.value = true
         playbackProgress.value = 0f
+        playbackDurationMillis.value = 0L
         selectedScreen.value = HomeScreenDestination.NowPlaying
 
         viewModelScope.launch(Dispatchers.Default) {
@@ -307,6 +319,12 @@ class HomeViewModel(
         runCatching { startPlayback.seekTo(coercedProgress) }
                 .onSuccess { playbackProgress.value = coercedProgress }
                 .onFailure { error -> refreshError.value = error.message ?: "Seek failed" }
+    }
+
+    fun setVisualizerEnabled(enabled: Boolean) {
+        runCatching { startPlayback.setVisualizerEnabled(enabled) }.onFailure { error ->
+            refreshError.value = error.message ?: "Visualizer update failed"
+        }
     }
 
     fun toggleShuffle() {
@@ -611,9 +629,10 @@ private data class PlaybackState(
         val songId: String?,
         val isPlaying: Boolean,
         val progress: Float,
+        val durationMillis: Long,
         val visualizerLevels: List<Float>,
-        val isShuffleEnabled: Boolean,
-        val repeatMode: RepeatMode
+        val isShuffleEnabled: Boolean = false,
+        val repeatMode: RepeatMode = RepeatMode.Off
 )
 
 private data class PlaybackModeState(val isShuffleEnabled: Boolean, val repeatMode: RepeatMode)

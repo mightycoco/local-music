@@ -12,9 +12,11 @@ import com.localmusic.player.domain.repository.PlaybackController
 import com.localmusic.player.domain.repository.PlaybackSnapshot
 import com.localmusic.player.domain.repository.RepeatMode
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -26,50 +28,55 @@ class Media3PlaybackController(
 ) : PlaybackController {
     private var controllerFuture: ListenableFuture<MediaController>? = null
 
-    override fun observePlayback(): Flow<PlaybackSnapshot> = callbackFlow {
-        var controller: MediaController? = null
-        var listener: Player.Listener? = null
-        val visualizerLevels = AtomicReference<List<Float>>(emptyList())
+    override fun observePlayback(): Flow<PlaybackSnapshot> =
+            callbackFlow {
+                        var controller: MediaController? = null
+                        var listener: Player.Listener? = null
+                        val visualizerLevels = AtomicReference<List<Float>>(emptyList())
 
-        fun emitSnapshot() {
-            controller?.let { mediaController ->
-                trySend(mediaController.toPlaybackSnapshot(visualizerLevels.get()))
-            }
-        }
+                        fun emitSnapshot() {
+                            controller?.let { mediaController ->
+                                trySend(mediaController.toPlaybackSnapshot(visualizerLevels.get()))
+                            }
+                        }
 
-        withController { mediaController ->
-            controller = mediaController
+                        withController { mediaController ->
+                            controller = mediaController
 
-            listener =
-                    object : Player.Listener {
-                        override fun onEvents(player: Player, events: Player.Events) {
+                            listener =
+                                    object : Player.Listener {
+                                        override fun onEvents(
+                                                player: Player,
+                                                events: Player.Events
+                                        ) {
+                                            emitSnapshot()
+                                        }
+                                    }
+                            mediaController.addListener(listener!!)
                             emitSnapshot()
                         }
+
+                        val visualizerCollector = launch {
+                            PlaybackAudioProcessor.levels.collect { levels ->
+                                visualizerLevels.set(levels)
+                                emitSnapshot()
+                            }
+                        }
+
+                        val ticker = launch {
+                            while (true) {
+                                emitSnapshot()
+                                delay(500L)
+                            }
+                        }
+
+                        awaitClose {
+                            ticker.cancel()
+                            visualizerCollector.cancel()
+                            listener?.let { controller?.removeListener(it) }
+                        }
                     }
-            mediaController.addListener(listener!!)
-            emitSnapshot()
-        }
-
-        val visualizerCollector = launch {
-            PlaybackVisualizer.levels.collect { levels ->
-                visualizerLevels.set(levels)
-                emitSnapshot()
-            }
-        }
-
-        val ticker = launch {
-            while (true) {
-                emitSnapshot()
-                delay(500L)
-            }
-        }
-
-        awaitClose {
-            ticker.cancel()
-            visualizerCollector.cancel()
-            listener?.let { controller?.removeListener(it) }
-        }
-    }
+                    .buffer(Channel.CONFLATED)
 
     override fun play(songs: List<Song>, startSongId: String) {
         val queue = queueFactory.createQueue(songs, startSongId)
@@ -119,6 +126,10 @@ class Media3PlaybackController(
                         RepeatMode.All -> Player.REPEAT_MODE_ALL
                     }
         }
+    }
+
+    override fun setVisualizerEnabled(enabled: Boolean) {
+        PlaybackAudioProcessor.setEnabled(enabled)
     }
 
     private fun withController(command: (MediaController) -> Unit) {

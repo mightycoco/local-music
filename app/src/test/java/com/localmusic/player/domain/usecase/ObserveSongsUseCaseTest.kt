@@ -1,8 +1,8 @@
 package com.localmusic.player.domain.usecase
 
 import com.localmusic.player.domain.model.Song
-import com.localmusic.player.domain.repository.PlaybackController
 import com.localmusic.player.domain.repository.MusicRepository
+import com.localmusic.player.domain.repository.PlaybackController
 import com.localmusic.player.domain.repository.PlaybackSnapshot
 import com.localmusic.player.domain.repository.RepeatMode
 import kotlinx.coroutines.flow.Flow
@@ -14,23 +14,22 @@ import org.junit.Test
 class ObserveSongsUseCaseTest {
     @Test
     fun observeSongsDelegatesToRepository() = runTest {
-        val expected = listOf(
-            Song(
-                id = "song-1",
-                title = "A Song",
-                artist = "An Artist",
-                album = "An Album",
-                durationMillis = 180_000,
-                dateAddedEpochSeconds = 1_700_000_000,
-                folderName = "Music",
-                uri = "content://media/song-1"
-            )
-        )
+        val expected =
+                listOf(
+                        Song(
+                                id = "song-1",
+                                title = "A Song",
+                                artist = "An Artist",
+                                album = "An Album",
+                                durationMillis = 180_000,
+                                dateAddedEpochSeconds = 1_700_000_000,
+                                folderName = "Music",
+                                uri = "content://media/song-1"
+                        )
+                )
         val useCase = ObserveSongsUseCase(FakeMusicRepository(expected))
 
-        useCase().collect { songs ->
-            assertEquals(expected, songs)
-        }
+        useCase().collect { songs -> assertEquals(expected, songs) }
     }
 
     @Test
@@ -89,9 +88,7 @@ class ObserveSongsUseCaseTest {
         assertEquals(RepeatMode.All, playbackController.recordedRepeatMode)
     }
 
-    private class FakeMusicRepository(
-        private val songs: List<Song>
-    ) : MusicRepository {
+    private class FakeMusicRepository(private val songs: List<Song>) : MusicRepository {
         var addedFolderUri: String? = null
         var favouriteUpdate: Pair<String, Boolean>? = null
 
@@ -142,16 +139,19 @@ class ObserveSongsUseCaseTest {
         override fun setRepeatMode(mode: RepeatMode) {
             recordedRepeatMode = mode
         }
+
+        override fun setVisualizerEnabled(enabled: Boolean) = Unit
     }
 
-    private fun testSong(id: String): Song = Song(
-        id = id,
-        title = "A Song",
-        artist = "An Artist",
-        album = "An Album",
-        durationMillis = 180_000,
-        dateAddedEpochSeconds = 1_700_000_000,
-        folderName = "Music",
-        uri = "content://media/$id"
-    )
+    private fun testSong(id: String): Song =
+            Song(
+                    id = id,
+                    title = "A Song",
+                    artist = "An Artist",
+                    album = "An Album",
+                    durationMillis = 180_000,
+                    dateAddedEpochSeconds = 1_700_000_000,
+                    folderName = "Music",
+                    uri = "content://media/$id"
+            )
 }
