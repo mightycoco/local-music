@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -46,6 +47,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
@@ -64,6 +66,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -99,6 +102,8 @@ enum class Glyphs(val glyph: String) {
     PLAYER_PAUSE("☐"),
     PLAYER_SHUFFLE("⇌"),
     PLAYER_NOSHUFFLE("⇉"),
+    PLAYER_QUEUE("≡"),
+    MORE("⋮"),
 }
 
 @Composable
@@ -461,7 +466,10 @@ fun HomeScreen(
                                 onFavouriteToggle = onFavouriteToggle,
                                 onCreatePlaylist = onCreatePlaylist,
                                 onAddToPlaylist = onAddNowPlayingToPlaylist,
-                                onAddToQueue = onAddNowPlayingToQueue
+                                onAddToQueue = onAddNowPlayingToQueue,
+                                onReturnHome = {
+                                    onScreenSelected(HomeScreenDestination.Home)
+                                }
                         )
                 HomeScreenDestination.Playlists ->
                         PlaylistContent(
@@ -714,6 +722,7 @@ private fun BrowseFacetList(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NowPlayingContent(
         uiState: HomeUiState,
@@ -726,7 +735,8 @@ private fun NowPlayingContent(
         onFavouriteToggle: (Song) -> Unit,
         onCreatePlaylist: (String) -> Unit,
         onAddToPlaylist: (String) -> Unit,
-        onAddToQueue: () -> Unit
+        onAddToQueue: () -> Unit,
+        onReturnHome: () -> Unit
 ) {
     val song = uiState.nowPlayingSong
     val elapsedMillis = (song?.durationMillis?.times(uiState.playbackProgress) ?: 0f).toLong()
@@ -734,6 +744,7 @@ private fun NowPlayingContent(
     var showPlaylistChooser by remember { mutableStateOf(false) }
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
     var showQueue by remember { mutableStateOf(false) }
+    var showMoreActions by remember { mutableStateOf(false) }
     if (song == null) {
         EmptyState(
                 title = "Nothing playing",
@@ -745,16 +756,52 @@ private fun NowPlayingContent(
     Box(modifier = Modifier.fillMaxSize()) {
         ArtworkBackdrop(artworkUri = uiState.artworkBySongId[song.id])
         Column(
-                modifier = Modifier.fillMaxSize().padding(top = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier.fillMaxSize().padding(vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            ArtworkThumbnail(artworkUri = uiState.artworkBySongId[song.id])
-            Text(text = song.title, style = MaterialTheme.typography.headlineMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+            IconButton(onClick = onReturnHome) {
+                Text(Glyphs.HOME.glyph, fontSize = 26.sp)
+            }
             Text(
-                    text = "${song.artist} - ${song.album}",
-                    style = MaterialTheme.typography.bodyLarge
+                text = "NOW PLAYING",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold
             )
-            Slider(value = uiState.playbackProgress, onValueChange = onProgressChange)
+            IconButton(onClick = { showMoreActions = true }) {
+                Text(Glyphs.MORE.glyph, fontSize = 28.sp)
+            }
+            }
+            ArtworkThumbnail(
+                artworkUri = uiState.artworkBySongId[song.id],
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .weight(1f, fill = false)
+                        .aspectRatio(1f)
+                        .clip(MaterialTheme.shapes.large)
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = song.title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1
+            )
+            Text(
+                text = listOf(song.artist, song.album).filter { it.isNotBlank() }
+                    .joinToString(" • "),
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1
+            )
+            }
+            Slider(
+                value = uiState.playbackProgress.coerceIn(0f, 1f),
+                onValueChange = onProgressChange,
+                modifier = Modifier.fillMaxWidth()
+            )
             Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -765,52 +812,91 @@ private fun NowPlayingContent(
                         style = MaterialTheme.typography.bodySmall
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                // ▶︎ •၊၊||၊|။|||| | ↻ ◁ || ▷ ↺  ⩇⩇:⩇⩇
-                Button(onClick = onPrevious) {
-                    Text(Glyphs.PLAYER_PREVIOUS.glyph, fontSize = 28.sp)
+            Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                IconButton(onClick = onPrevious, modifier = Modifier.size(64.dp)) {
+                    Text(Glyphs.PLAYER_PREVIOUS.glyph, fontSize = 36.sp)
                 }
-                Button(onClick = onPlayPause) {
+                Button(onClick = onPlayPause, modifier = Modifier.size(72.dp)) {
                     Text(
                             text =
                                     if (uiState.isPlaying) Glyphs.PLAYER_PAUSE.glyph
                                     else Glyphs.PLAYER_PLAY.glyph,
-                            fontSize = 28.sp
+                            fontSize = 34.sp
                     )
                 }
-                Button(onClick = onNext) {
-                    Text(
-                            Glyphs.PLAYER_NEXT.glyph,
-                            fontSize = 28.sp,
-                    )
+                IconButton(onClick = onNext, modifier = Modifier.size(64.dp)) {
+                    Text(Glyphs.PLAYER_NEXT.glyph, fontSize = 36.sp)
                 }
-                TextButton(onClick = { onFavouriteToggle(song) }) {
-                    Text(
-                            text =
+            }
+        }
+    }
+
+    if (showMoreActions) {
+        ModalBottomSheet(onDismissRequest = { showMoreActions = false }) {
+            Column(modifier = Modifier.padding(bottom = 24.dp)) {
+                ListItem(
+                        modifier = Modifier.clickable { onFavouriteToggle(song) },
+                        headlineContent = {
+                            Text(if (song.isFavourite) "Remove from favourites" else "Add to favourites")
+                        },
+                        leadingContent = {
+                            Text(
                                     if (song.isFavourite) Glyphs.FAVOURITE_FULL.glyph
                                     else Glyphs.FAVOURITE.glyph,
-                            fontSize = 28.sp,
-                            style = MaterialTheme.typography.headlineMedium
-                    )
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = onShuffleToggle, modifier = Modifier.size(96.dp)) {
-                    Text(
-                            if (uiState.isShuffleEnabled) Glyphs.PLAYER_SHUFFLE.glyph
-                            else Glyphs.PLAYER_NOSHUFFLE.glyph
-                    )
-                }
-                TextButton(onClick = onRepeatCycle, modifier = Modifier.size(96.dp)) {
-                    Text(uiState.repeatMode.label)
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = { showPlaylistChooser = true }) {
-                    Text("${Glyphs.PLAYLISTS.glyph}+")
-                }
-                Button(onClick = onAddToQueue) { Text(">> ${Glyphs.PLAYLISTS.glyph}") }
-                TextButton(onClick = { showQueue = true }) { Text("Show queue") }
+                                    fontSize = 24.sp
+                            )
+                        }
+                )
+                ListItem(
+                        modifier = Modifier.clickable { onShuffleToggle() },
+                        headlineContent = { Text("Shuffle") },
+                        supportingContent = {
+                            Text(if (uiState.isShuffleEnabled) "On" else "Off")
+                        },
+                        leadingContent = {
+                            Text(
+                                    if (uiState.isShuffleEnabled) Glyphs.PLAYER_SHUFFLE.glyph
+                                    else Glyphs.PLAYER_NOSHUFFLE.glyph,
+                                    fontSize = 24.sp
+                            )
+                        }
+                )
+                ListItem(
+                        modifier = Modifier.clickable { onRepeatCycle() },
+                        headlineContent = { Text("Repeat") },
+                        supportingContent = { Text(uiState.repeatMode.label) },
+                        leadingContent = { Text(uiState.repeatMode.label, fontSize = 24.sp) }
+                )
+                ListItem(
+                        modifier =
+                                Modifier.clickable {
+                                    showMoreActions = false
+                                    showPlaylistChooser = true
+                                },
+                        headlineContent = { Text("Add to playlist") },
+                        leadingContent = { Text("${Glyphs.PLAYLISTS.glyph}+", fontSize = 24.sp) }
+                )
+                ListItem(
+                        modifier =
+                                Modifier.clickable {
+                                    onAddToQueue()
+                                    showMoreActions = false
+                                },
+                        headlineContent = { Text("Add to queue") },
+                        leadingContent = { Text("+${Glyphs.PLAYER_QUEUE.glyph}", fontSize = 24.sp) }
+                )
+                ListItem(
+                        modifier =
+                                Modifier.clickable {
+                                    showMoreActions = false
+                                    showQueue = true
+                                },
+                        headlineContent = { Text("Show queue") },
+                        leadingContent = { Text(Glyphs.PLAYER_QUEUE.glyph, fontSize = 24.sp) }
+                )
             }
         }
     }
@@ -1343,7 +1429,7 @@ private fun SongList(
 }
 
 @Composable
-private fun ArtworkThumbnail(artworkUri: String?) {
+private fun ArtworkThumbnail(artworkUri: String?, modifier: Modifier = Modifier.size(48.dp)) {
     val context = LocalContext.current
     var bitmap by remember(artworkUri) { mutableStateOf<android.graphics.Bitmap?>(null) }
 
@@ -1365,13 +1451,13 @@ private fun ArtworkThumbnail(artworkUri: String?) {
         Image(
                 bitmap = thumbnail.asImageBitmap(),
                 contentDescription = null,
-                modifier = Modifier.size(48.dp),
+                modifier = modifier,
                 contentScale = ContentScale.Crop
         )
     } else {
         Text(
                 text = "𓇳",
-                modifier = Modifier.size(64.dp),
+            modifier = modifier,
                 style = MaterialTheme.typography.headlineMedium
         )
     }
