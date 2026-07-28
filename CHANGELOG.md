@@ -49,7 +49,7 @@
 - Added a Now Playing queue dialog backed by the persistent local Queue playlist.
 - Added synchronized Media3 shuffle and repeat controls to Now Playing.
 - Added cyclic screen navigation with threshold-based horizontal swipes and Back navigation to Home.
-- Added a Now Playing entry point for the device's system equalizer when it is available.
+- Removed the unsupported system-equalizer entry point, which is unavailable on current Pixel devices.
 - Added local-first artwork resolution for embedded, `folder.jpg`, `cover.jpg`, and cached artwork, followed by the optional MusicBrainz and Cover Art Archive lookup.
 - Updated trusted CI debug builds to use the configured stable signing key so installable artifacts can update existing app installations.
 - Improved artwork loading by publishing embedded and folder artwork before optional online lookups, limiting initial remote fetches, and persisting downloaded artwork across app restarts.

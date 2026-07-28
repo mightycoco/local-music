@@ -6,7 +6,6 @@ import android.bluetooth.BluetoothManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
-import android.media.audiofx.AudioEffect
 import android.net.Uri
 import android.os.Build
 import android.provider.OpenableColumns
@@ -113,7 +112,6 @@ fun HomeRoute(viewModel: HomeViewModel) {
                 Manifest.permission.READ_EXTERNAL_STORAGE
             }
     val bluetoothPermission = Manifest.permission.BLUETOOTH_CONNECT
-    var equalizerUnavailable by remember { mutableStateOf(false) }
     var hasAudioPermission by remember {
         mutableStateOf(
                 ContextCompat.checkSelfPermission(context, audioPermission) ==
@@ -249,21 +247,6 @@ fun HomeRoute(viewModel: HomeViewModel) {
             onProgressChange = viewModel::updatePlaybackProgress,
             onShuffleToggle = viewModel::toggleShuffle,
             onRepeatCycle = viewModel::cycleRepeatMode,
-            onOpenEqualizer = {
-                val equalizerIntent =
-                        Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL)
-                                .putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
-                                .putExtra(
-                                        AudioEffect.EXTRA_CONTENT_TYPE,
-                                        AudioEffect.CONTENT_TYPE_MUSIC
-                                )
-                equalizerUnavailable =
-                        equalizerIntent.resolveActivity(context.packageManager) == null
-                if (!equalizerUnavailable) {
-                    context.startActivity(equalizerIntent)
-                }
-            },
-            isEqualizerUnavailable = equalizerUnavailable,
             onThemeSelected = viewModel::selectThemeMode,
             onExternalArtworkDownloadEnabledChange = viewModel::setExternalArtworkDownloadEnabled,
             onRequestPermission = {
@@ -308,8 +291,6 @@ fun HomeScreen(
         onProgressChange: (Float) -> Unit,
         onShuffleToggle: () -> Unit,
         onRepeatCycle: () -> Unit,
-        onOpenEqualizer: () -> Unit,
-        isEqualizerUnavailable: Boolean,
         onThemeSelected: (AppThemeMode) -> Unit,
         onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit,
         onRequestPermission: () -> Unit
@@ -477,8 +458,6 @@ fun HomeScreen(
                                 onProgressChange = onProgressChange,
                                 onShuffleToggle = onShuffleToggle,
                                 onRepeatCycle = onRepeatCycle,
-                                onOpenEqualizer = onOpenEqualizer,
-                                isEqualizerUnavailable = isEqualizerUnavailable,
                                 onFavouriteToggle = onFavouriteToggle,
                                 onCreatePlaylist = onCreatePlaylist,
                                 onAddToPlaylist = onAddNowPlayingToPlaylist,
@@ -744,8 +723,6 @@ private fun NowPlayingContent(
         onProgressChange: (Float) -> Unit,
         onShuffleToggle: () -> Unit,
         onRepeatCycle: () -> Unit,
-        onOpenEqualizer: () -> Unit,
-        isEqualizerUnavailable: Boolean,
         onFavouriteToggle: (Song) -> Unit,
         onCreatePlaylist: (String) -> Unit,
         onAddToPlaylist: (String) -> Unit,
@@ -827,13 +804,6 @@ private fun NowPlayingContent(
                 TextButton(onClick = onRepeatCycle, modifier = Modifier.size(96.dp)) {
                     Text(uiState.repeatMode.label)
                 }
-            }
-            TextButton(onClick = onOpenEqualizer) { Text("Equalizer") }
-            if (isEqualizerUnavailable) {
-                Text(
-                        text = "No system equalizer is available on this device.",
-                        style = MaterialTheme.typography.bodySmall
-                )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(onClick = { showPlaylistChooser = true }) {
