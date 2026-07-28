@@ -40,6 +40,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -434,16 +436,26 @@ fun HomeScreen(
                     Button(onClick = onExportPlaylist) { Text("Export M3U") }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
-                FilterRow(uiState, onFilterSelected, onSortSelected)
+                FilterRow(uiState, onFilterSelected)
                 Spacer(modifier = Modifier.height(12.dp))
-                if (uiState.importedPlaylists.isNotEmpty()) {
-                    Text(
-                            text =
-                                    "Imported playlists: ${uiState.importedPlaylists.joinToString { it.name }}",
-                            style = MaterialTheme.typography.bodyMedium
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    if (uiState.importedPlaylists.isNotEmpty()) {
+                        Text(
+                                text =
+                                        "Imported playlists: ${uiState.importedPlaylists.joinToString { it.name }}",
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodyMedium,
+                                maxLines = 1
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                    SortOrderDropdown(
+                            selectedSortOrder = uiState.sortOrder,
+                            onSortSelected = onSortSelected
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
                 }
+                Spacer(modifier = Modifier.height(12.dp))
             }
             when (uiState.selectedScreen) {
                 HomeScreenDestination.Home ->
@@ -587,11 +599,7 @@ private fun PermissionBanner(onRequestPermission: () -> Unit) {
 }
 
 @Composable
-private fun FilterRow(
-        uiState: HomeUiState,
-        onFilterSelected: (LibraryFilter) -> Unit,
-        onSortSelected: (SortOrder) -> Unit
-) {
+private fun FilterRow(uiState: HomeUiState, onFilterSelected: (LibraryFilter) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -605,15 +613,23 @@ private fun FilterRow(
                 )
             }
         }
-        Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+    }
+}
+
+@Composable
+private fun SortOrderDropdown(selectedSortOrder: SortOrder, onSortSelected: (SortOrder) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        TextButton(onClick = { expanded = true }) { Text("${selectedSortOrder.label} ▼") }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             SortOrder.entries.forEach { sortOrder ->
-                AssistChip(
-                        onClick = { onSortSelected(sortOrder) },
-                        label = { Text(sortOrder.label) },
-                        enabled = sortOrder != uiState.sortOrder
+                DropdownMenuItem(
+                        text = { Text(sortOrder.label) },
+                        onClick = {
+                            onSortSelected(sortOrder)
+                            expanded = false
+                        }
                 )
             }
         }
@@ -775,24 +791,29 @@ private fun NowPlayingContent(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 // ▶︎ •၊၊||၊|။|||| | ↻ ◁ || ▷ ↺  ⩇⩇:⩇⩇
-                Button(onClick = onPrevious, modifier = Modifier.size(96.dp)) {
-                    Text(Glyphs.PLAYER_PREVIOUS.glyph)
+                Button(onClick = onPrevious) {
+                    Text(Glyphs.PLAYER_PREVIOUS.glyph, fontSize = 28.sp)
                 }
-                Button(onClick = onPlayPause, modifier = Modifier.size(96.dp)) {
+                Button(onClick = onPlayPause) {
                     Text(
-                            if (uiState.isPlaying) Glyphs.PLAYER_PAUSE.glyph
-                            else Glyphs.PLAYER_PLAY.glyph
+                            text =
+                                    if (uiState.isPlaying) Glyphs.PLAYER_PAUSE.glyph
+                                    else Glyphs.PLAYER_PLAY.glyph,
+                            fontSize = 28.sp
                     )
                 }
-                Button(onClick = onNext, modifier = Modifier.size(96.dp)) {
-                    Text(Glyphs.PLAYER_NEXT.glyph)
+                Button(onClick = onNext) {
+                    Text(
+                            Glyphs.PLAYER_NEXT.glyph,
+                            fontSize = 28.sp,
+                    )
                 }
                 TextButton(onClick = { onFavouriteToggle(song) }) {
                     Text(
                             text =
                                     if (song.isFavourite) Glyphs.FAVOURITE_FULL.glyph
                                     else Glyphs.FAVOURITE.glyph,
-                            modifier = Modifier.size(96.dp),
+                            fontSize = 28.sp,
                             style = MaterialTheme.typography.headlineMedium
                     )
                 }
