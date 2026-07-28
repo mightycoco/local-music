@@ -836,8 +836,10 @@ private fun NowPlayingContent(
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = { showPlaylistChooser = true }) { Text("Add to playlist") }
-                Button(onClick = onAddToQueue) { Text("Add to queue") }
+                Button(onClick = { showPlaylistChooser = true }) {
+                    Text("${Glyphs.PLAYLISTS.glyph}+")
+                }
+                Button(onClick = onAddToQueue) { Text(">> ${Glyphs.PLAYLISTS.glyph}") }
                 TextButton(onClick = { showQueue = true }) { Text("Show queue") }
             }
         }
