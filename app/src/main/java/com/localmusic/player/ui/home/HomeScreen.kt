@@ -12,11 +12,19 @@ import android.provider.OpenableColumns
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -421,103 +429,124 @@ fun HomeScreen(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
             }
-            if (uiState.selectedScreen == HomeScreenDestination.Home) {
-                OutlinedTextField(
-                        value = uiState.searchQuery,
-                        onValueChange = onSearchChange,
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        label = { Text("Search") }
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = onAddFolderSource) { Text("Add Folder") }
-                    Button(onClick = onImportPlaylist) { Text("Import M3U") }
-                    Button(onClick = onExportPlaylist) { Text("Export M3U") }
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                FilterRow(uiState, onFilterSelected)
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    if (uiState.importedPlaylists.isNotEmpty()) {
-                        Text(
-                                text =
-                                        "Imported playlists: ${uiState.importedPlaylists.joinToString { it.name }}",
-                                modifier = Modifier.weight(1f),
-                                style = MaterialTheme.typography.bodyMedium,
-                                maxLines = 1
+            AnimatedContent(
+                    targetState = uiState.selectedScreen,
+                    transitionSpec = {
+                        val moveForward = initialState.movesForwardTo(targetState)
+                        val direction = if (moveForward) 1 else -1
+                        (slideInHorizontally(animationSpec = tween(280)) { it * direction } +
+                                        fadeIn(animationSpec = tween(180)))
+                                .togetherWith(
+                                        slideOutHorizontally(animationSpec = tween(280)) {
+                                            -it * direction
+                                        } + fadeOut(animationSpec = tween(160))
+                                )
+                    },
+                    label = "screenNavigation"
+            ) { destination ->
+                Column(modifier = Modifier.fillMaxSize()) {
+                    if (destination == HomeScreenDestination.Home) {
+                        OutlinedTextField(
+                                value = uiState.searchQuery,
+                                onValueChange = onSearchChange,
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                label = { Text("Search") }
                         )
-                    } else {
-                        Spacer(modifier = Modifier.weight(1f))
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = onAddFolderSource) { Text("Add Folder") }
+                            Button(onClick = onImportPlaylist) { Text("Import M3U") }
+                            Button(onClick = onExportPlaylist) { Text("Export M3U") }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        FilterRow(uiState, onFilterSelected)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            if (uiState.importedPlaylists.isNotEmpty()) {
+                                Text(
+                                        text =
+                                                "Imported playlists: ${uiState.importedPlaylists.joinToString { it.name }}",
+                                        modifier = Modifier.weight(1f),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        maxLines = 1
+                                )
+                            } else {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                            SortOrderDropdown(
+                                    selectedSortOrder = uiState.sortOrder,
+                                    onSortSelected = onSortSelected
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
                     }
-                    SortOrderDropdown(
-                            selectedSortOrder = uiState.sortOrder,
-                            onSortSelected = onSortSelected
-                    )
+                    when (destination) {
+                        HomeScreenDestination.Home ->
+                                AdaptiveLibraryContent(
+                                        uiState = uiState,
+                                        listState = libraryListState,
+                                        onBrowseValueSelected = onBrowseValueSelected,
+                                        onSongSelected = onSongSelected,
+                                        onFavouriteToggle = onFavouriteToggle,
+                                        onCreatePlaylist = onCreatePlaylist,
+                                        onAddSongToPlaylist = onAddSongToPlaylist,
+                                        onAddSongToQueue = onAddSongToQueue
+                                )
+                        HomeScreenDestination.NowPlaying ->
+                                NowPlayingContent(
+                                        uiState = uiState,
+                                        onPlayPause = onPlayPause,
+                                        onNext = onNext,
+                                        onPrevious = onPrevious,
+                                        onProgressChange = onProgressChange,
+                                        onShuffleToggle = onShuffleToggle,
+                                        onRepeatCycle = onRepeatCycle,
+                                        onVisualizerEnabledChange = onVisualizerEnabledChange,
+                                        onFavouriteToggle = onFavouriteToggle,
+                                        onCreatePlaylist = onCreatePlaylist,
+                                        onAddToPlaylist = onAddNowPlayingToPlaylist,
+                                        onAddToQueue = onAddNowPlayingToQueue,
+                                        onReturnHome = {
+                                            onScreenSelected(HomeScreenDestination.Home)
+                                        }
+                                )
+                        HomeScreenDestination.Playlists ->
+                                PlaylistContent(
+                                        uiState = uiState,
+                                        onDeletePlaylist = onDeletePlaylist,
+                                        onRenamePlaylist = onRenamePlaylist,
+                                        onDuplicatePlaylist = onDuplicatePlaylist,
+                                        onPlayPlaylist = onPlayPlaylist,
+                                        onRemovePlaylistEntry = onRemovePlaylistEntry,
+                                        onMovePlaylistEntry = onMovePlaylistEntry,
+                                        onExportPlaylist = onExportIndividualPlaylist,
+                                        onClearQueue = onClearQueue
+                                )
+                        HomeScreenDestination.Favourites ->
+                                SongList(
+                                        songs = uiState.songs.filter { it.isFavourite },
+                                        artworkBySongId = uiState.artworkBySongId,
+                                        nowPlayingSongId = uiState.nowPlayingSong?.id,
+                                        emptyTitle = "No favourites yet",
+                                        emptyMessage =
+                                                "Mark local songs as favourites to pin them here.",
+                                        onSongSelected = onSongSelected,
+                                        onFavouriteToggle = onFavouriteToggle,
+                                        playlists = uiState.importedPlaylists,
+                                        onCreatePlaylist = onCreatePlaylist,
+                                        onAddSongToPlaylist = onAddSongToPlaylist,
+                                        onAddSongToQueue = onAddSongToQueue
+                                )
+                        HomeScreenDestination.Settings ->
+                                SettingsContent(
+                                        uiState = uiState,
+                                        onThemeSelected = onThemeSelected,
+                                        onExternalArtworkDownloadEnabledChange =
+                                                onExternalArtworkDownloadEnabledChange
+                                )
+                    }
                 }
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-            when (uiState.selectedScreen) {
-                HomeScreenDestination.Home ->
-                        AdaptiveLibraryContent(
-                                uiState = uiState,
-                                listState = libraryListState,
-                                onBrowseValueSelected = onBrowseValueSelected,
-                                onSongSelected = onSongSelected,
-                                onFavouriteToggle = onFavouriteToggle,
-                                onCreatePlaylist = onCreatePlaylist,
-                                onAddSongToPlaylist = onAddSongToPlaylist,
-                                onAddSongToQueue = onAddSongToQueue
-                        )
-                HomeScreenDestination.NowPlaying ->
-                        NowPlayingContent(
-                                uiState = uiState,
-                                onPlayPause = onPlayPause,
-                                onNext = onNext,
-                                onPrevious = onPrevious,
-                                onProgressChange = onProgressChange,
-                                onShuffleToggle = onShuffleToggle,
-                                onRepeatCycle = onRepeatCycle,
-                                onVisualizerEnabledChange = onVisualizerEnabledChange,
-                                onFavouriteToggle = onFavouriteToggle,
-                                onCreatePlaylist = onCreatePlaylist,
-                                onAddToPlaylist = onAddNowPlayingToPlaylist,
-                                onAddToQueue = onAddNowPlayingToQueue,
-                                onReturnHome = { onScreenSelected(HomeScreenDestination.Home) }
-                        )
-                HomeScreenDestination.Playlists ->
-                        PlaylistContent(
-                                uiState = uiState,
-                                onDeletePlaylist = onDeletePlaylist,
-                                onRenamePlaylist = onRenamePlaylist,
-                                onDuplicatePlaylist = onDuplicatePlaylist,
-                                onPlayPlaylist = onPlayPlaylist,
-                                onRemovePlaylistEntry = onRemovePlaylistEntry,
-                                onMovePlaylistEntry = onMovePlaylistEntry,
-                                onExportPlaylist = onExportIndividualPlaylist,
-                                onClearQueue = onClearQueue
-                        )
-                HomeScreenDestination.Favourites ->
-                        SongList(
-                                songs = uiState.songs.filter { it.isFavourite },
-                                artworkBySongId = uiState.artworkBySongId,
-                                nowPlayingSongId = uiState.nowPlayingSong?.id,
-                                emptyTitle = "No favourites yet",
-                                emptyMessage = "Mark local songs as favourites to pin them here.",
-                                onSongSelected = onSongSelected,
-                                onFavouriteToggle = onFavouriteToggle,
-                                playlists = uiState.importedPlaylists,
-                                onCreatePlaylist = onCreatePlaylist,
-                                onAddSongToPlaylist = onAddSongToPlaylist,
-                                onAddSongToQueue = onAddSongToQueue
-                        )
-                HomeScreenDestination.Settings ->
-                        SettingsContent(
-                                uiState = uiState,
-                                onThemeSelected = onThemeSelected,
-                                onExternalArtworkDownloadEnabledChange =
-                                        onExternalArtworkDownloadEnabledChange
-                        )
             }
         }
     }
@@ -578,6 +607,9 @@ private fun HomeScreenDestination.next(): HomeScreenDestination {
     val destinations = HomeScreenDestination.entries
     return destinations[(ordinal + 1) % destinations.size]
 }
+
+private fun HomeScreenDestination.movesForwardTo(target: HomeScreenDestination): Boolean =
+        target == next() || (target != previous() && target.ordinal > ordinal)
 
 private val BROWSABLE_FILTERS =
         setOf(
@@ -1460,24 +1492,27 @@ private fun ArtworkThumbnail(
         onVisualizerEnabledChange: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
-    var bitmap by remember(artworkUri) { mutableStateOf<android.graphics.Bitmap?>(null) }
-    var isArtworkLoading by remember(artworkUri) { mutableStateOf(artworkUri != null) }
-    var showVisualizer by remember(artworkUri) { mutableStateOf(artworkUri == null) }
+    var bitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var isArtworkLoading by remember { mutableStateOf(artworkUri != null) }
+    var showVisualizer by remember { mutableStateOf(artworkUri == null) }
 
     LaunchedEffect(artworkUri) {
-        bitmap = null
         isArtworkLoading = artworkUri != null
-        if (artworkUri != null) {
-            bitmap =
+        if (artworkUri == null) {
+            bitmap = null
+            showVisualizer = true
+        } else {
+            val decodedBitmap =
                     withContext(Dispatchers.IO) {
                         context.contentResolver.openInputStream(Uri.parse(artworkUri))?.use { input
                             ->
                             BitmapFactory.decodeStream(input)
                         }
                     }
+            bitmap = decodedBitmap
+            showVisualizer = decodedBitmap == null
         }
         isArtworkLoading = false
-        if (bitmap == null) showVisualizer = true
     }
 
     LaunchedEffect(allowVisualizerToggle, isArtworkLoading, showVisualizer) {
@@ -1494,21 +1529,32 @@ private fun ArtworkThumbnail(
             } else {
                 Modifier
             }
-    if (canShowVisualizer) {
-        NoArtworkVisualizer(
-                levels = visualizerLevels,
-                isPlaying = isPlaying,
-                modifier = modifier.then(toggleModifier)
-        )
-    } else if (thumbnail != null) {
-        Image(
-                bitmap = thumbnail.asImageBitmap(),
-                contentDescription = null,
-                modifier = modifier.then(toggleModifier),
-                contentScale = ContentScale.Crop
-        )
-    } else {
-        ArtworkPlaceholder(modifier = modifier.then(toggleModifier))
+    AnimatedContent(
+            targetState = canShowVisualizer to thumbnail,
+            modifier = modifier.then(toggleModifier),
+            transitionSpec = {
+                (fadeIn(animationSpec = tween(220)) + scaleIn(initialScale = 0.96f)).togetherWith(
+                        fadeOut(animationSpec = tween(160)) + scaleOut(targetScale = 1.04f)
+                )
+            },
+            label = "artworkVisualizerToggle"
+    ) { (showVisualizer, displayedBitmap) ->
+        if (showVisualizer) {
+            NoArtworkVisualizer(
+                    levels = visualizerLevels,
+                    isPlaying = isPlaying,
+                    modifier = Modifier.fillMaxSize()
+            )
+        } else if (displayedBitmap != null) {
+            Image(
+                    bitmap = displayedBitmap.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+            )
+        } else {
+            ArtworkPlaceholder(modifier = Modifier.fillMaxSize())
+        }
     }
 }
 

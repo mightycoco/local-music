@@ -193,7 +193,9 @@ internal object PlaybackAudioProcessor : BaseAudioProcessor() {
     private fun Float.toLogarithmicVisualizerLevel(): Float {
         val amplitude = coerceIn(MINIMUM_VISUALIZER_AMPLITUDE, 1f)
         val decibels = 20f * kotlin.math.log10(amplitude)
-        return ((decibels - MINIMUM_VISUALIZER_DECIBELS) / -MINIMUM_VISUALIZER_DECIBELS)
-                .coerceIn(0f, 1f)
+        return ((decibels - MINIMUM_VISUALIZER_DECIBELS) / -MINIMUM_VISUALIZER_DECIBELS).coerceIn(
+                0f,
+                1f
+        )
     }
 }
