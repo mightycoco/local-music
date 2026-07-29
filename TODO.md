@@ -65,6 +65,7 @@
 - [ ] Add the No Artwork smart playlist. Never Played and Last 30 Days are available as Home filters.
 - [ ] Complete Settings: artwork cache controls, default filter/sort, Car Mode and Bluetooth preferences, About/version, and licenses UI.
 	- [x] Manage selected local folders from Settings, including removal and persisted URI permission release.
+	- [x] Show the artwork cache size and clear cached artwork from Settings.
 - [ ] Add accessibility coverage: meaningful semantics, large-font testing, high-contrast behavior, keyboard navigation, and Compose UI tests.
 - [ ] Review the adaptive layouts on tablet, foldable, landscape, and square display configurations.
 - [ ] Prepare integration boundaries for notification controls, lock-screen controls, home-screen widgets, and Android Auto without implementing the surfaces yet.

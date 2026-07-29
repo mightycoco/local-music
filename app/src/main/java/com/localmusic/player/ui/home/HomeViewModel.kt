@@ -3,6 +3,7 @@ package com.localmusic.player.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.localmusic.player.artwork.ArtworkDiskCache
 import com.localmusic.player.artwork.ArtworkPreferences
 import com.localmusic.player.artwork.EmbeddedArtworkExtractor
 import com.localmusic.player.domain.model.LibraryBrowser
@@ -44,6 +45,7 @@ class HomeViewModel(
         private val startPlayback: StartPlaybackUseCase,
         private val playlistStore: PlaylistStore? = null,
         private val artworkExtractor: EmbeddedArtworkExtractor? = null,
+        private val artworkCache: ArtworkDiskCache? = null,
         private val artworkPreferences: ArtworkPreferences? = null
 ) : ViewModel() {
     private val selectedFilter = MutableStateFlow(LibraryFilter.AllSongs)
@@ -62,6 +64,7 @@ class HomeViewModel(
     private val importedPlaylists = MutableStateFlow(playlistStore?.playlists().orEmpty())
     private val sourceFolderUris = MutableStateFlow(folderSourceUris())
     private val artworkBySongId = MutableStateFlow<Map<String, String>>(emptyMap())
+    private val artworkCacheSizeBytes = MutableStateFlow(artworkCache?.sizeBytes() ?: 0L)
     private val isExternalArtworkDownloadEnabled =
             MutableStateFlow(artworkPreferences?.isExternalArtworkDownloadEnabled() ?: true)
     private val isCarMode = MutableStateFlow(false)
@@ -127,6 +130,9 @@ class HomeViewModel(
                         refreshError = error
                 )
             }
+                    .combine(artworkCacheSizeBytes) { state, cacheSizeBytes ->
+                        state.copy(artworkCacheSizeBytes = cacheSizeBytes)
+                    }
 
     private val playbackModeState =
             combine(isShuffleEnabled, repeatMode) { shuffleEnabled, selectedRepeatMode ->
@@ -375,6 +381,25 @@ class HomeViewModel(
     fun setExternalArtworkDownloadEnabled(enabled: Boolean) {
         artworkPreferences?.setExternalArtworkDownloadEnabled(enabled)
         isExternalArtworkDownloadEnabled.value = enabled
+    }
+
+    fun clearArtworkCache() {
+        viewModelScope.launch {
+            runCatching {
+                        withContext(Dispatchers.IO) {
+                            artworkCache?.clear()
+                            artworkCache?.sizeBytes() ?: 0L
+                        }
+                    }
+                    .onSuccess { cacheSizeBytes ->
+                        artworkBySongId.value = emptyMap()
+                        requestedArtworkSongIds.clear()
+                        artworkCacheSizeBytes.value = cacheSizeBytes
+                    }
+                    .onFailure { error ->
+                        refreshError.value = error.message ?: "Artwork cache clear failed"
+                    }
+        }
     }
 
     private fun moveNowPlaying(offset: Int) {
@@ -684,6 +709,7 @@ class HomeViewModelFactory(
         private val startPlayback: StartPlaybackUseCase,
         private val playlistStore: PlaylistStore? = null,
         private val artworkExtractor: EmbeddedArtworkExtractor? = null,
+        private val artworkCache: ArtworkDiskCache? = null,
         private val artworkPreferences: ArtworkPreferences? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
@@ -699,6 +725,7 @@ class HomeViewModelFactory(
                 startPlayback,
                 playlistStore,
                 artworkExtractor,
+                artworkCache,
                 artworkPreferences
         ) as
                 T

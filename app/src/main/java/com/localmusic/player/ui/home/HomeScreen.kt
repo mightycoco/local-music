@@ -236,6 +236,7 @@ fun HomeRoute(viewModel: HomeViewModel) {
             onRepeatCycle = viewModel::cycleRepeatMode,
             onVisualizerEnabledChange = viewModel::setVisualizerEnabled,
             onThemeSelected = viewModel::selectThemeMode,
+            onClearArtworkCache = viewModel::clearArtworkCache,
             onExternalArtworkDownloadEnabledChange = viewModel::setExternalArtworkDownloadEnabled,
             onRequestPermission = {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -282,6 +283,7 @@ fun HomeScreen(
         onRepeatCycle: () -> Unit,
         onVisualizerEnabledChange: (Boolean) -> Unit,
         onThemeSelected: (AppThemeMode) -> Unit,
+        onClearArtworkCache: () -> Unit,
         onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit,
         onRequestPermission: () -> Unit
 ) {
@@ -505,6 +507,7 @@ fun HomeScreen(
                                         uiState = uiState,
                                         onThemeSelected = onThemeSelected,
                                         onRemoveFolderSource = onRemoveFolderSource,
+                                        onClearArtworkCache = onClearArtworkCache,
                                         onExternalArtworkDownloadEnabledChange =
                                                 onExternalArtworkDownloadEnabledChange
                                 )

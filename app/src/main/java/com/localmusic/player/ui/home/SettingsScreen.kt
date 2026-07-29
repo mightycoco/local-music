@@ -23,6 +23,7 @@ internal fun SettingsContent(
         uiState: HomeUiState,
         onThemeSelected: (AppThemeMode) -> Unit,
         onRemoveFolderSource: (String) -> Unit,
+        onClearArtworkCache: () -> Unit,
         onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit
 ) {
     Column(
@@ -55,6 +56,18 @@ internal fun SettingsContent(
             )
         }
         Spacer(modifier = Modifier.height(16.dp))
+        Text(text = "Artwork cache", style = MaterialTheme.typography.bodyLarge)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(
+                text = formatCacheSize(uiState.artworkCacheSizeBytes),
+                style = MaterialTheme.typography.bodySmall
+            )
+            OutlinedButton(
+                onClick = onClearArtworkCache,
+                enabled = uiState.artworkCacheSizeBytes > 0L
+            ) { Text("Clear") }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
         Text(text = "Local folders", style = MaterialTheme.typography.bodyLarge)
         if (uiState.folderSourceUris.isEmpty()) {
             Text(
@@ -80,3 +93,10 @@ internal fun SettingsContent(
         }
     }
 }
+
+private fun formatCacheSize(sizeBytes: Long): String =
+        when {
+            sizeBytes < 1024L -> "$sizeBytes B"
+            sizeBytes < 1024L * 1024L -> "${sizeBytes / 1024L} KB"
+            else -> "${sizeBytes / (1024L * 1024L)} MB"
+        }

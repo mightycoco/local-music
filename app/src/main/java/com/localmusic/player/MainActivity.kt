@@ -71,6 +71,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                 )
+        val artworkCache = ArtworkDiskCache(filesDir)
         val factory =
                 HomeViewModelFactory(
                         observeSongs = ObserveSongsUseCase(repository),
@@ -88,8 +89,9 @@ class MainActivity : ComponentActivity() {
                         artworkExtractor =
                                 EmbeddedArtworkExtractor(
                                         context = applicationContext,
-                                        cache = ArtworkDiskCache(filesDir)
+                                        cache = artworkCache
                                 ),
+                        artworkCache = artworkCache,
                         artworkPreferences =
                                 ArtworkPreferences(
                                         getSharedPreferences("local-music-artwork", MODE_PRIVATE)

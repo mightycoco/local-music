@@ -27,6 +27,12 @@ class ArtworkDiskCache(
         return Uri.fromFile(file)
     }
 
+    fun sizeBytes(): Long = artworkDirectory.listFiles().orEmpty().sumOf { file -> file.length() }
+
+    fun clear() {
+        artworkDirectory.listFiles().orEmpty().forEach { file -> file.delete() }
+    }
+
     fun prune() {
         val files = artworkDirectory.listFiles().orEmpty().filter { it.isFile }
         val entries = files.map { file ->
