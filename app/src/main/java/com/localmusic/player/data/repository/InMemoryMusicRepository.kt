@@ -15,5 +15,7 @@ class InMemoryMusicRepository : MusicRepository {
 
     override suspend fun addFolderSource(folderUri: String) = Unit
 
+    override suspend fun removeFolderSource(folderUri: String) = Unit
+
     override suspend fun setFavourite(songId: String, isFavourite: Boolean) = Unit
 }

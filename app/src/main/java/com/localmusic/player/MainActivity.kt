@@ -23,6 +23,7 @@ import com.localmusic.player.data.saf.SharedPreferencesSafFolderSourceStore
 import com.localmusic.player.domain.usecase.AddFolderSourceUseCase
 import com.localmusic.player.domain.usecase.ObserveSongsUseCase
 import com.localmusic.player.domain.usecase.RefreshMusicLibraryUseCase
+import com.localmusic.player.domain.usecase.RemoveFolderSourceUseCase
 import com.localmusic.player.domain.usecase.SetFavouriteUseCase
 import com.localmusic.player.domain.usecase.StartPlaybackUseCase
 import com.localmusic.player.playback.Media3PlaybackController
@@ -75,6 +76,8 @@ class MainActivity : ComponentActivity() {
                         observeSongs = ObserveSongsUseCase(repository),
                         refreshMusicLibrary = RefreshMusicLibraryUseCase(repository),
                         addFolderSource = AddFolderSourceUseCase(repository),
+                        removeFolderSource = RemoveFolderSourceUseCase(repository),
+                        folderSourceUris = safFolderSourceStore::folders,
                         setFavourite = SetFavouriteUseCase(repository),
                         startPlayback =
                                 StartPlaybackUseCase(Media3PlaybackController(applicationContext)),

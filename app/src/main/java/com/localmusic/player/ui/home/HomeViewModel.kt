@@ -14,6 +14,7 @@ import com.localmusic.player.domain.repository.RepeatMode
 import com.localmusic.player.domain.usecase.AddFolderSourceUseCase
 import com.localmusic.player.domain.usecase.ObserveSongsUseCase
 import com.localmusic.player.domain.usecase.RefreshMusicLibraryUseCase
+import com.localmusic.player.domain.usecase.RemoveFolderSourceUseCase
 import com.localmusic.player.domain.usecase.SetFavouriteUseCase
 import com.localmusic.player.domain.usecase.StartPlaybackUseCase
 import com.localmusic.player.playlist.M3uPlaylist
@@ -37,6 +38,8 @@ class HomeViewModel(
         observeSongs: ObserveSongsUseCase,
         private val refreshMusicLibrary: RefreshMusicLibraryUseCase,
         private val addFolderSource: AddFolderSourceUseCase,
+        private val removeFolderSource: RemoveFolderSourceUseCase,
+        private val folderSourceUris: () -> List<String> = { emptyList() },
         private val setFavourite: SetFavouriteUseCase,
         private val startPlayback: StartPlaybackUseCase,
         private val playlistStore: PlaylistStore? = null,
@@ -57,6 +60,7 @@ class HomeViewModel(
     private val repeatMode = MutableStateFlow(RepeatMode.Off)
     private val themeMode = MutableStateFlow(AppThemeMode.FollowSystem)
     private val importedPlaylists = MutableStateFlow(playlistStore?.playlists().orEmpty())
+    private val sourceFolderUris = MutableStateFlow(folderSourceUris())
     private val artworkBySongId = MutableStateFlow<Map<String, String>>(emptyMap())
     private val isExternalArtworkDownloadEnabled =
             MutableStateFlow(artworkPreferences?.isExternalArtworkDownloadEnabled() ?: true)
@@ -97,6 +101,9 @@ class HomeViewModel(
                         selectedScreen = screen
                 )
             }
+                    .combine(sourceFolderUris) { state, folderUris ->
+                        state.copy(folderSourceUris = folderUris)
+                    }
 
     private val appearanceState =
             combine(themeMode, isExternalArtworkDownloadEnabled) { mode, externalArtworkEnabled ->
@@ -249,9 +256,24 @@ class HomeViewModel(
         viewModelScope.launch {
             isRefreshing.value = true
             refreshError.value = null
-            runCatching { addFolderSource.invoke(folderUri) }.onFailure { error ->
-                refreshError.value = error.message ?: "Folder import failed"
-            }
+            runCatching { addFolderSource.invoke(folderUri) }
+                    .onSuccess { sourceFolderUris.value = folderSourceUris() }
+                    .onFailure { error ->
+                        refreshError.value = error.message ?: "Folder import failed"
+                    }
+            isRefreshing.value = false
+        }
+    }
+
+    fun removeFolderSource(folderUri: String) {
+        viewModelScope.launch {
+            isRefreshing.value = true
+            refreshError.value = null
+            runCatching { removeFolderSource.invoke(folderUri) }
+                    .onSuccess { sourceFolderUris.value = folderSourceUris() }
+                    .onFailure { error ->
+                        refreshError.value = error.message ?: "Folder removal failed"
+                    }
             isRefreshing.value = false
         }
     }
@@ -656,6 +678,8 @@ class HomeViewModelFactory(
         private val observeSongs: ObserveSongsUseCase,
         private val refreshMusicLibrary: RefreshMusicLibraryUseCase,
         private val addFolderSource: AddFolderSourceUseCase,
+        private val removeFolderSource: RemoveFolderSourceUseCase,
+        private val folderSourceUris: () -> List<String> = { emptyList() },
         private val setFavourite: SetFavouriteUseCase,
         private val startPlayback: StartPlaybackUseCase,
         private val playlistStore: PlaylistStore? = null,
@@ -669,6 +693,8 @@ class HomeViewModelFactory(
                 observeSongs,
                 refreshMusicLibrary,
                 addFolderSource,
+                removeFolderSource,
+                folderSourceUris,
                 setFavourite,
                 startPlayback,
                 playlistStore,

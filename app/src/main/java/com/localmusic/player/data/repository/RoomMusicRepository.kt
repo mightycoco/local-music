@@ -16,36 +16,45 @@ import kotlinx.coroutines.withContext
 
 /** Room-backed repository for merged, de-duplicated local music metadata. */
 class RoomMusicRepository(
-    private val songDao: SongDao,
-    private val musicScanner: MusicScanner,
-    private val safFolderSourceStore: SafFolderSourceStore? = null,
-    private val persistSafFolderPermission: suspend (String) -> Unit = {},
-    private val duplicateSongResolver: DuplicateSongResolver = DuplicateSongResolver(),
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+        private val songDao: SongDao,
+        private val musicScanner: MusicScanner,
+        private val safFolderSourceStore: SafFolderSourceStore? = null,
+        private val persistSafFolderPermission: suspend (String) -> Unit = {},
+        private val duplicateSongResolver: DuplicateSongResolver = DuplicateSongResolver(),
+        private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : MusicRepository {
-    override fun observeSongs(): Flow<List<Song>> = songDao
-        .observeNewestAdded()
-        .map { entities -> entities.map { it.toDomain() } }
+    override fun observeSongs(): Flow<List<Song>> =
+            songDao.observeNewestAdded().map { entities -> entities.map { it.toDomain() } }
 
-    override suspend fun refreshLibrary() = withContext(ioDispatcher) {
-        val scannedSongs = duplicateSongResolver.resolve(musicScanner.scan())
-        val scannedEntities = scannedSongs.map { it.toEntity() }
-        val retainedEntities = songDao.songsByIds(scannedEntities.map { it.id })
-        songDao.replaceScannedLibrary(scannedEntities.mergeRetainedState(retainedEntities))
-    }
+    override suspend fun refreshLibrary() =
+            withContext(ioDispatcher) {
+                val scannedSongs = duplicateSongResolver.resolve(musicScanner.scan())
+                val scannedEntities = scannedSongs.map { it.toEntity() }
+                val retainedEntities = songDao.songsByIds(scannedEntities.map { it.id })
+                songDao.replaceScannedLibrary(scannedEntities.mergeRetainedState(retainedEntities))
+            }
 
-    override suspend fun addFolderSource(folderUri: String) = withContext(ioDispatcher) {
-        persistSafFolderPermission(folderUri)
-        safFolderSourceStore?.add(folderUri)
-        refreshLibrary()
-    }
+    override suspend fun addFolderSource(folderUri: String) =
+            withContext(ioDispatcher) {
+                persistSafFolderPermission(folderUri)
+                safFolderSourceStore?.add(folderUri)
+                refreshLibrary()
+            }
 
-    override suspend fun setFavourite(songId: String, isFavourite: Boolean) = withContext(ioDispatcher) {
-        songDao.setFavourite(songId, isFavourite)
-    }
+    override suspend fun removeFolderSource(folderUri: String) =
+            withContext(ioDispatcher) {
+                if (safFolderSourceStore?.remove(folderUri) == true) {
+                    refreshLibrary()
+                }
+            }
+
+    override suspend fun setFavourite(songId: String, isFavourite: Boolean) =
+            withContext(ioDispatcher) { songDao.setFavourite(songId, isFavourite) }
 }
 
-internal fun List<SongEntity>.mergeRetainedState(retainedEntities: List<SongEntity>): List<SongEntity> {
+internal fun List<SongEntity>.mergeRetainedState(
+        retainedEntities: List<SongEntity>
+): List<SongEntity> {
     val retainedById = retainedEntities.associateBy { it.id }
     return map { scanned ->
         val retained = retainedById[scanned.id]
@@ -53,9 +62,9 @@ internal fun List<SongEntity>.mergeRetainedState(retainedEntities: List<SongEnti
             scanned
         } else {
             scanned.copy(
-                playCount = retained.playCount,
-                lastPlayedEpochMillis = retained.lastPlayedEpochMillis,
-                isFavourite = retained.isFavourite
+                    playCount = retained.playCount,
+                    lastPlayedEpochMillis = retained.lastPlayedEpochMillis,
+                    isFavourite = retained.isFavourite
             )
         }
     }

@@ -183,6 +183,15 @@ fun HomeRoute(viewModel: HomeViewModel) {
             onBrowseValueSelected = viewModel::selectBrowseValue,
             onSortSelected = viewModel::selectSortOrder,
             onAddFolderSource = { folderLauncher.launch(null) },
+            onRemoveFolderSource = { folderUri ->
+                runCatching {
+                    context.contentResolver.releasePersistableUriPermission(
+                            android.net.Uri.parse(folderUri),
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                }
+                viewModel.removeFolderSource(folderUri)
+            },
             onImportPlaylist = {
                 playlistImportLauncher.launch(
                         arrayOf(
@@ -247,6 +256,7 @@ fun HomeScreen(
         onBrowseValueSelected: (String?) -> Unit,
         onSortSelected: (SortOrder) -> Unit,
         onAddFolderSource: () -> Unit,
+        onRemoveFolderSource: (String) -> Unit,
         onImportPlaylist: () -> Unit,
         onExportPlaylist: () -> Unit,
         onExportIndividualPlaylist: (M3uPlaylist) -> Unit,
@@ -494,6 +504,7 @@ fun HomeScreen(
                                 SettingsContent(
                                         uiState = uiState,
                                         onThemeSelected = onThemeSelected,
+                                        onRemoveFolderSource = onRemoveFolderSource,
                                         onExternalArtworkDownloadEnabledChange =
                                                 onExternalArtworkDownloadEnabledChange
                                 )

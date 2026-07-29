@@ -43,6 +43,16 @@ class ObserveSongsUseCaseTest {
     }
 
     @Test
+    fun removeFolderSourceDelegatesToRepository() = runTest {
+        val repository = FakeMusicRepository(emptyList())
+        val useCase = RemoveFolderSourceUseCase(repository)
+
+        useCase("content://tree/music")
+
+        assertEquals("content://tree/music", repository.removedFolderUri)
+    }
+
+    @Test
     fun setFavouriteDelegatesToRepository() = runTest {
         val repository = FakeMusicRepository(emptyList())
         val useCase = SetFavouriteUseCase(repository)
@@ -90,6 +100,7 @@ class ObserveSongsUseCaseTest {
 
     private class FakeMusicRepository(private val songs: List<Song>) : MusicRepository {
         var addedFolderUri: String? = null
+        var removedFolderUri: String? = null
         var favouriteUpdate: Pair<String, Boolean>? = null
 
         override fun observeSongs(): Flow<List<Song>> = flowOf(songs)
@@ -98,6 +109,10 @@ class ObserveSongsUseCaseTest {
 
         override suspend fun addFolderSource(folderUri: String) {
             addedFolderUri = folderUri
+        }
+
+        override suspend fun removeFolderSource(folderUri: String) {
+            removedFolderUri = folderUri
         }
 
         override suspend fun setFavourite(songId: String, isFavourite: Boolean) {

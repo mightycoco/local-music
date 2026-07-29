@@ -5,4 +5,6 @@ interface SafFolderSourceStore {
     fun folders(): List<String>
 
     fun add(folderUri: String): Boolean
+
+    fun remove(folderUri: String): Boolean
 }

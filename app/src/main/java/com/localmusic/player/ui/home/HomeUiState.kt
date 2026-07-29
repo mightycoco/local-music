@@ -25,6 +25,7 @@ data class HomeUiState(
         val selectedBrowseValue: String? = null,
         val sortOrder: SortOrder = SortOrder.NewestAdded,
         val searchQuery: String = "",
+        val folderSourceUris: List<String> = emptyList(),
         val importedPlaylists: List<M3uPlaylist> = emptyList(),
         val isCarMode: Boolean = false,
         val isRefreshing: Boolean = false,

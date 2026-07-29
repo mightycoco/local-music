@@ -3,13 +3,10 @@ package com.localmusic.player.data.saf
 import android.content.SharedPreferences
 
 /** SharedPreferences-backed SAF source store for small user-selected folder lists. */
-class SharedPreferencesSafFolderSourceStore(
-    private val sharedPreferences: SharedPreferences
-) : SafFolderSourceStore {
-    override fun folders(): List<String> = sharedPreferences
-        .getStringSet(KEY_FOLDER_URIS, emptySet())
-        .orEmpty()
-        .sorted()
+class SharedPreferencesSafFolderSourceStore(private val sharedPreferences: SharedPreferences) :
+        SafFolderSourceStore {
+    override fun folders(): List<String> =
+            sharedPreferences.getStringSet(KEY_FOLDER_URIS, emptySet()).orEmpty().sorted()
 
     override fun add(folderUri: String): Boolean {
         val updatedFolders = folders().toMutableSet()
@@ -18,6 +15,15 @@ class SharedPreferencesSafFolderSourceStore(
             sharedPreferences.edit().putStringSet(KEY_FOLDER_URIS, updatedFolders).apply()
         }
         return added
+    }
+
+    override fun remove(folderUri: String): Boolean {
+        val updatedFolders = folders().toMutableSet()
+        val removed = updatedFolders.remove(folderUri)
+        if (removed) {
+            sharedPreferences.edit().putStringSet(KEY_FOLDER_URIS, updatedFolders).apply()
+        }
+        return removed
     }
 
     private companion object {

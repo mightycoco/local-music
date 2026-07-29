@@ -11,5 +11,7 @@ interface MusicRepository {
 
     suspend fun addFolderSource(folderUri: String)
 
+    suspend fun removeFolderSource(folderUri: String)
+
     suspend fun setFavourite(songId: String, isFavourite: Boolean)
 }

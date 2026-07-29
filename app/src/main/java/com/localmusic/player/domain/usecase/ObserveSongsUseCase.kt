@@ -20,6 +20,10 @@ class AddFolderSourceUseCase(private val repository: MusicRepository) {
     suspend operator fun invoke(folderUri: String) = repository.addFolderSource(folderUri)
 }
 
+class RemoveFolderSourceUseCase(private val repository: MusicRepository) {
+    suspend operator fun invoke(folderUri: String) = repository.removeFolderSource(folderUri)
+}
+
 class SetFavouriteUseCase(private val repository: MusicRepository) {
     suspend operator fun invoke(songId: String, isFavourite: Boolean) =
             repository.setFavourite(songId, isFavourite)
