@@ -386,11 +386,11 @@ class HomeViewModel(
     fun clearArtworkCache() {
         viewModelScope.launch {
             runCatching {
-                        withContext(Dispatchers.IO) {
-                            artworkCache?.clear()
-                            artworkCache?.sizeBytes() ?: 0L
-                        }
-                    }
+                withContext(Dispatchers.IO) {
+                    artworkCache?.clear()
+                    artworkCache?.sizeBytes() ?: 0L
+                }
+            }
                     .onSuccess { cacheSizeBytes ->
                         artworkBySongId.value = emptyMap()
                         requestedArtworkSongIds.clear()

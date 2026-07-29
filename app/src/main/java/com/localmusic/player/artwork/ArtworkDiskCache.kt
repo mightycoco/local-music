@@ -5,9 +5,9 @@ import java.io.File
 
 /** Small disk cache for extracted album artwork bytes. */
 class ArtworkDiskCache(
-    cacheRoot: File,
-    private val maxBytes: Long = DEFAULT_MAX_BYTES,
-    private val pruner: ArtworkCachePruner = ArtworkCachePruner()
+        cacheRoot: File,
+        private val maxBytes: Long = DEFAULT_MAX_BYTES,
+        private val pruner: ArtworkCachePruner = ArtworkCachePruner()
 ) {
     private val artworkDirectory = File(cacheRoot, "artwork")
 
@@ -35,13 +35,14 @@ class ArtworkDiskCache(
 
     fun prune() {
         val files = artworkDirectory.listFiles().orEmpty().filter { it.isFile }
-        val entries = files.map { file ->
-            ArtworkCacheEntry(
-                key = file.nameWithoutExtension,
-                sizeBytes = file.length(),
-                lastModifiedEpochMillis = file.lastModified()
-            )
-        }
+        val entries =
+                files.map { file ->
+                    ArtworkCacheEntry(
+                            key = file.nameWithoutExtension,
+                            sizeBytes = file.length(),
+                            lastModifiedEpochMillis = file.lastModified()
+                    )
+                }
         val deleteKeys = pruner.entriesToDelete(entries, maxBytes).map { it.key }.toSet()
         files.filter { it.nameWithoutExtension in deleteKeys }.forEach { it.delete() }
     }

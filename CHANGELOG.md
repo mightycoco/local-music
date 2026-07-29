@@ -5,6 +5,7 @@
 - Split the home Compose UI into focused files, moving library, playlist editing, settings, Now Playing, reusable song-list controls, artwork/visualizer rendering, and the compact mini-player out of the navigation shell without changing behavior.
 - Added Settings management for selected local folders, including persistent source removal, library refresh, and SAF read-permission release.
 - Added Settings artwork-cache size reporting and clearing, including thumbnail URI invalidation after a clear.
+- Added a generated adaptive launcher icon, converted from the committed SVG source during Android builds.
 - Created the initial Android Kotlin project scaffold.
 - Added Gradle Kotlin DSL configuration for Compose, Media3, Room, Coroutines, and tests.
 - Added Clean Architecture domain models, repository boundary, and first use case.

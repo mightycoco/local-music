@@ -59,12 +59,12 @@ internal fun SettingsContent(
         Text(text = "Artwork cache", style = MaterialTheme.typography.bodyLarge)
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(
-                text = formatCacheSize(uiState.artworkCacheSizeBytes),
-                style = MaterialTheme.typography.bodySmall
+                    text = formatCacheSize(uiState.artworkCacheSizeBytes),
+                    style = MaterialTheme.typography.bodySmall
             )
             OutlinedButton(
-                onClick = onClearArtworkCache,
-                enabled = uiState.artworkCacheSizeBytes > 0L
+                    onClick = onClearArtworkCache,
+                    enabled = uiState.artworkCacheSizeBytes > 0L
             ) { Text("Clear") }
         }
         Spacer(modifier = Modifier.height(16.dp))

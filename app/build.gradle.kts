@@ -5,6 +5,73 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+import java.io.File
+import javax.xml.parsers.DocumentBuilderFactory
+
+val appIconSource = layout.projectDirectory.file("src/main/icon/app_icon.svg")
+val generatedIconResources = layout.buildDirectory.dir("generated/res/appIcon")
+
+val generateAppIcon by tasks.registering {
+    inputs.file(appIconSource)
+    outputs.dir(generatedIconResources)
+
+    doLast {
+        val svgDocument =
+            DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(appIconSource.asFile)
+        val svg = svgDocument.documentElement
+        val viewBox = svg.getAttribute("viewBox").trim().split(Regex("\\s+"))
+        require(viewBox.size == 4) { "App icon SVG must declare a four-value viewBox." }
+        val viewportWidth = viewBox[2]
+        val viewportHeight = viewBox[3]
+        val paths = svg.getElementsByTagName("path")
+        require(paths.length > 0) { "App icon SVG must contain at least one path." }
+
+        val vectorPaths = buildString {
+            repeat(paths.length) { index ->
+                val path = paths.item(index) as org.w3c.dom.Element
+                val fillColor = path.getAttribute("fill").ifBlank { "#FFFFFFFF" }
+                appendLine("    <path android:fillColor=\"$fillColor\" android:pathData=\"${path.getAttribute("d")}\" />")
+            }
+        }.trimEnd()
+        val resourcesRoot = generatedIconResources.get().asFile
+        val foregroundFile = File(resourcesRoot, "drawable/ic_launcher_foreground.xml")
+        val iconFile = File(resourcesRoot, "mipmap-anydpi-v26/ic_launcher.xml")
+        val roundIconFile = File(resourcesRoot, "mipmap-anydpi-v26/ic_launcher_round.xml")
+        val colorsFile = File(resourcesRoot, "values/app_icon_colors.xml")
+
+        foregroundFile.parentFile.mkdirs()
+        foregroundFile.writeText(
+            """<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="$viewportWidth"
+    android:viewportHeight="$viewportHeight">
+$vectorPaths
+</vector>
+"""
+        )
+        iconFile.parentFile.mkdirs()
+        val adaptiveIcon =
+            """<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>
+"""
+        iconFile.writeText(adaptiveIcon)
+        roundIconFile.writeText(adaptiveIcon)
+        colorsFile.parentFile.mkdirs()
+        colorsFile.writeText(
+            """<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#174A4A</color>
+</resources>
+"""
+        )
+    }
+}
+
 val releaseStoreFile = providers.environmentVariable("ANDROID_KEYSTORE_PATH").orNull
 val releaseStorePassword = providers.environmentVariable("ANDROID_KEYSTORE_PASSWORD").orNull
 val releaseKeyAlias = providers.environmentVariable("ANDROID_KEY_ALIAS").orNull
@@ -71,6 +138,14 @@ android {
     buildFeatures {
         compose = true
     }
+
+    sourceSets.named("main") {
+        res.srcDir(generatedIconResources)
+    }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(generateAppIcon)
 }
 
 ksp {
