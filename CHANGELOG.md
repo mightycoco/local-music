@@ -66,3 +66,4 @@
 - Added an optional audio-reactive waveform fallback for tracks without album artwork using Media3 PCM processing, without requiring recording permission.
 - Kept Now Playing seek and transport controls accessible in short landscape windows with a two-pane layout and scrollable controls pane.
 - Added the active Media3 playlist below Now Playing controls and automatically position it at the current song when the screen appears or playback advances.
+- Animated the current-song indicator while playback is running, rotating it left every 200 milliseconds and resetting it when paused.

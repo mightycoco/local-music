@@ -21,14 +21,19 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.playlist.M3uPlaylist
+import kotlinx.coroutines.delay
 
 @Composable
 internal fun EmptyState(title: String, message: String, modifier: Modifier = Modifier) {
@@ -70,6 +75,7 @@ internal fun SongList(
         songs: List<Song>,
         artworkBySongId: Map<String, String>,
         nowPlayingSongId: String?,
+        isPlaying: Boolean,
         listState: LazyListState = rememberLazyListState(),
         modifier: Modifier = Modifier.fillMaxSize(),
         onSongSelected: (Song) -> Unit,
@@ -83,6 +89,7 @@ internal fun SongList(
             songs = songs,
             artworkBySongId = artworkBySongId,
             nowPlayingSongId = nowPlayingSongId,
+            isPlaying = isPlaying,
             listState = listState,
             emptyTitle = "No local songs indexed yet",
             emptyMessage = "Allow audio access to scan MediaStore, or add a folder source.",
@@ -102,6 +109,7 @@ internal fun SongList(
         songs: List<Song>,
         artworkBySongId: Map<String, String>,
         nowPlayingSongId: String?,
+        isPlaying: Boolean,
         listState: LazyListState = rememberLazyListState(),
         emptyTitle: String,
         emptyMessage: String,
@@ -141,10 +149,10 @@ internal fun SongList(
                             ),
                     leadingContent = { ArtworkThumbnail(artworkUri = artworkBySongId[song.id]) },
                     headlineContent = {
-                        Text(
-                                if (song.id == nowPlayingSongId)
-                                        "${Glyphs.PLAYINGINDICATOR.glyph} ${song.title}"
-                                else song.title
+                        PlayingSongTitle(
+                                title = song.title,
+                                isCurrent = song.id == nowPlayingSongId,
+                                isPlaying = isPlaying
                         )
                     },
                     supportingContent = { Text("${song.artist} - ${song.album}") },
@@ -256,3 +264,40 @@ internal fun SongList(
         )
     }
 }
+
+@Composable
+internal fun PlayingSongTitle(
+        title: String,
+        isCurrent: Boolean,
+        isPlaying: Boolean,
+        modifier: Modifier = Modifier
+) {
+    val indicator = Glyphs.PLAYINGINDICATOR.glyph
+    var offset by remember(indicator) { mutableIntStateOf(0) }
+
+    LaunchedEffect(isCurrent, isPlaying, indicator) {
+        offset = 0
+        if (isCurrent && isPlaying && indicator.length > 1) {
+            while (true) {
+                delay(PLAYING_INDICATOR_FRAME_MILLIS)
+                offset = (offset + 1) % indicator.length
+            }
+        }
+    }
+
+    val rotatedIndicator = indicator.drop(offset) + indicator.take(offset)
+    Text(
+            text = if (isCurrent) "$rotatedIndicator $title" else title,
+            modifier =
+                    if (isCurrent) {
+                        modifier.clearAndSetSemantics {
+                            contentDescription = if (isPlaying) "Playing $title" else "Paused $title"
+                        }
+                    } else {
+                        modifier
+                    },
+            maxLines = 1
+    )
+}
+
+private const val PLAYING_INDICATOR_FRAME_MILLIS = 200L

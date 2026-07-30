@@ -120,6 +120,7 @@ internal fun NowPlayingContent(
                             songs = uiState.playbackQueue,
                             artworkBySongId = uiState.artworkBySongId,
                             nowPlayingSongId = song.id,
+                            isPlaying = uiState.isPlaying,
                             modifier = Modifier.weight(1f)
                     )
                 }
@@ -159,6 +160,7 @@ internal fun NowPlayingContent(
                         songs = uiState.playbackQueue,
                         artworkBySongId = uiState.artworkBySongId,
                         nowPlayingSongId = song.id,
+                        isPlaying = uiState.isPlaying,
                         modifier = Modifier.weight(1f)
                 )
             }
@@ -355,6 +357,7 @@ private fun CurrentPlaylist(
         songs: List<Song>,
         artworkBySongId: Map<String, String>,
         nowPlayingSongId: String,
+        isPlaying: Boolean,
         modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -388,14 +391,10 @@ private fun CurrentPlaylist(
                                 )
                             },
                             headlineContent = {
-                                Text(
-                                        text =
-                                                if (queueSong.id == nowPlayingSongId) {
-                                                    "${Glyphs.PLAYINGINDICATOR.glyph} ${queueSong.title}"
-                                                } else {
-                                                    queueSong.title
-                                                },
-                                        maxLines = 1
+                                PlayingSongTitle(
+                                        title = queueSong.title,
+                                        isCurrent = queueSong.id == nowPlayingSongId,
+                                        isPlaying = isPlaying
                                 )
                             },
                             supportingContent = {

@@ -73,7 +73,7 @@ enum class Glyphs(val glyph: String) {
     FAVOURITE("☆"),
     FAVOURITE_FULL("★"),
     SETTINGS("⫶"),
-    PLAYINGINDICATOR("၊၊||၊|။||||။၊|။"),
+    PLAYINGINDICATOR("▶︎၊၊|၊|။|||။၊|။•"),
     PLAYER_PREVIOUS("⏮"),
     PLAYER_NEXT("⏭"),
     PLAYER_PLAY("▶"),
@@ -578,6 +578,7 @@ fun HomeScreen(
                                         songs = uiState.songs.filter { it.isFavourite },
                                         artworkBySongId = uiState.artworkBySongId,
                                         nowPlayingSongId = uiState.nowPlayingSong?.id,
+                                        isPlaying = uiState.isPlaying,
                                         emptyTitle = "No favourites yet",
                                         emptyMessage =
                                                 "Mark local songs as favourites to pin them here.",
