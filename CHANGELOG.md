@@ -64,3 +64,4 @@
 - Replaced the static app bar with a compact player while a track is selected, and hide it during active Now Playing playback.
 - Redesigned Now Playing as an artwork-led player with simplified primary transport controls and an overflow sheet for favourite, shuffle, repeat, queue, and playlist actions.
 - Added an optional audio-reactive waveform fallback for tracks without album artwork using Media3 PCM processing, without requiring recording permission.
+- Kept Now Playing seek and transport controls accessible in short landscape windows with a two-pane layout and scrollable controls pane.

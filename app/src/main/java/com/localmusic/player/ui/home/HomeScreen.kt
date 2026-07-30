@@ -1,8 +1,8 @@
 package com.localmusic.player.ui.home
 
 import android.Manifest
-import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothA2dp
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
@@ -54,6 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.localmusic.player.bluetooth.CarAudioConnectionTracker
 import com.localmusic.player.bluetooth.CarModeDetector
 import com.localmusic.player.domain.model.LibraryFilter
 import com.localmusic.player.domain.model.Song
@@ -120,8 +121,8 @@ fun HomeRoute(viewModel: HomeViewModel) {
             rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.RequestPermission()
             ) { granted ->
-            hasBluetoothPermission = granted
-            if (granted) viewModel.updateCarMode(context.isConnectedToCarAudio())
+                hasBluetoothPermission = granted
+                if (granted) viewModel.updateCarMode(context.isConnectedToCarAudio())
             }
     val folderLauncher =
             rememberLauncherForActivityResult(
@@ -186,9 +187,42 @@ fun HomeRoute(viewModel: HomeViewModel) {
     DisposableEffect(context, hasBluetoothPermission) {
         if (!hasBluetoothPermission) return@DisposableEffect onDispose {}
 
+        val detector = CarModeDetector()
+        val tracker = CarAudioConnectionTracker()
+        val bluetoothManager = context.getSystemService(BluetoothManager::class.java)
+        val adapter = bluetoothManager?.adapter
+        var a2dpProxy: BluetoothProfile? = null
+        val profileListener =
+                object : BluetoothProfile.ServiceListener {
+                    override fun onServiceConnected(profile: Int, proxy: BluetoothProfile) {
+                        if (profile != BluetoothProfile.A2DP) return
+
+                        a2dpProxy = proxy
+                        val connectedCarDeviceIds =
+                                runCatching {
+                                            proxy.connectedDevices
+                                                    .filter(detector::isLikelyCarDevice)
+                                                    .mapNotNull(BluetoothDevice::safeAddress)
+                                        }
+                                        .getOrDefault(emptyList())
+                        viewModel.updateCarMode(
+                                tracker.replaceConnectedDevices(connectedCarDeviceIds)
+                        )
+                    }
+
+                    override fun onServiceDisconnected(profile: Int) {
+                        if (profile == BluetoothProfile.A2DP) {
+                            a2dpProxy = null
+                            viewModel.updateCarMode(tracker.replaceConnectedDevices(emptyList()))
+                        }
+                    }
+                }
         val receiver =
                 object : BroadcastReceiver() {
-                    override fun onReceive(receiverContext: android.content.Context, intent: Intent) {
+                    override fun onReceive(
+                            receiverContext: android.content.Context,
+                            intent: Intent
+                    ) {
                         if (intent.action != BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED) return
 
                         val connectionState =
@@ -197,11 +231,13 @@ fun HomeRoute(viewModel: HomeViewModel) {
                                         BluetoothProfile.STATE_DISCONNECTED
                                 )
                         val device = intent.bluetoothDevice()
-                        val isConnectedCarDevice =
-                                connectionState == BluetoothProfile.STATE_CONNECTED &&
-                                        CarModeDetector().isLikelyCarDevice(device)
+                        val deviceId = device?.safeAddress() ?: return
                         viewModel.updateCarMode(
-                                isConnectedCarDevice || receiverContext.isConnectedToCarAudio()
+                                tracker.update(
+                                        deviceId,
+                                        detector.isLikelyCarDevice(device),
+                                        connectionState
+                                )
                         )
                     }
                 }
@@ -211,7 +247,11 @@ fun HomeRoute(viewModel: HomeViewModel) {
                 IntentFilter(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED),
                 ContextCompat.RECEIVER_NOT_EXPORTED
         )
-        onDispose { context.unregisterReceiver(receiver) }
+        runCatching { adapter?.getProfileProxy(context, profileListener, BluetoothProfile.A2DP) }
+        onDispose {
+            context.unregisterReceiver(receiver)
+            a2dpProxy?.let { proxy -> adapter?.closeProfileProxy(BluetoothProfile.A2DP, proxy) }
+        }
     }
 
     HomeScreen(
@@ -629,11 +669,9 @@ private fun PermissionBanner(onRequestPermission: () -> Unit) {
 private fun android.content.Context.isConnectedToCarAudio(): Boolean {
     val bluetoothManager = getSystemService(BluetoothManager::class.java) ?: return false
     val adapter: BluetoothAdapter = bluetoothManager.adapter ?: return false
-    val detector = CarModeDetector()
     return runCatching {
                 adapter.getProfileConnectionState(BluetoothProfile.A2DP) ==
-                        BluetoothProfile.STATE_CONNECTED &&
-                        adapter.bondedDevices.any(detector::isLikelyCarDevice)
+                        BluetoothProfile.STATE_CONNECTED
             }
             .getOrDefault(false)
 }
@@ -645,3 +683,5 @@ private fun Intent.bluetoothDevice(): BluetoothDevice? =
         } else {
             getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
         }
+
+private fun BluetoothDevice.safeAddress(): String? = runCatching { address }.getOrNull()

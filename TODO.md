@@ -74,6 +74,7 @@
 	- [x] Update Car Mode when A2DP device connections change.
 - [ ] Add accessibility coverage: meaningful semantics, large-font testing, high-contrast behavior, keyboard navigation, and Compose UI tests.
 - [ ] Review the adaptive layouts on tablet, foldable, landscape, and square display configurations.
+	- [x] Keep Now Playing transport and seek controls accessible in short phone-landscape content using a two-pane layout and scrollable controls pane.
 - [ ] Prepare integration boundaries for notification controls, lock-screen controls, home-screen widgets, and Android Auto without implementing the surfaces yet.
 - [ ] Validate performance with a 50,000+ song library: pagination or bounded loading, indexed filtering/sorting, bounded artwork work, and measurable UI responsiveness.
 - [ ] Add explicit dependency-injection composition guidance or a lightweight DI solution once manual wiring no longer scales; keep UI, domain, and data dependencies directional.

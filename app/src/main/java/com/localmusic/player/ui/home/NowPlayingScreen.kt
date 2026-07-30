@@ -2,13 +2,17 @@ package com.localmusic.player.ui.home
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -66,87 +70,81 @@ internal fun NowPlayingContent(
         return
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         ArtworkBackdrop(artworkUri = uiState.artworkBySongId[song.id])
-        Column(
-                modifier = Modifier.fillMaxSize().padding(vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            androidx.compose.foundation.layout.Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+        val isWideLayout = maxWidth > maxHeight
+        if (isWideLayout) {
+            Row(
+                    modifier = Modifier.fillMaxSize().padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                IconButton(onClick = onReturnHome) { Text(Glyphs.HOME.glyph, fontSize = 26.sp) }
-                Text(
-                        text = "NOW PLAYING",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold
-                )
-                IconButton(onClick = { showMoreActions = true }) {
-                    Text(Glyphs.MORE.glyph, fontSize = 28.sp)
-                }
-            }
-            ArtworkThumbnail(
-                    artworkUri = uiState.artworkBySongId[song.id],
-                    visualizerLevels = uiState.visualizerLevels,
-                    isPlaying = uiState.isPlaying,
-                    allowVisualizerToggle = true,
-                    onVisualizerEnabledChange = onVisualizerEnabledChange,
-                    modifier =
-                            Modifier.fillMaxWidth()
-                                    .weight(1f, fill = false)
-                                    .aspectRatio(1f)
-                                    .clip(MaterialTheme.shapes.large)
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                        text = song.title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1
-                )
-                Text(
-                        text =
-                                listOf(song.artist, song.album)
-                                        .filter { it.isNotBlank() }
-                                        .joinToString(" • "),
-                        style = MaterialTheme.typography.bodyLarge,
-                        maxLines = 1
-                )
-            }
-            Slider(
-                    value = uiState.playbackProgress.coerceIn(0f, 1f),
-                    onValueChange = onProgressChange,
-                    modifier = Modifier.fillMaxWidth()
-            )
-            androidx.compose.foundation.layout.Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(formatPlaybackTime(elapsedMillis), style = MaterialTheme.typography.bodySmall)
-                Text(
-                        "-${formatPlaybackTime(remainingMillis)}",
-                        style = MaterialTheme.typography.bodySmall
-                )
-            }
-            androidx.compose.foundation.layout.Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                IconButton(onClick = onPrevious, modifier = Modifier.size(64.dp)) {
-                    Text(Glyphs.PLAYER_PREVIOUS.glyph, fontSize = 36.sp)
-                }
-                Button(onClick = onPlayPause, modifier = Modifier.size(72.dp)) {
-                    Text(
-                            text =
-                                    if (uiState.isPlaying) Glyphs.PLAYER_PAUSE.glyph
-                                    else Glyphs.PLAYER_PLAY.glyph,
-                            fontSize = 34.sp
+                Column(
+                        modifier = Modifier.weight(0.45f).fillMaxHeight(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    NowPlayingHeader(
+                            onReturnHome = onReturnHome,
+                            onShowMoreActions = { showMoreActions = true }
+                    )
+                    ArtworkThumbnail(
+                            artworkUri = uiState.artworkBySongId[song.id],
+                            visualizerLevels = uiState.visualizerLevels,
+                            isPlaying = uiState.isPlaying,
+                            allowVisualizerToggle = true,
+                            onVisualizerEnabledChange = onVisualizerEnabledChange,
+                            modifier =
+                                    Modifier.weight(1f)
+                                            .fillMaxWidth()
+                                            .aspectRatio(1f)
+                                            .clip(MaterialTheme.shapes.large)
                     )
                 }
-                IconButton(onClick = onNext, modifier = Modifier.size(64.dp)) {
-                    Text(Glyphs.PLAYER_NEXT.glyph, fontSize = 36.sp)
-                }
+                NowPlayingDetailsAndControls(
+                        uiState = uiState,
+                        song = song,
+                        elapsedMillis = elapsedMillis,
+                        remainingMillis = remainingMillis,
+                        onProgressChange = onProgressChange,
+                        onPrevious = onPrevious,
+                        onPlayPause = onPlayPause,
+                        onNext = onNext,
+                        modifier =
+                                Modifier.weight(0.55f)
+                                        .fillMaxHeight()
+                                        .verticalScroll(rememberScrollState())
+                )
+            }
+        } else {
+            Column(
+                    modifier = Modifier.fillMaxSize().padding(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                NowPlayingHeader(
+                        onReturnHome = onReturnHome,
+                        onShowMoreActions = { showMoreActions = true }
+                )
+                ArtworkThumbnail(
+                        artworkUri = uiState.artworkBySongId[song.id],
+                        visualizerLevels = uiState.visualizerLevels,
+                        isPlaying = uiState.isPlaying,
+                        allowVisualizerToggle = true,
+                        onVisualizerEnabledChange = onVisualizerEnabledChange,
+                        modifier =
+                                Modifier.fillMaxWidth()
+                                        .weight(1f, fill = false)
+                                        .aspectRatio(1f)
+                                        .clip(MaterialTheme.shapes.large)
+                )
+                NowPlayingDetailsAndControls(
+                        uiState = uiState,
+                        song = song,
+                        elapsedMillis = elapsedMillis,
+                        remainingMillis = remainingMillis,
+                        onProgressChange = onProgressChange,
+                        onPrevious = onPrevious,
+                        onPlayPause = onPlayPause,
+                        onNext = onNext
+                )
             }
         }
     }
@@ -260,6 +258,79 @@ internal fun NowPlayingContent(
                     showCreatePlaylistDialog = false
                 }
         )
+    }
+}
+
+@Composable
+private fun NowPlayingHeader(onReturnHome: () -> Unit, onShowMoreActions: () -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        IconButton(onClick = onReturnHome) { Text(Glyphs.HOME.glyph, fontSize = 26.sp) }
+        Text(
+                text = "NOW PLAYING",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold
+        )
+        IconButton(onClick = onShowMoreActions) { Text(Glyphs.MORE.glyph, fontSize = 28.sp) }
+    }
+}
+
+@Composable
+private fun NowPlayingDetailsAndControls(
+        uiState: HomeUiState,
+        song: Song,
+        elapsedMillis: Long,
+        remainingMillis: Long,
+        onProgressChange: (Float) -> Unit,
+        onPrevious: () -> Unit,
+        onPlayPause: () -> Unit,
+        onNext: () -> Unit,
+        modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                    text = song.title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1
+            )
+            Text(
+                    text =
+                            listOf(song.artist, song.album)
+                                    .filter { it.isNotBlank() }
+                                    .joinToString(" • "),
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1
+            )
+        }
+        Slider(
+                value = uiState.playbackProgress.coerceIn(0f, 1f),
+                onValueChange = onProgressChange,
+                modifier = Modifier.fillMaxWidth()
+        )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(formatPlaybackTime(elapsedMillis), style = MaterialTheme.typography.bodySmall)
+            Text(
+                    "-${formatPlaybackTime(remainingMillis)}",
+                    style = MaterialTheme.typography.bodySmall
+            )
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            IconButton(onClick = onPrevious, modifier = Modifier.size(64.dp)) {
+                Text(Glyphs.PLAYER_PREVIOUS.glyph, fontSize = 36.sp)
+            }
+            Button(onClick = onPlayPause, modifier = Modifier.size(72.dp)) {
+                Text(
+                        text =
+                                if (uiState.isPlaying) Glyphs.PLAYER_PAUSE.glyph
+                                else Glyphs.PLAYER_PLAY.glyph,
+                        fontSize = 34.sp
+                )
+            }
+            IconButton(onClick = onNext, modifier = Modifier.size(64.dp)) {
+                Text(Glyphs.PLAYER_NEXT.glyph, fontSize = 36.sp)
+            }
+        }
     }
 }
 
