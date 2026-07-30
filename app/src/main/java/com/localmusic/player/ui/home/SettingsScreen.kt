@@ -41,6 +41,7 @@ internal fun SettingsContent(
         onClearArtworkCache: () -> Unit,
         onDefaultFilterSelected: (LibraryFilter) -> Unit,
         onDefaultSortOrderSelected: (SortOrder) -> Unit,
+        onCarModeManuallyEnabledChange: (Boolean) -> Unit,
         onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit
 ) {
     var selectedLicenseNotice by remember { mutableStateOf<OpenSourceLicenseNotice?>(null) }
@@ -89,6 +90,22 @@ internal fun SettingsContent(
                 optionLabel = SortOrder::label,
                 onSelected = onDefaultSortOrderSelected
         )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(text = "Car Mode", style = MaterialTheme.typography.bodyLarge)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = "Enable Car Mode", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                        text =
+                                "Use simplified playback controls when driving. Bluetooth car detection can also enable this mode.",
+                        style = MaterialTheme.typography.bodySmall
+                )
+            }
+            Switch(
+                    checked = uiState.isCarModeManuallyEnabled,
+                    onCheckedChange = onCarModeManuallyEnabledChange
+            )
+        }
         Spacer(modifier = Modifier.height(16.dp))
         Text(text = "Artwork cache", style = MaterialTheme.typography.bodyLarge)
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

@@ -7,6 +7,7 @@
 - Added Settings artwork-cache size reporting and clearing, including thumbnail URI invalidation after a clear.
 - Added persisted Settings defaults for the initial library filter and sort order.
 - Added a Settings About section with the generated app version and scrollable open-source license notices.
+- Added a persisted Settings switch for manually enabling Car Mode alongside Bluetooth car-audio detection.
 - Added a generated adaptive launcher icon, converted from the committed SVG source during Android builds.
 - Created the initial Android Kotlin project scaffold.
 - Added Gradle Kotlin DSL configuration for Compose, Media3, Room, Coroutines, and tests.

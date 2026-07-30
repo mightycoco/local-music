@@ -29,6 +29,7 @@ data class HomeUiState(
         val artworkCacheSizeBytes: Long = 0L,
         val importedPlaylists: List<M3uPlaylist> = emptyList(),
         val isCarMode: Boolean = false,
+        val isCarModeManuallyEnabled: Boolean = false,
         val isRefreshing: Boolean = false,
         val refreshError: String? = null
 )

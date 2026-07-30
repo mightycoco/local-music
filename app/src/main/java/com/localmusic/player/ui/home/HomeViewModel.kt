@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.localmusic.player.artwork.ArtworkDiskCache
 import com.localmusic.player.artwork.ArtworkPreferences
 import com.localmusic.player.artwork.EmbeddedArtworkExtractor
+import com.localmusic.player.bluetooth.CarModePreferences
 import com.localmusic.player.domain.model.LibraryBrowser
 import com.localmusic.player.domain.model.LibraryFilter
 import com.localmusic.player.domain.model.SmartPlaylistRules
@@ -48,7 +49,8 @@ class HomeViewModel(
         private val artworkExtractor: EmbeddedArtworkExtractor? = null,
         private val artworkCache: ArtworkDiskCache? = null,
         private val artworkPreferences: ArtworkPreferences? = null,
-        private val libraryPreferences: LibraryPreferences? = null
+        private val libraryPreferences: LibraryPreferences? = null,
+        private val carModePreferences: CarModePreferences? = null
 ) : ViewModel() {
     private val selectedFilter =
             MutableStateFlow(libraryPreferences?.defaultFilter() ?: LibraryFilter.AllSongs)
@@ -71,7 +73,9 @@ class HomeViewModel(
     private val artworkCacheSizeBytes = MutableStateFlow(artworkCache?.sizeBytes() ?: 0L)
     private val isExternalArtworkDownloadEnabled =
             MutableStateFlow(artworkPreferences?.isExternalArtworkDownloadEnabled() ?: true)
-    private val isCarMode = MutableStateFlow(false)
+    private val isCarAudioDetected = MutableStateFlow(false)
+    private val isCarModeManuallyEnabled =
+            MutableStateFlow(carModePreferences?.isManuallyEnabled() ?: false)
     private val isRefreshing = MutableStateFlow(false)
     private val refreshError = MutableStateFlow<String?>(null)
     private val playlistCodec = M3uPlaylistCodec()
@@ -117,8 +121,18 @@ class HomeViewModel(
                 AppearanceState(mode, externalArtworkEnabled)
             }
 
+    private val carModeState =
+            combine(isCarAudioDetected, isCarModeManuallyEnabled) {
+                    carAudioDetected,
+                    manuallyEnabled ->
+                CarModeState(
+                        isEnabled = carAudioDetected || manuallyEnabled,
+                        isManuallyEnabled = manuallyEnabled
+                )
+            }
+
     private val statusState =
-            combine(importedPlaylists, isCarMode, appearanceState, isRefreshing, refreshError) {
+            combine(importedPlaylists, carModeState, appearanceState, isRefreshing, refreshError) {
                     playlists,
                     carMode,
                     appearance,
@@ -126,7 +140,8 @@ class HomeViewModel(
                     error ->
                 HomeUiState(
                         importedPlaylists = playlists,
-                        isCarMode = carMode,
+                        isCarMode = carMode.isEnabled,
+                        isCarModeManuallyEnabled = carMode.isManuallyEnabled,
                         themeMode = appearance.themeMode,
                         isExternalArtworkDownloadEnabled =
                                 appearance.isExternalArtworkDownloadEnabled,
@@ -622,7 +637,12 @@ class HomeViewModel(
     fun exportPlaylist(playlist: M3uPlaylist): String = playlistCodec.export(playlist)
 
     fun updateCarMode(enabled: Boolean) {
-        isCarMode.value = enabled
+        isCarAudioDetected.value = enabled
+    }
+
+    fun setCarModeManuallyEnabled(enabled: Boolean) {
+        carModePreferences?.setManuallyEnabled(enabled)
+        isCarModeManuallyEnabled.value = enabled
     }
 
     private fun List<Song>.applyLibraryProjection(state: HomeUiState): List<Song> =
@@ -707,6 +727,8 @@ private data class AppearanceState(
         val isExternalArtworkDownloadEnabled: Boolean
 )
 
+private data class CarModeState(val isEnabled: Boolean, val isManuallyEnabled: Boolean)
+
 private data class ProjectedSongs(val allSongs: List<Song>, val visibleSongs: List<Song>)
 
 private const val ARTWORK_PREFETCH_LIMIT = 64
@@ -725,7 +747,8 @@ class HomeViewModelFactory(
         private val artworkExtractor: EmbeddedArtworkExtractor? = null,
         private val artworkCache: ArtworkDiskCache? = null,
         private val artworkPreferences: ArtworkPreferences? = null,
-        private val libraryPreferences: LibraryPreferences? = null
+        private val libraryPreferences: LibraryPreferences? = null,
+        private val carModePreferences: CarModePreferences? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -742,7 +765,8 @@ class HomeViewModelFactory(
                 artworkExtractor,
                 artworkCache,
                 artworkPreferences,
-                libraryPreferences
+                libraryPreferences,
+                carModePreferences
         ) as
                 T
     }

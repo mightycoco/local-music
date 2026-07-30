@@ -239,6 +239,7 @@ fun HomeRoute(viewModel: HomeViewModel) {
             onClearArtworkCache = viewModel::clearArtworkCache,
             onDefaultFilterSelected = viewModel::setDefaultFilter,
             onDefaultSortOrderSelected = viewModel::setDefaultSortOrder,
+            onCarModeManuallyEnabledChange = viewModel::setCarModeManuallyEnabled,
             onExternalArtworkDownloadEnabledChange = viewModel::setExternalArtworkDownloadEnabled,
             onRequestPermission = {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -288,6 +289,7 @@ fun HomeScreen(
         onClearArtworkCache: () -> Unit,
         onDefaultFilterSelected: (LibraryFilter) -> Unit,
         onDefaultSortOrderSelected: (SortOrder) -> Unit,
+        onCarModeManuallyEnabledChange: (Boolean) -> Unit,
         onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit,
         onRequestPermission: () -> Unit
 ) {
@@ -514,6 +516,8 @@ fun HomeScreen(
                                         onClearArtworkCache = onClearArtworkCache,
                                         onDefaultFilterSelected = onDefaultFilterSelected,
                                         onDefaultSortOrderSelected = onDefaultSortOrderSelected,
+                                        onCarModeManuallyEnabledChange =
+                                                onCarModeManuallyEnabledChange,
                                         onExternalArtworkDownloadEnabledChange =
                                                 onExternalArtworkDownloadEnabledChange
                                 )
