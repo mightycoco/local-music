@@ -25,13 +25,25 @@ val generateAppIcon by tasks.registering {
         val viewportHeight = viewBox[3]
         val paths = svg.getElementsByTagName("path")
         require(paths.length > 0) { "App icon SVG must contain at least one path." }
+        val outerGroup = svg.getElementsByTagName("g").item(0) as? org.w3c.dom.Element
+        val outerGroupTransform = outerGroup?.getAttribute("transform").orEmpty()
+        val transformMatch =
+            Regex("translate\\(([-.\\d]+)[,\\s]+([-.\\d]+)\\)\\s*scale\\(([-.\\d]+)\\)")
+                .matchEntire(outerGroupTransform)
+        val vectorGroupOpen =
+            transformMatch?.let { match ->
+                "    <group android:translateX=\"${match.groupValues[1]}\" android:translateY=\"${match.groupValues[2]}\" android:scaleX=\"${match.groupValues[3]}\" android:scaleY=\"${match.groupValues[3]}\">"
+            }.orEmpty()
+        val vectorGroupClose = if (transformMatch != null) "\n    </group>" else ""
 
         val vectorPaths = buildString {
+            if (vectorGroupOpen.isNotEmpty()) appendLine(vectorGroupOpen)
             repeat(paths.length) { index ->
                 val path = paths.item(index) as org.w3c.dom.Element
                 val fillColor = path.getAttribute("fill").ifBlank { "#FFFFFFFF" }
-                appendLine("    <path android:fillColor=\"$fillColor\" android:pathData=\"${path.getAttribute("d")}\" />")
+                appendLine("        <path android:fillColor=\"$fillColor\" android:pathData=\"${path.getAttribute("d")}\" />")
             }
+            append(vectorGroupClose)
         }.trimEnd()
         val resourcesRoot = generatedIconResources.get().asFile
         val foregroundFile = File(resourcesRoot, "drawable/ic_launcher_foreground.xml")
