@@ -189,6 +189,7 @@ class HomeViewModel(
                 selection.copy(
                         importedPlaylists = status.importedPlaylists,
                         isCarMode = status.isCarMode,
+                    isCarModeManuallyEnabled = status.isCarModeManuallyEnabled,
                         themeMode = status.themeMode,
                         isExternalArtworkDownloadEnabled = status.isExternalArtworkDownloadEnabled,
                         isRefreshing = status.isRefreshing,

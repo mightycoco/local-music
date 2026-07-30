@@ -2,8 +2,13 @@ package com.localmusic.player.ui.home
 
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothA2dp
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
+import android.content.BroadcastReceiver
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.OpenableColumns
@@ -35,6 +40,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -96,6 +102,13 @@ fun HomeRoute(viewModel: HomeViewModel) {
                         PackageManager.PERMISSION_GRANTED
         )
     }
+    var hasBluetoothPermission by remember {
+        mutableStateOf(
+                Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+                        ContextCompat.checkSelfPermission(context, bluetoothPermission) ==
+                                PackageManager.PERMISSION_GRANTED
+        )
+    }
     val permissionLauncher =
             rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.RequestPermission()
@@ -106,7 +119,10 @@ fun HomeRoute(viewModel: HomeViewModel) {
     val bluetoothPermissionLauncher =
             rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.RequestPermission()
-            ) { granted -> if (granted) viewModel.updateCarMode(context.isConnectedToCarAudio()) }
+            ) { granted ->
+            hasBluetoothPermission = granted
+            if (granted) viewModel.updateCarMode(context.isConnectedToCarAudio())
+            }
     val folderLauncher =
             rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.OpenDocumentTree()
@@ -160,18 +176,42 @@ fun HomeRoute(viewModel: HomeViewModel) {
 
     LaunchedEffect(Unit) {
         yield()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val hasBluetoothPermission =
-                    ContextCompat.checkSelfPermission(context, bluetoothPermission) ==
-                            PackageManager.PERMISSION_GRANTED
-            if (hasBluetoothPermission) {
-                viewModel.updateCarMode(context.isConnectedToCarAudio())
-            } else {
-                bluetoothPermissionLauncher.launch(bluetoothPermission)
-            }
-        } else {
+        if (hasBluetoothPermission) {
             viewModel.updateCarMode(context.isConnectedToCarAudio())
+        } else {
+            bluetoothPermissionLauncher.launch(bluetoothPermission)
         }
+    }
+
+    DisposableEffect(context, hasBluetoothPermission) {
+        if (!hasBluetoothPermission) return@DisposableEffect onDispose {}
+
+        val receiver =
+                object : BroadcastReceiver() {
+                    override fun onReceive(receiverContext: android.content.Context, intent: Intent) {
+                        if (intent.action != BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED) return
+
+                        val connectionState =
+                                intent.getIntExtra(
+                                        BluetoothProfile.EXTRA_STATE,
+                                        BluetoothProfile.STATE_DISCONNECTED
+                                )
+                        val device = intent.bluetoothDevice()
+                        val isConnectedCarDevice =
+                                connectionState == BluetoothProfile.STATE_CONNECTED &&
+                                        CarModeDetector().isLikelyCarDevice(device)
+                        viewModel.updateCarMode(
+                                isConnectedCarDevice || receiverContext.isConnectedToCarAudio()
+                        )
+                    }
+                }
+        ContextCompat.registerReceiver(
+                context,
+                receiver,
+                IntentFilter(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED),
+                ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+        onDispose { context.unregisterReceiver(receiver) }
     }
 
     HomeScreen(
@@ -590,6 +630,18 @@ private fun android.content.Context.isConnectedToCarAudio(): Boolean {
     val bluetoothManager = getSystemService(BluetoothManager::class.java) ?: return false
     val adapter: BluetoothAdapter = bluetoothManager.adapter ?: return false
     val detector = CarModeDetector()
-    return runCatching { adapter.bondedDevices.any(detector::isLikelyCarDevice) }
+    return runCatching {
+                adapter.getProfileConnectionState(BluetoothProfile.A2DP) ==
+                        BluetoothProfile.STATE_CONNECTED &&
+                        adapter.bondedDevices.any(detector::isLikelyCarDevice)
+            }
             .getOrDefault(false)
 }
+
+@Suppress("DEPRECATION")
+private fun Intent.bluetoothDevice(): BluetoothDevice? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
+        } else {
+            getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+        }

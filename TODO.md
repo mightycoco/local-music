@@ -38,6 +38,7 @@
 - [x] Add album-art extraction, disk cache pruning, and UI image loading.
 - [ ] Complete Car Mode: observe A2DP connection changes, allow marking devices as cars, and apply driving-safe 80-96dp touch targets and simplified controls.
 	- [x] Persist an explicit user-controlled Car Mode override in Settings.
+	- [x] Observe A2DP connection changes while Bluetooth access is available.
 - [x] Complete Now Playing: shuffle, repeat, swipe navigation, a system equalizer entry point, elapsed/remaining time, favourites, and queue contents.
 - [x] The selection of the screen must be at the bottom (Home/Now Playing/Playlists/Favourites/Settings)
 - [x] The default setting for the theme must be "Follow System", other options are Dark, Light
@@ -70,6 +71,7 @@
 	- [x] Persist configurable default library filter and sort selections.
 	- [x] Show the application version and open-source license notices in Settings.
 	- [x] Persist a manual Car Mode override alongside Bluetooth detection.
+	- [x] Update Car Mode when A2DP device connections change.
 - [ ] Add accessibility coverage: meaningful semantics, large-font testing, high-contrast behavior, keyboard navigation, and Compose UI tests.
 - [ ] Review the adaptive layouts on tablet, foldable, landscape, and square display configurations.
 - [ ] Prepare integration boundaries for notification controls, lock-screen controls, home-screen widgets, and Android Auto without implementing the surfaces yet.
