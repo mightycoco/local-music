@@ -60,6 +60,7 @@ class HomeViewModel(
     private val searchQuery = MutableStateFlow("")
     private val selectedScreen = MutableStateFlow(HomeScreenDestination.Home)
     private val nowPlayingSongId = MutableStateFlow<String?>(null)
+    private val playbackQueueSongIds = MutableStateFlow<List<String>>(emptyList())
     private val isPlaying = MutableStateFlow(false)
     private val playbackProgress = MutableStateFlow(0f)
     private val playbackDurationMillis = MutableStateFlow(0L)
@@ -87,6 +88,7 @@ class HomeViewModel(
         viewModelScope.launch {
             startPlayback.observePlayback().collect { playback ->
                 nowPlayingSongId.value = playback.songId
+                playbackQueueSongIds.value = playback.queueSongIds
                 isPlaying.value = playback.isPlaying
                 playbackProgress.value = playback.progress
                 playbackDurationMillis.value = playback.durationMillis
@@ -164,19 +166,22 @@ class HomeViewModel(
     private val playbackState =
             combine(
                             nowPlayingSongId,
+                            playbackQueueSongIds,
                             isPlaying,
                             playbackProgress,
-                            playbackDurationMillis,
-                            visualizerLevels
-                    ) { songId, playing, progress, durationMillis, levels ->
+                            playbackDurationMillis
+                    ) { songId, queueSongIds, playing, progress, durationMillis ->
                 PlaybackState(
                         songId = songId,
+                        queueSongIds = queueSongIds,
                         isPlaying = playing,
                         progress = progress,
-                        durationMillis = durationMillis,
-                        visualizerLevels = levels
+                        durationMillis = durationMillis
                 )
             }
+                    .combine(visualizerLevels) { playback, levels ->
+                        playback.copy(visualizerLevels = levels)
+                    }
                     .combine(playbackModeState) { playback, playbackMode ->
                         playback.copy(
                                 isShuffleEnabled = playbackMode.isShuffleEnabled,
@@ -216,10 +221,13 @@ class HomeViewModel(
                             artwork,
                             playback ->
                         refreshArtwork(projected.visibleSongs.take(ARTWORK_PREFETCH_LIMIT))
-                        val nowPlaying = projected.allSongs.firstOrNull { it.id == playback.songId }
+                        val songsById = projected.allSongs.associateBy(Song::id)
+                        val nowPlaying = songsById[playback.songId]
                         state.copy(
                                 songs = projected.visibleSongs,
                                 nowPlayingSong = nowPlaying,
+                                playbackQueue =
+                                        resolvePlaybackQueue(playback.queueSongIds, songsById),
                                 isPlaying = nowPlaying != null && playback.isPlaying,
                                 playbackProgress = playback.progress,
                                 playbackDurationMillis = playback.durationMillis,
@@ -340,6 +348,7 @@ class HomeViewModel(
 
     private fun playSongs(queue: List<Song>, startSong: Song) {
         nowPlayingSongId.value = startSong.id
+        playbackQueueSongIds.value = queue.map(Song::id)
         isPlaying.value = true
         playbackProgress.value = 0f
         playbackDurationMillis.value = 0L
@@ -713,10 +722,11 @@ class HomeViewModel(
 
 private data class PlaybackState(
         val songId: String?,
+        val queueSongIds: List<String>,
         val isPlaying: Boolean,
         val progress: Float,
         val durationMillis: Long,
-        val visualizerLevels: List<Float>,
+        val visualizerLevels: List<Float> = emptyList(),
         val isShuffleEnabled: Boolean = false,
         val repeatMode: RepeatMode = RepeatMode.Off
 )
@@ -731,6 +741,11 @@ private data class AppearanceState(
 private data class CarModeState(val isEnabled: Boolean, val isManuallyEnabled: Boolean)
 
 private data class ProjectedSongs(val allSongs: List<Song>, val visibleSongs: List<Song>)
+
+internal fun resolvePlaybackQueue(
+        queueSongIds: List<String>,
+        songsById: Map<String, Song>
+): List<Song> = queueSongIds.mapNotNull(songsById::get)
 
 private const val ARTWORK_PREFETCH_LIMIT = 64
 private const val EXTERNAL_ARTWORK_PREFETCH_LIMIT = 4

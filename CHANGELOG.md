@@ -65,3 +65,4 @@
 - Redesigned Now Playing as an artwork-led player with simplified primary transport controls and an overflow sheet for favourite, shuffle, repeat, queue, and playlist actions.
 - Added an optional audio-reactive waveform fallback for tracks without album artwork using Media3 PCM processing, without requiring recording permission.
 - Kept Now Playing seek and transport controls accessible in short landscape windows with a two-pane layout and scrollable controls pane.
+- Added the active Media3 playlist below Now Playing controls and automatically position it at the current song when the screen appears or playback advances.

@@ -155,6 +155,7 @@ class Media3PlaybackController(
     ): PlaybackSnapshot =
             PlaybackSnapshot(
                     songId = currentMediaItem?.mediaId,
+                    queueSongIds = List(mediaItemCount) { index -> getMediaItemAt(index).mediaId },
                     isPlaying = isPlaying,
                     positionMillis = currentPosition.coerceAtLeast(0L),
                     durationMillis = duration.takeIf { it > 0L } ?: 0L,

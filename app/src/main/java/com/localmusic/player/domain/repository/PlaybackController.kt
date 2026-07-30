@@ -25,6 +25,7 @@ enum class RepeatMode {
 
 data class PlaybackSnapshot(
         val songId: String? = null,
+        val queueSongIds: List<String> = emptyList(),
         val isPlaying: Boolean = false,
         val positionMillis: Long = 0L,
         val durationMillis: Long = 0L,

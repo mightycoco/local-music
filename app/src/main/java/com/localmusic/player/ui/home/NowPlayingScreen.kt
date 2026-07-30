@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -11,8 +12,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -24,6 +26,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -99,20 +102,27 @@ internal fun NowPlayingContent(
                                             .clip(MaterialTheme.shapes.large)
                     )
                 }
-                NowPlayingDetailsAndControls(
-                        uiState = uiState,
-                        song = song,
-                        elapsedMillis = elapsedMillis,
-                        remainingMillis = remainingMillis,
-                        onProgressChange = onProgressChange,
-                        onPrevious = onPrevious,
-                        onPlayPause = onPlayPause,
-                        onNext = onNext,
-                        modifier =
-                                Modifier.weight(0.55f)
-                                        .fillMaxHeight()
-                                        .verticalScroll(rememberScrollState())
-                )
+                Column(
+                        modifier = Modifier.weight(0.55f).fillMaxHeight(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    NowPlayingDetailsAndControls(
+                            uiState = uiState,
+                            song = song,
+                            elapsedMillis = elapsedMillis,
+                            remainingMillis = remainingMillis,
+                            onProgressChange = onProgressChange,
+                            onPrevious = onPrevious,
+                            onPlayPause = onPlayPause,
+                            onNext = onNext
+                    )
+                    CurrentPlaylist(
+                            songs = uiState.playbackQueue,
+                            artworkBySongId = uiState.artworkBySongId,
+                            nowPlayingSongId = song.id,
+                            modifier = Modifier.weight(1f)
+                    )
+                }
             }
         } else {
             Column(
@@ -144,6 +154,12 @@ internal fun NowPlayingContent(
                         onPrevious = onPrevious,
                         onPlayPause = onPlayPause,
                         onNext = onNext
+                )
+                CurrentPlaylist(
+                        songs = uiState.playbackQueue,
+                        artworkBySongId = uiState.artworkBySongId,
+                        nowPlayingSongId = song.id,
+                        modifier = Modifier.weight(1f)
                 )
             }
         }
@@ -329,6 +345,68 @@ private fun NowPlayingDetailsAndControls(
             }
             IconButton(onClick = onNext, modifier = Modifier.size(64.dp)) {
                 Text(Glyphs.PLAYER_NEXT.glyph, fontSize = 36.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CurrentPlaylist(
+        songs: List<Song>,
+        artworkBySongId: Map<String, String>,
+        nowPlayingSongId: String,
+        modifier: Modifier = Modifier
+) {
+    val listState = rememberLazyListState()
+    val currentSongIndex = songs.indexOfFirst { it.id == nowPlayingSongId }
+
+    LaunchedEffect(nowPlayingSongId, songs) {
+        if (currentSongIndex >= 0) listState.scrollToItem(currentSongIndex)
+    }
+
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+                text = "Current playlist",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+        )
+        if (songs.isEmpty()) {
+            Text("The active playlist is empty.", style = MaterialTheme.typography.bodyMedium)
+        } else {
+            LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                items(items = songs, key = { it.id }) { queueSong ->
+                    ListItem(
+                            leadingContent = {
+                                ArtworkThumbnail(
+                                        artworkUri = artworkBySongId[queueSong.id],
+                                        modifier = Modifier.size(48.dp)
+                                )
+                            },
+                            headlineContent = {
+                                Text(
+                                        text =
+                                                if (queueSong.id == nowPlayingSongId) {
+                                                    "${Glyphs.PLAYINGINDICATOR.glyph} ${queueSong.title}"
+                                                } else {
+                                                    queueSong.title
+                                                },
+                                        maxLines = 1
+                                )
+                            },
+                            supportingContent = {
+                                Text(
+                                        text = queueSong.artist,
+                                        maxLines = 1,
+                                        style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                    )
+                }
             }
         }
     }

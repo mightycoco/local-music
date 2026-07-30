@@ -13,6 +13,7 @@ data class HomeUiState(
         val artworkBySongId: Map<String, String> = emptyMap(),
         val selectedScreen: HomeScreenDestination = HomeScreenDestination.Home,
         val nowPlayingSong: Song? = null,
+        val playbackQueue: List<Song> = emptyList(),
         val isPlaying: Boolean = false,
         val playbackProgress: Float = 0f,
         val playbackDurationMillis: Long = 0L,
