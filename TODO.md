@@ -67,6 +67,7 @@
 	- [x] Manage selected local folders from Settings, including removal and persisted URI permission release.
 	- [x] Show the artwork cache size and clear cached artwork from Settings.
 	- [x] Persist configurable default library filter and sort selections.
+	- [x] Show the application version and open-source license notices in Settings.
 - [ ] Add accessibility coverage: meaningful semantics, large-font testing, high-contrast behavior, keyboard navigation, and Compose UI tests.
 - [ ] Review the adaptive layouts on tablet, foldable, landscape, and square display configurations.
 - [ ] Prepare integration boundaries for notification controls, lock-screen controls, home-screen widgets, and Android Auto without implementing the surfaces yet.

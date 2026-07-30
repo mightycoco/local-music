@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -23,8 +26,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.localmusic.player.BuildConfig
 import com.localmusic.player.domain.model.LibraryFilter
 import com.localmusic.player.domain.model.SortOrder
+import com.localmusic.player.settings.OpenSourceLicenseNotice
+import com.localmusic.player.settings.OpenSourceLicenses
 import com.localmusic.player.ui.theme.AppThemeMode
 
 @Composable
@@ -37,8 +43,9 @@ internal fun SettingsContent(
         onDefaultSortOrderSelected: (SortOrder) -> Unit,
         onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit
 ) {
+    var selectedLicenseNotice by remember { mutableStateOf<OpenSourceLicenseNotice?>(null) }
     Column(
-            modifier = Modifier.padding(top = 24.dp),
+            modifier = Modifier.padding(top = 24.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(text = "Settings", style = MaterialTheme.typography.headlineSmall)
@@ -118,7 +125,38 @@ internal fun SettingsContent(
                 }
             }
         }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(text = "About", style = MaterialTheme.typography.bodyLarge)
+        Text(
+                text = "Local Music ${BuildConfig.VERSION_NAME}",
+                style = MaterialTheme.typography.bodySmall
+        )
+        OutlinedButton(onClick = { selectedLicenseNotice = OpenSourceLicenses.notices.first() }) {
+            Text("Open source licenses")
+        }
     }
+
+    selectedLicenseNotice?.let { notice ->
+        LicenseNoticeDialog(notice = notice, onDismiss = { selectedLicenseNotice = null })
+    }
+}
+
+@Composable
+private fun LicenseNoticeDialog(notice: OpenSourceLicenseNotice, onDismiss: () -> Unit) {
+    AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(notice.name) },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text(notice.copyright, style = MaterialTheme.typography.bodySmall)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(notice.licenseName, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(notice.licenseText, style = MaterialTheme.typography.bodySmall)
+                }
+            },
+            confirmButton = { OutlinedButton(onClick = onDismiss) { Text("Close") } }
+    )
 }
 
 @Composable

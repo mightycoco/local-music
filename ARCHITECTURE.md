@@ -45,6 +45,8 @@ Artwork settings are isolated in `ArtworkPreferences`, a small SharedPreferences
 
 Library startup defaults are isolated in `LibraryPreferences`, another small SharedPreferences-backed boundary. It persists explicit Settings choices for the default library filter and sort order, restores them when `HomeViewModel` is created, and falls back to the built-in values when stored enum data is missing or invalid.
 
+Settings renders application version information from generated `BuildConfig` data and reads bundled third-party notices from the focused `OpenSourceLicenses` registry. This static information remains outside the ViewModel because it neither changes user state nor accesses storage or media APIs.
+
 Smart library filters remain pure domain rules applied by the Home ViewModel projection. Never Played uses persisted play counts, while Last 30 Days uses persisted playback timestamps, keeping filter behavior independent of Compose and straightforward to unit test.
 
 Car Mode detection remains a focused Bluetooth service. The UI requests `BLUETOOTH_CONNECT` when required, reads bonded devices only after permission is available, and reflects likely car-audio state through `HomeUiState`.
