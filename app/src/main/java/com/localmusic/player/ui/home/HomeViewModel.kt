@@ -23,6 +23,7 @@ import com.localmusic.player.playlist.M3uPlaylistCodec
 import com.localmusic.player.playlist.PlaylistStore
 import com.localmusic.player.playlist.toM3uEntry
 import com.localmusic.player.playlist.withQueueFirst
+import com.localmusic.player.settings.LibraryPreferences
 import com.localmusic.player.ui.theme.AppThemeMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,11 +47,14 @@ class HomeViewModel(
         private val playlistStore: PlaylistStore? = null,
         private val artworkExtractor: EmbeddedArtworkExtractor? = null,
         private val artworkCache: ArtworkDiskCache? = null,
-        private val artworkPreferences: ArtworkPreferences? = null
+        private val artworkPreferences: ArtworkPreferences? = null,
+        private val libraryPreferences: LibraryPreferences? = null
 ) : ViewModel() {
-    private val selectedFilter = MutableStateFlow(LibraryFilter.AllSongs)
+    private val selectedFilter =
+            MutableStateFlow(libraryPreferences?.defaultFilter() ?: LibraryFilter.AllSongs)
     private val selectedBrowseValue = MutableStateFlow<String?>(null)
-    private val sortOrder = MutableStateFlow(SortOrder.NewestAdded)
+    private val sortOrder =
+            MutableStateFlow(libraryPreferences?.defaultSortOrder() ?: SortOrder.NewestAdded)
     private val searchQuery = MutableStateFlow("")
     private val selectedScreen = MutableStateFlow(HomeScreenDestination.Home)
     private val nowPlayingSongId = MutableStateFlow<String?>(null)
@@ -226,6 +230,16 @@ class HomeViewModel(
 
     fun selectSortOrder(order: SortOrder) {
         sortOrder.value = order
+    }
+
+    fun setDefaultFilter(filter: LibraryFilter) {
+        libraryPreferences?.setDefaultFilter(filter)
+        selectFilter(filter)
+    }
+
+    fun setDefaultSortOrder(order: SortOrder) {
+        libraryPreferences?.setDefaultSortOrder(order)
+        selectSortOrder(order)
     }
 
     fun updateSearchQuery(query: String) {
@@ -710,7 +724,8 @@ class HomeViewModelFactory(
         private val playlistStore: PlaylistStore? = null,
         private val artworkExtractor: EmbeddedArtworkExtractor? = null,
         private val artworkCache: ArtworkDiskCache? = null,
-        private val artworkPreferences: ArtworkPreferences? = null
+        private val artworkPreferences: ArtworkPreferences? = null,
+        private val libraryPreferences: LibraryPreferences? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -726,7 +741,8 @@ class HomeViewModelFactory(
                 playlistStore,
                 artworkExtractor,
                 artworkCache,
-                artworkPreferences
+                artworkPreferences,
+                libraryPreferences
         ) as
                 T
     }

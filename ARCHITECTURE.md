@@ -43,6 +43,8 @@ Artwork extraction is handled by a focused Android service that uses `MediaMetad
 
 Artwork settings are isolated in `ArtworkPreferences`, a small SharedPreferences-backed boundary. The external-artwork preference defaults to enabled and gates only an optional MusicBrainz and Cover Art Archive metadata lookup after embedded art, `folder.jpg`, `cover.jpg`, and a previously downloaded image fail. Local artwork is resolved before any network request and published before optional downloads begin. Successful online artwork bytes are stored in app-private persistent storage so they remain available after restarting; requests are rate-limited and never provide audio playback or a cloud library.
 
+Library startup defaults are isolated in `LibraryPreferences`, another small SharedPreferences-backed boundary. It persists explicit Settings choices for the default library filter and sort order, restores them when `HomeViewModel` is created, and falls back to the built-in values when stored enum data is missing or invalid.
+
 Smart library filters remain pure domain rules applied by the Home ViewModel projection. Never Played uses persisted play counts, while Last 30 Days uses persisted playback timestamps, keeping filter behavior independent of Compose and straightforward to unit test.
 
 Car Mode detection remains a focused Bluetooth service. The UI requests `BLUETOOTH_CONNECT` when required, reads bonded devices only after permission is available, and reflects likely car-audio state through `HomeUiState`.

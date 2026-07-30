@@ -28,6 +28,7 @@ import com.localmusic.player.domain.usecase.SetFavouriteUseCase
 import com.localmusic.player.domain.usecase.StartPlaybackUseCase
 import com.localmusic.player.playback.Media3PlaybackController
 import com.localmusic.player.playlist.SharedPreferencesPlaylistStore
+import com.localmusic.player.settings.LibraryPreferences
 import com.localmusic.player.ui.home.HomeRoute
 import com.localmusic.player.ui.home.HomeViewModel
 import com.localmusic.player.ui.home.HomeViewModelFactory
@@ -95,6 +96,10 @@ class MainActivity : ComponentActivity() {
                         artworkPreferences =
                                 ArtworkPreferences(
                                         getSharedPreferences("local-music-artwork", MODE_PRIVATE)
+                                ),
+                        libraryPreferences =
+                                LibraryPreferences(
+                                        getSharedPreferences("local-music-library", MODE_PRIVATE)
                                 )
                 )
 

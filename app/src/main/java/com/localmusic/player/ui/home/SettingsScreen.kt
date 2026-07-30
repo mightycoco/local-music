@@ -1,6 +1,7 @@
 package com.localmusic.player.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,13 +10,21 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.localmusic.player.domain.model.LibraryFilter
+import com.localmusic.player.domain.model.SortOrder
 import com.localmusic.player.ui.theme.AppThemeMode
 
 @Composable
@@ -24,6 +33,8 @@ internal fun SettingsContent(
         onThemeSelected: (AppThemeMode) -> Unit,
         onRemoveFolderSource: (String) -> Unit,
         onClearArtworkCache: () -> Unit,
+        onDefaultFilterSelected: (LibraryFilter) -> Unit,
+        onDefaultSortOrderSelected: (SortOrder) -> Unit,
         onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit
 ) {
     Column(
@@ -55,6 +66,22 @@ internal fun SettingsContent(
                     onCheckedChange = onExternalArtworkDownloadEnabledChange
             )
         }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(text = "Library defaults", style = MaterialTheme.typography.bodyLarge)
+        LibraryDefaultMenu(
+                label = "Filter",
+                selectedLabel = uiState.selectedFilter.label,
+                options = LibraryFilter.entries,
+                optionLabel = LibraryFilter::label,
+                onSelected = onDefaultFilterSelected
+        )
+        LibraryDefaultMenu(
+                label = "Sort order",
+                selectedLabel = uiState.sortOrder.label,
+                options = SortOrder.entries,
+                optionLabel = SortOrder::label,
+                onSelected = onDefaultSortOrderSelected
+        )
         Spacer(modifier = Modifier.height(16.dp))
         Text(text = "Artwork cache", style = MaterialTheme.typography.bodyLarge)
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -89,6 +116,31 @@ internal fun SettingsContent(
                     Spacer(modifier = Modifier.width(8.dp))
                     OutlinedButton(onClick = { onRemoveFolderSource(folderUri) }) { Text("Remove") }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun <T> LibraryDefaultMenu(
+        label: String,
+        selectedLabel: String,
+        options: List<T>,
+        optionLabel: (T) -> String,
+        onSelected: (T) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        OutlinedButton(onClick = { expanded = true }) { Text("$label: $selectedLabel") }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                        text = { Text(optionLabel(option)) },
+                        onClick = {
+                            expanded = false
+                            onSelected(option)
+                        }
+                )
             }
         }
     }

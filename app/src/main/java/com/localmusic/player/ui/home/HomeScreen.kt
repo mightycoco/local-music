@@ -237,6 +237,8 @@ fun HomeRoute(viewModel: HomeViewModel) {
             onVisualizerEnabledChange = viewModel::setVisualizerEnabled,
             onThemeSelected = viewModel::selectThemeMode,
             onClearArtworkCache = viewModel::clearArtworkCache,
+            onDefaultFilterSelected = viewModel::setDefaultFilter,
+            onDefaultSortOrderSelected = viewModel::setDefaultSortOrder,
             onExternalArtworkDownloadEnabledChange = viewModel::setExternalArtworkDownloadEnabled,
             onRequestPermission = {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -284,6 +286,8 @@ fun HomeScreen(
         onVisualizerEnabledChange: (Boolean) -> Unit,
         onThemeSelected: (AppThemeMode) -> Unit,
         onClearArtworkCache: () -> Unit,
+        onDefaultFilterSelected: (LibraryFilter) -> Unit,
+        onDefaultSortOrderSelected: (SortOrder) -> Unit,
         onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit,
         onRequestPermission: () -> Unit
 ) {
@@ -508,6 +512,8 @@ fun HomeScreen(
                                         onThemeSelected = onThemeSelected,
                                         onRemoveFolderSource = onRemoveFolderSource,
                                         onClearArtworkCache = onClearArtworkCache,
+                                        onDefaultFilterSelected = onDefaultFilterSelected,
+                                        onDefaultSortOrderSelected = onDefaultSortOrderSelected,
                                         onExternalArtworkDownloadEnabledChange =
                                                 onExternalArtworkDownloadEnabledChange
                                 )
