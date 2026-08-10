@@ -51,6 +51,19 @@ Create a debug APK:
 gradlew.bat assembleDebug
 ```
 
+Start the configured Android emulator:
+
+```cmd
+start-emulator.cmd
+```
+
+The launcher performs a cold boot and skips the saved Quick Boot snapshot. To reset the AVD to
+its factory state, removing installed apps, settings, and emulator data, run:
+
+```cmd
+start-emulator.cmd /wipe
+```
+
 Output:
 
 ```text

@@ -65,6 +65,7 @@ internal fun NowPlayingContent(
     var showPlaylistChooser by remember { mutableStateOf(false) }
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
     var showMoreActions by remember { mutableStateOf(false) }
+    var isPreviousCoverTransition by remember { mutableStateOf(false) }
     if (song == null) {
         EmptyState(
                 title = "Nothing playing",
@@ -89,11 +90,20 @@ internal fun NowPlayingContent(
                             onReturnHome = onReturnHome,
                             onShowMoreActions = { showMoreActions = true }
                     )
-                    ArtworkThumbnail(
+                    AnimatedNowPlayingArtwork(
+                            song = song,
                             artworkUri = uiState.artworkBySongId[song.id],
                             visualizerLevels = uiState.visualizerLevels,
                             isPlaying = uiState.isPlaying,
-                            allowVisualizerToggle = true,
+                            isPreviousTransition = isPreviousCoverTransition,
+                            onPrevious = {
+                                isPreviousCoverTransition = true
+                                onPrevious()
+                            },
+                            onNext = {
+                                isPreviousCoverTransition = false
+                                onNext()
+                            },
                             onVisualizerEnabledChange = onVisualizerEnabledChange,
                             modifier =
                                     Modifier.weight(1f)
@@ -112,9 +122,15 @@ internal fun NowPlayingContent(
                             elapsedMillis = elapsedMillis,
                             remainingMillis = remainingMillis,
                             onProgressChange = onProgressChange,
-                            onPrevious = onPrevious,
+                            onPrevious = {
+                                isPreviousCoverTransition = true
+                                onPrevious()
+                            },
                             onPlayPause = onPlayPause,
-                            onNext = onNext
+                            onNext = {
+                                isPreviousCoverTransition = false
+                                onNext()
+                            }
                     )
                     CurrentPlaylist(
                             songs = uiState.playbackQueue,
@@ -134,11 +150,20 @@ internal fun NowPlayingContent(
                         onReturnHome = onReturnHome,
                         onShowMoreActions = { showMoreActions = true }
                 )
-                ArtworkThumbnail(
+                AnimatedNowPlayingArtwork(
+                        song = song,
                         artworkUri = uiState.artworkBySongId[song.id],
                         visualizerLevels = uiState.visualizerLevels,
                         isPlaying = uiState.isPlaying,
-                        allowVisualizerToggle = true,
+                        isPreviousTransition = isPreviousCoverTransition,
+                        onPrevious = {
+                            isPreviousCoverTransition = true
+                            onPrevious()
+                        },
+                        onNext = {
+                            isPreviousCoverTransition = false
+                            onNext()
+                        },
                         onVisualizerEnabledChange = onVisualizerEnabledChange,
                         modifier =
                                 Modifier.fillMaxWidth()
@@ -152,9 +177,15 @@ internal fun NowPlayingContent(
                         elapsedMillis = elapsedMillis,
                         remainingMillis = remainingMillis,
                         onProgressChange = onProgressChange,
-                        onPrevious = onPrevious,
+                        onPrevious = {
+                            isPreviousCoverTransition = true
+                            onPrevious()
+                        },
                         onPlayPause = onPlayPause,
-                        onNext = onNext
+                        onNext = {
+                            isPreviousCoverTransition = false
+                            onNext()
+                        }
                 )
                 CurrentPlaylist(
                         songs = uiState.playbackQueue,
