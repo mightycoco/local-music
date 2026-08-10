@@ -2,6 +2,7 @@
 
 ## 0.1.0 - Unreleased
 
+- Normalized the Now Playing queue display so the current song is first and duplicate items are hidden.
 - Made Now Playing queue items selectable and added favourite toggles to their rows.
 - Starting a song from Favourites now replaces the active and persisted Queue playlist with all starred songs.
 - Added an overlaid favourite toggle to the bottom-right of the Now Playing cover artwork.

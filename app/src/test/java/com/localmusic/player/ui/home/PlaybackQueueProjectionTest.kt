@@ -6,17 +6,20 @@ import org.junit.Test
 
 class PlaybackQueueProjectionTest {
     @Test
-    fun resolvesAvailableSongsInPlaybackOrder() {
+    fun resolvesUniqueAvailableSongsWithCurrentSongFirst() {
         val first = testSong("song-1")
         val second = testSong("song-2")
+        val third = testSong("song-3")
 
         val result =
                 resolvePlaybackQueue(
-                        queueSongIds = listOf(second.id, "missing-song", first.id),
-                        songsById = listOf(first, second).associateBy(Song::id)
+                        queueSongIds =
+                                listOf(first.id, second.id, first.id, "missing-song", third.id),
+                        nowPlayingSongId = second.id,
+                        songsById = listOf(first, second, third).associateBy(Song::id)
                 )
 
-        assertEquals(listOf(second, first), result)
+        assertEquals(listOf(second, first, third), result)
     }
 
     private fun testSong(id: String): Song =

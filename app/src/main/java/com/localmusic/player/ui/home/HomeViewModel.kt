@@ -234,7 +234,11 @@ class HomeViewModel(
                                 songs = projected.visibleSongs,
                                 nowPlayingSong = nowPlaying,
                                 playbackQueue =
-                                        resolvePlaybackQueue(playback.queueSongIds, songsById),
+                                        resolvePlaybackQueue(
+                                                queueSongIds = playback.queueSongIds,
+                                                nowPlayingSongId = playback.songId,
+                                                songsById = songsById
+                                        ),
                                 isPlaying = nowPlaying != null && playback.isPlaying,
                                 playbackProgress = playback.progress,
                                 playbackDurationMillis = playback.durationMillis,
@@ -777,8 +781,18 @@ private data class ProjectedSongs(val allSongs: List<Song>, val visibleSongs: Li
 
 internal fun resolvePlaybackQueue(
         queueSongIds: List<String>,
+        nowPlayingSongId: String?,
         songsById: Map<String, Song>
-): List<Song> = queueSongIds.mapNotNull(songsById::get)
+): List<Song> {
+    val orderedIds =
+            if (nowPlayingSongId != null && nowPlayingSongId in queueSongIds) {
+                listOf(nowPlayingSongId) + queueSongIds.filterNot { it == nowPlayingSongId }
+            } else {
+                queueSongIds
+            }
+
+    return orderedIds.distinct().mapNotNull(songsById::get)
+}
 
 private const val ARTWORK_PREFETCH_LIMIT = 64
 private const val EXTERNAL_ARTWORK_PREFETCH_LIMIT = 4
