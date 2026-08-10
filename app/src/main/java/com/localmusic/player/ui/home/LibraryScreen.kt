@@ -21,7 +21,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ListItem
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -54,8 +53,6 @@ internal fun LibraryContent(
         onBrowseValueSelected: (String?) -> Unit,
         onSortSelected: (SortOrder) -> Unit,
         onAddFolderSource: () -> Unit,
-        onImportPlaylist: () -> Unit,
-        onExportPlaylist: () -> Unit,
         onSongSelected: (Song) -> Unit,
         onFavouriteToggle: (Song) -> Unit,
         onCreatePlaylist: (String) -> Unit,
@@ -70,26 +67,14 @@ internal fun LibraryContent(
             label = { Text("Search") }
     )
     Spacer(modifier = Modifier.height(12.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    if (uiState.songs.isEmpty()) {
         Button(onClick = onAddFolderSource) { Text("Add Folder") }
-        Button(onClick = onImportPlaylist) { Text("Import M3U") }
-        Button(onClick = onExportPlaylist) { Text("Export M3U") }
+        Spacer(modifier = Modifier.height(12.dp))
     }
-    Spacer(modifier = Modifier.height(12.dp))
     FilterRow(uiState, onFilterSelected)
     Spacer(modifier = Modifier.height(12.dp))
     Row(modifier = Modifier.fillMaxWidth()) {
-        if (uiState.importedPlaylists.isNotEmpty()) {
-            Text(
-                    text =
-                            "Imported playlists: ${uiState.importedPlaylists.joinToString { it.name }}",
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1
-            )
-        } else {
-            Spacer(modifier = Modifier.weight(1f))
-        }
+        Spacer(modifier = Modifier.weight(1f))
         SortOrderDropdown(selectedSortOrder = uiState.sortOrder, onSortSelected = onSortSelected)
     }
     Spacer(modifier = Modifier.height(12.dp))

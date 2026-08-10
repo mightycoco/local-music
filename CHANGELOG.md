@@ -2,6 +2,7 @@
 
 ## 0.1.0 - Unreleased
 
+- Moved folder selection and global M3U actions to their respective Home, Settings, and Playlists screens.
 - Added a persisted Settings preference to show the Now Playing visualizer instead of available cover artwork.
 - Tuned visualizer response to suppress low-level bars while retaining full-height peaks.
 - Added directional cover-art transitions and cover-only swipe transport controls to Now Playing.

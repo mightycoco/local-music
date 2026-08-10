@@ -53,6 +53,8 @@ internal fun PlaylistContent(
         onRenamePlaylist: (M3uPlaylist, String) -> Unit,
         onDuplicatePlaylist: (M3uPlaylist, String) -> Unit,
         onPlayPlaylist: (M3uPlaylist) -> Unit,
+        onImportPlaylist: () -> Unit,
+        onExportLibrary: () -> Unit,
         onExportPlaylist: (M3uPlaylist) -> Unit,
         onClearQueue: () -> Unit,
         onOpenPlaylistEditor: (M3uPlaylist) -> Unit
@@ -60,80 +62,86 @@ internal fun PlaylistContent(
     var playlistToRename by remember { mutableStateOf<M3uPlaylist?>(null) }
     var playlistToDuplicate by remember { mutableStateOf<M3uPlaylist?>(null) }
 
-    if (uiState.importedPlaylists.isEmpty()) {
-        EmptyState(
-                title = "No playlists imported",
-                message = "Use Import M3U on Home to add local playlist files."
-        )
-        return
-    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = onImportPlaylist) { Text("Import M3U") }
+            Button(onClick = onExportLibrary) { Text("Export M3U") }
+        }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(uiState.importedPlaylists) { playlist ->
-            var showActions by remember(playlist.name) { mutableStateOf(false) }
-            ListItem(
-                    modifier = Modifier.clickable { onOpenPlaylistEditor(playlist) },
-                    headlineContent = { Text(playlist.name) },
-                    supportingContent = { Text("${playlist.entries.size} entries") },
-                    trailingContent = {
-                        Box {
-                            IconButton(onClick = { showActions = true }) {
-                                Text(Glyphs.MORE.glyph, fontSize = 24.sp)
-                            }
-                            DropdownMenu(
-                                    expanded = showActions,
-                                    onDismissRequest = { showActions = false }
-                            ) {
-                                if (playlist.name == M3uPlaylist.QUEUE_NAME) {
-                                    DropdownMenuItem(
-                                            text = { Text("Clear") },
-                                            onClick = {
-                                                onClearQueue()
-                                                showActions = false
-                                            }
-                                    )
-                                } else {
-                                    DropdownMenuItem(
-                                            text = { Text("Play") },
-                                            enabled = playlist.entries.isNotEmpty(),
-                                            onClick = {
-                                                onPlayPlaylist(playlist)
-                                                showActions = false
-                                            }
-                                    )
-                                    DropdownMenuItem(
-                                            text = { Text("Rename") },
-                                            onClick = {
-                                                playlistToRename = playlist
-                                                showActions = false
-                                            }
-                                    )
-                                    DropdownMenuItem(
-                                            text = { Text("Duplicate") },
-                                            onClick = {
-                                                playlistToDuplicate = playlist
-                                                showActions = false
-                                            }
-                                    )
-                                    DropdownMenuItem(
-                                            text = { Text("Export") },
-                                            onClick = {
-                                                onExportPlaylist(playlist)
-                                                showActions = false
-                                            }
-                                    )
-                                    DropdownMenuItem(
-                                            text = { Text("Delete") },
-                                            onClick = {
-                                                onDeletePlaylist(playlist)
-                                                showActions = false
-                                            }
-                                    )
+        if (uiState.importedPlaylists.isEmpty()) {
+            EmptyState(
+                    title = "No playlists imported",
+                    message = "Import a local M3U file to add a playlist."
+            )
+        } else {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(uiState.importedPlaylists) { playlist ->
+                    var showActions by remember(playlist.name) { mutableStateOf(false) }
+                    ListItem(
+                            modifier = Modifier.clickable { onOpenPlaylistEditor(playlist) },
+                            headlineContent = { Text(playlist.name) },
+                            supportingContent = { Text("${playlist.entries.size} entries") },
+                            trailingContent = {
+                                Box {
+                                    IconButton(onClick = { showActions = true }) {
+                                        Text(Glyphs.MORE.glyph, fontSize = 24.sp)
+                                    }
+                                    DropdownMenu(
+                                            expanded = showActions,
+                                            onDismissRequest = { showActions = false }
+                                    ) {
+                                        if (playlist.name == M3uPlaylist.QUEUE_NAME) {
+                                            DropdownMenuItem(
+                                                    text = { Text("Clear") },
+                                                    onClick = {
+                                                        onClearQueue()
+                                                        showActions = false
+                                                    }
+                                            )
+                                        } else {
+                                            DropdownMenuItem(
+                                                    text = { Text("Play") },
+                                                    enabled = playlist.entries.isNotEmpty(),
+                                                    onClick = {
+                                                        onPlayPlaylist(playlist)
+                                                        showActions = false
+                                                    }
+                                            )
+                                            DropdownMenuItem(
+                                                    text = { Text("Rename") },
+                                                    onClick = {
+                                                        playlistToRename = playlist
+                                                        showActions = false
+                                                    }
+                                            )
+                                            DropdownMenuItem(
+                                                    text = { Text("Duplicate") },
+                                                    onClick = {
+                                                        playlistToDuplicate = playlist
+                                                        showActions = false
+                                                    }
+                                            )
+                                            DropdownMenuItem(
+                                                    text = { Text("Export") },
+                                                    onClick = {
+                                                        onExportPlaylist(playlist)
+                                                        showActions = false
+                                                    }
+                                            )
+                                            DropdownMenuItem(
+                                                    text = { Text("Delete") },
+                                                    onClick = {
+                                                        onDeletePlaylist(playlist)
+                                                        showActions = false
+                                                    }
+                                            )
+                                        }
+                                    }
                                 }
                             }
-                        }
-                    }
-            )
+                    )
+                }
+            }
         }
     }
 

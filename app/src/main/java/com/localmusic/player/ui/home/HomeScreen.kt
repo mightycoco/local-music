@@ -553,8 +553,6 @@ fun HomeScreen(
                                         onBrowseValueSelected = onBrowseValueSelected,
                                         onSortSelected = onSortSelected,
                                         onAddFolderSource = onAddFolderSource,
-                                        onImportPlaylist = onImportPlaylist,
-                                        onExportPlaylist = onExportPlaylist,
                                         onSongSelected = onSongSelected,
                                         onFavouriteToggle = onFavouriteToggle,
                                         onCreatePlaylist = onCreatePlaylist,
@@ -592,6 +590,8 @@ fun HomeScreen(
                                         onRenamePlaylist = onRenamePlaylist,
                                         onDuplicatePlaylist = onDuplicatePlaylist,
                                         onPlayPlaylist = onPlayPlaylist,
+                                        onImportPlaylist = onImportPlaylist,
+                                        onExportLibrary = onExportPlaylist,
                                         onExportPlaylist = onExportIndividualPlaylist,
                                         onClearQueue = onClearQueue,
                                         onOpenPlaylistEditor = { playlist ->
@@ -621,6 +621,7 @@ fun HomeScreen(
                                 SettingsContent(
                                         uiState = uiState,
                                         onThemeSelected = onThemeSelected,
+                                        onAddFolderSource = onAddFolderSource,
                                         onRemoveFolderSource = onRemoveFolderSource,
                                         onClearArtworkCache = onClearArtworkCache,
                                         onDefaultFilterSelected = onDefaultFilterSelected,

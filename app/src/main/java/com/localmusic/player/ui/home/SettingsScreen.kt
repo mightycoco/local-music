@@ -37,6 +37,7 @@ import com.localmusic.player.ui.theme.AppThemeMode
 internal fun SettingsContent(
         uiState: HomeUiState,
         onThemeSelected: (AppThemeMode) -> Unit,
+        onAddFolderSource: () -> Unit,
         onRemoveFolderSource: (String) -> Unit,
         onClearArtworkCache: () -> Unit,
         onDefaultFilterSelected: (LibraryFilter) -> Unit,
@@ -135,6 +136,7 @@ internal fun SettingsContent(
         }
         Spacer(modifier = Modifier.height(16.dp))
         Text(text = "Local folders", style = MaterialTheme.typography.bodyLarge)
+        OutlinedButton(onClick = onAddFolderSource) { Text("Add Folder") }
         if (uiState.folderSourceUris.isEmpty()) {
             Text(
                     text = "No additional folders selected.",
