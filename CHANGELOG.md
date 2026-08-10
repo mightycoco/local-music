@@ -2,6 +2,7 @@
 
 ## 0.1.0 - Unreleased
 
+- Made the compact mini-player progress control seekable and added bottom spacing for its slider thumb.
 - Split the home Compose UI into focused files, moving library, playlist editing, settings, Now Playing, reusable song-list controls, artwork/visualizer rendering, and the compact mini-player out of the navigation shell without changing behavior.
 - Added Settings management for selected local folders, including persistent source removal, library refresh, and SAF read-permission release.
 - Added Settings artwork-cache size reporting and clearing, including thumbnail URI invalidation after a clear.

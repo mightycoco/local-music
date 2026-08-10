@@ -420,7 +420,8 @@ fun HomeScreen(
                                             },
                                             onPrevious = onPrevious,
                                             onPlayPause = onPlayPause,
-                                            onNext = onNext
+                                            onNext = onNext,
+                                            onProgressChange = onProgressChange
                                     )
                                 }
                             }

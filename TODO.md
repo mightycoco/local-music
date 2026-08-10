@@ -58,7 +58,7 @@
 - [x] Add an optional external artwork lookup from a free media/artist artwork provider. Request it only after all offline artwork sources fail, persist successful downloads, and avoid repeated downloads after app restart.
 - [x] Add a default-enabled Settings switch to opt out of external artwork downloading. This exception applies only to artwork metadata; local audio files remain the sole library and playback source, with no streaming or cloud music library support.
 - [x] Resolve embedded and folder artwork before background online artwork lookups, and limit initial remote fetches to keep the library responsive.
-- [x] Show a compact playback bar with artwork, track information, transport controls, and progress outside the active Now Playing screen.
+- [x] Show a compact playback bar with artwork, track information, transport controls, and seekable progress outside the active Now Playing screen.
 
 ## Remaining Prompt Requirements
 
