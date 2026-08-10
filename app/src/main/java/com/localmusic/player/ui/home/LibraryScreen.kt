@@ -5,7 +5,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,10 +16,12 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -30,6 +31,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.localmusic.player.domain.model.LibraryBrowser
 import com.localmusic.player.domain.model.LibraryFilter
@@ -70,12 +72,21 @@ internal fun LibraryContent(
     if (uiState.songs.isEmpty()) {
         Button(onClick = onAddFolderSource) { Text("Add Folder") }
         Spacer(modifier = Modifier.height(12.dp))
-    }
-    FilterRow(uiState, onFilterSelected)
-    Spacer(modifier = Modifier.height(12.dp))
-    Row(modifier = Modifier.fillMaxWidth()) {
-        Spacer(modifier = Modifier.weight(1f))
-        SortOrderDropdown(selectedSortOrder = uiState.sortOrder, onSortSelected = onSortSelected)
+    } else {
+        Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FilterRow(
+                    uiState = uiState,
+                    onFilterSelected = onFilterSelected,
+                    modifier = Modifier.weight(1f)
+            )
+            SortOrderDropdown(
+                    selectedSortOrder = uiState.sortOrder,
+                    onSortSelected = onSortSelected
+            )
+        }
     }
     Spacer(modifier = Modifier.height(12.dp))
     AdaptiveLibraryContent(
@@ -91,19 +102,27 @@ internal fun LibraryContent(
 }
 
 @Composable
-private fun FilterRow(uiState: HomeUiState, onFilterSelected: (LibraryFilter) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            LibraryFilter.entries.forEach { filter ->
-                AssistChip(
-                        onClick = { onFilterSelected(filter) },
-                        label = { Text(filter.label) },
-                        enabled = filter != uiState.selectedFilter
-                )
-            }
+private fun FilterRow(
+        uiState: HomeUiState,
+        onFilterSelected: (LibraryFilter) -> Unit,
+        modifier: Modifier = Modifier
+) {
+    Row(
+            modifier = modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        LibraryFilter.entries.forEach { filter ->
+            AssistChip(
+                    onClick = { onFilterSelected(filter) },
+                    label = { Text(filter.label) },
+                    enabled = filter != uiState.selectedFilter,
+                    border =
+                            AssistChipDefaults.assistChipBorder(
+                                    enabled = filter != uiState.selectedFilter,
+                                    borderColor = Color.Transparent,
+                                    disabledBorderColor = Color.Transparent
+                            )
+            )
         }
     }
 }
@@ -113,7 +132,9 @@ private fun SortOrderDropdown(selectedSortOrder: SortOrder, onSortSelected: (Sor
     var expanded by remember { mutableStateOf(false) }
 
     Box {
-        TextButton(onClick = { expanded = true }) { Text("${selectedSortOrder.label} ▼") }
+        TextButton(onClick = { expanded = true }) {
+            Text(text = "${selectedSortOrder.label} ▼", style = MaterialTheme.typography.bodySmall)
+        }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             SortOrder.entries.forEach { sortOrder ->
                 DropdownMenuItem(

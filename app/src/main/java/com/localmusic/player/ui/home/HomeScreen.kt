@@ -297,6 +297,7 @@ fun HomeRoute(viewModel: HomeViewModel) {
                 playlistExportLauncher.launch("${playlist.name}.m3u")
             },
             onSongSelected = viewModel::playSong,
+            onFavouriteSongSelected = viewModel::playFavourites,
             onFavouriteToggle = viewModel::toggleFavourite,
             onDeletePlaylist = viewModel::deletePlaylist,
             onCreatePlaylist = viewModel::createPlaylist,
@@ -348,6 +349,7 @@ fun HomeScreen(
         onExportPlaylist: () -> Unit,
         onExportIndividualPlaylist: (M3uPlaylist) -> Unit,
         onSongSelected: (Song) -> Unit,
+        onFavouriteSongSelected: (Song) -> Unit,
         onFavouriteToggle: (Song) -> Unit,
         onDeletePlaylist: (M3uPlaylist) -> Unit,
         onCreatePlaylist: (String) -> Unit,
@@ -610,7 +612,7 @@ fun HomeScreen(
                                         emptyTitle = "No favourites yet",
                                         emptyMessage =
                                                 "Mark local songs as favourites to pin them here.",
-                                        onSongSelected = onSongSelected,
+                                        onSongSelected = onFavouriteSongSelected,
                                         onFavouriteToggle = onFavouriteToggle,
                                         playlists = uiState.importedPlaylists,
                                         onCreatePlaylist = onCreatePlaylist,

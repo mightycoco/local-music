@@ -2,6 +2,8 @@
 
 ## 0.1.0 - Unreleased
 
+- Starting a song from Favourites now replaces the active and persisted Queue playlist with all starred songs.
+- Added an overlaid favourite toggle to the bottom-right of the Now Playing cover artwork.
 - Moved folder selection and global M3U actions to their respective Home, Settings, and Playlists screens.
 - Added a persisted Settings preference to show the Now Playing visualizer instead of available cover artwork.
 - Tuned visualizer response to suppress low-level bars while retaining full-height peaks.

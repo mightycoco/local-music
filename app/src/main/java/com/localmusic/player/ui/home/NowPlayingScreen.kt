@@ -105,6 +105,7 @@ internal fun NowPlayingContent(
                                 isPreviousCoverTransition = false
                                 onNext()
                             },
+                            onFavouriteToggle = { onFavouriteToggle(song) },
                             onVisualizerEnabledChange = onVisualizerEnabledChange,
                             modifier =
                                     Modifier.weight(1f)
@@ -166,6 +167,7 @@ internal fun NowPlayingContent(
                             isPreviousCoverTransition = false
                             onNext()
                         },
+                        onFavouriteToggle = { onFavouriteToggle(song) },
                         onVisualizerEnabledChange = onVisualizerEnabledChange,
                         modifier =
                                 Modifier.fillMaxWidth()

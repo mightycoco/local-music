@@ -5,17 +5,24 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.ui.theme.UiAnimationTimings
@@ -44,6 +51,7 @@ internal fun AnimatedNowPlayingArtwork(
         isPreviousTransition: Boolean,
         onPrevious: () -> Unit,
         onNext: () -> Unit,
+        onFavouriteToggle: () -> Unit,
         onVisualizerEnabledChange: (Boolean) -> Unit,
         modifier: Modifier = Modifier
 ) {
@@ -165,6 +173,24 @@ internal fun AnimatedNowPlayingArtwork(
                             rotationZ = incomingRotationStart * (1f - progress)
                         }
         )
+                    IconButton(
+                        onClick = onFavouriteToggle,
+                        modifier =
+                            Modifier.align(Alignment.BottomEnd)
+                                .padding(8.dp)
+                                .semantics {
+                                    contentDescription =
+                                        if (song.isFavourite) "Remove from favourites"
+                                        else "Add to favourites"
+                                }
+                    ) {
+                        Text(
+                            text =
+                                if (song.isFavourite) Glyphs.FAVOURITE_FULL.glyph
+                                else Glyphs.FAVOURITE.glyph,
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+                    }
     }
 }
 

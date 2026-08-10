@@ -341,6 +341,19 @@ class HomeViewModel(
         playSongs(queue = uiState.value.songs, startSong = song)
     }
 
+    fun playFavourites(song: Song) {
+        val favourites = uiState.value.songs.filter(Song::isFavourite)
+        if (song !in favourites) return
+
+        savePlaylist(
+                M3uPlaylist(
+                        name = M3uPlaylist.QUEUE_NAME,
+                        entries = favourites.map(Song::toM3uEntry)
+                )
+        )
+        playSongs(queue = favourites, startSong = song)
+    }
+
     fun playPlaylist(playlist: M3uPlaylist) {
         val songsByUri = uiState.value.songs.associateBy(Song::uri)
         val playlistSongs = playlist.entries.mapNotNull { entry -> songsByUri[entry.uri] }
