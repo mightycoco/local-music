@@ -50,6 +50,7 @@ internal fun NowPlayingContent(
         onShuffleToggle: () -> Unit,
         onRepeatCycle: () -> Unit,
         onVisualizerEnabledChange: (Boolean) -> Unit,
+        onQueueSongSelected: (Song) -> Unit,
         onFavouriteToggle: (Song) -> Unit,
         onCreatePlaylist: (String) -> Unit,
         onAddToPlaylist: (String) -> Unit,
@@ -139,6 +140,8 @@ internal fun NowPlayingContent(
                             artworkBySongId = uiState.artworkBySongId,
                             nowPlayingSongId = song.id,
                             isPlaying = uiState.isPlaying,
+                            onSongSelected = onQueueSongSelected,
+                            onFavouriteToggle = onFavouriteToggle,
                             modifier = Modifier.weight(1f)
                     )
                 }
@@ -196,6 +199,8 @@ internal fun NowPlayingContent(
                         artworkBySongId = uiState.artworkBySongId,
                         nowPlayingSongId = song.id,
                         isPlaying = uiState.isPlaying,
+                        onSongSelected = onQueueSongSelected,
+                        onFavouriteToggle = onFavouriteToggle,
                         modifier = Modifier.weight(1f)
                 )
             }
@@ -393,6 +398,8 @@ private fun CurrentPlaylist(
         artworkBySongId: Map<String, String>,
         nowPlayingSongId: String,
         isPlaying: Boolean,
+        onSongSelected: (Song) -> Unit,
+        onFavouriteToggle: (Song) -> Unit,
         modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -419,6 +426,7 @@ private fun CurrentPlaylist(
             ) {
                 items(items = songs, key = { it.id }) { queueSong ->
                     ListItem(
+                            modifier = Modifier.clickable { onSongSelected(queueSong) },
                             leadingContent = {
                                 ArtworkThumbnail(
                                         artworkUri = artworkBySongId[queueSong.id],
@@ -438,6 +446,19 @@ private fun CurrentPlaylist(
                                         maxLines = 1,
                                         style = MaterialTheme.typography.bodySmall
                                 )
+                            },
+                            trailingContent = {
+                                IconButton(onClick = { onFavouriteToggle(queueSong) }) {
+                                    Text(
+                                            text =
+                                                    if (queueSong.isFavourite) {
+                                                        Glyphs.FAVOURITE_FULL.glyph
+                                                    } else {
+                                                        Glyphs.FAVOURITE.glyph
+                                                    },
+                                            style = MaterialTheme.typography.titleLarge
+                                    )
+                                }
                             }
                     )
                 }
