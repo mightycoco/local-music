@@ -95,6 +95,7 @@ internal fun NowPlayingContent(
                             artworkUri = uiState.artworkBySongId[song.id],
                             visualizerLevels = uiState.visualizerLevels,
                             isPlaying = uiState.isPlaying,
+                            preferVisualizer = uiState.isVisualizerPreferred,
                             isPreviousTransition = isPreviousCoverTransition,
                             onPrevious = {
                                 isPreviousCoverTransition = true
@@ -155,6 +156,7 @@ internal fun NowPlayingContent(
                         artworkUri = uiState.artworkBySongId[song.id],
                         visualizerLevels = uiState.visualizerLevels,
                         isPlaying = uiState.isPlaying,
+                        preferVisualizer = uiState.isVisualizerPreferred,
                         isPreviousTransition = isPreviousCoverTransition,
                         onPrevious = {
                             isPreviousCoverTransition = true

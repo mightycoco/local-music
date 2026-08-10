@@ -74,6 +74,8 @@ class HomeViewModel(
     private val artworkCacheSizeBytes = MutableStateFlow(artworkCache?.sizeBytes() ?: 0L)
     private val isExternalArtworkDownloadEnabled =
             MutableStateFlow(artworkPreferences?.isExternalArtworkDownloadEnabled() ?: true)
+    private val isVisualizerPreferred =
+            MutableStateFlow(artworkPreferences?.isVisualizerPreferred() ?: false)
     private val isCarAudioDetected = MutableStateFlow(false)
     private val isCarModeManuallyEnabled =
             MutableStateFlow(carModePreferences?.isManuallyEnabled() ?: false)
@@ -119,8 +121,11 @@ class HomeViewModel(
                     }
 
     private val appearanceState =
-            combine(themeMode, isExternalArtworkDownloadEnabled) { mode, externalArtworkEnabled ->
-                AppearanceState(mode, externalArtworkEnabled)
+            combine(themeMode, isExternalArtworkDownloadEnabled, isVisualizerPreferred) {
+                    mode,
+                    externalArtworkEnabled,
+                    visualizerPreferred ->
+                AppearanceState(mode, externalArtworkEnabled, visualizerPreferred)
             }
 
     private val carModeState =
@@ -147,6 +152,7 @@ class HomeViewModel(
                         themeMode = appearance.themeMode,
                         isExternalArtworkDownloadEnabled =
                                 appearance.isExternalArtworkDownloadEnabled,
+                        isVisualizerPreferred = appearance.isVisualizerPreferred,
                         isRefreshing = refreshing,
                         refreshError = error
                 )
@@ -392,6 +398,11 @@ class HomeViewModel(
         runCatching { startPlayback.setVisualizerEnabled(enabled) }.onFailure { error ->
             refreshError.value = error.message ?: "Visualizer update failed"
         }
+    }
+
+    fun setVisualizerPreferred(preferred: Boolean) {
+        artworkPreferences?.setVisualizerPreferred(preferred)
+        isVisualizerPreferred.value = preferred
     }
 
     fun toggleShuffle() {
@@ -735,7 +746,8 @@ private data class PlaybackModeState(val isShuffleEnabled: Boolean, val repeatMo
 
 private data class AppearanceState(
         val themeMode: AppThemeMode,
-        val isExternalArtworkDownloadEnabled: Boolean
+        val isExternalArtworkDownloadEnabled: Boolean,
+        val isVisualizerPreferred: Boolean
 )
 
 private data class CarModeState(val isEnabled: Boolean, val isManuallyEnabled: Boolean)

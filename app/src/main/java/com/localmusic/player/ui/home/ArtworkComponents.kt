@@ -54,30 +54,27 @@ internal fun ArtworkThumbnail(
         modifier: Modifier = Modifier.size(48.dp),
         visualizerLevels: List<Float> = emptyList(),
         isPlaying: Boolean = false,
+        preferVisualizer: Boolean = false,
         allowVisualizerToggle: Boolean = false,
         onVisualizerEnabledChange: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     var bitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     var isArtworkLoading by remember { mutableStateOf(artworkUri != null) }
-    var showVisualizer by remember { mutableStateOf(artworkUri == null) }
+    var showVisualizer by remember { mutableStateOf(preferVisualizer || artworkUri == null) }
 
     LaunchedEffect(artworkUri) {
         isArtworkLoading = artworkUri != null
-        if (artworkUri == null) {
-            bitmap = null
-            showVisualizer = true
-        } else {
-            val decodedBitmap =
+        val decodedBitmap =
+                artworkUri?.let { uri ->
                     withContext(Dispatchers.IO) {
-                        context.contentResolver.openInputStream(Uri.parse(artworkUri))?.use { input
-                            ->
+                        context.contentResolver.openInputStream(Uri.parse(uri))?.use { input ->
                             BitmapFactory.decodeStream(input)
                         }
                     }
-            bitmap = decodedBitmap
-            showVisualizer = decodedBitmap == null
-        }
+                }
+        bitmap = decodedBitmap
+        showVisualizer = preferVisualizer || decodedBitmap == null
         isArtworkLoading = false
     }
 
@@ -86,6 +83,8 @@ internal fun ArtworkThumbnail(
             onVisualizerEnabledChange(showVisualizer)
         }
     }
+
+    LaunchedEffect(preferVisualizer) { if (preferVisualizer) showVisualizer = true }
 
     val thumbnail = bitmap
     val canShowVisualizer = allowVisualizerToggle && showVisualizer

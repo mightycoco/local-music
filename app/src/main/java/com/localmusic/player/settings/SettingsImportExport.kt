@@ -7,22 +7,26 @@ class SettingsImportExport {
         appendLine("carModeEnabled=${bundle.carModeEnabled}")
         appendLine("lastSelectedSort=${bundle.lastSelectedSort}")
         appendLine("externalArtworkDownloadEnabled=${bundle.externalArtworkDownloadEnabled}")
+        appendLine("visualizerPreferred=${bundle.visualizerPreferred}")
     }
 
     fun parse(content: String): SettingsBundle {
-        val values = content.lineSequence()
-            .mapNotNull { line ->
-                val key = line.substringBefore('=', missingDelimiterValue = "")
-                val value = line.substringAfter('=', missingDelimiterValue = "")
-                if (key.isBlank()) null else key to value
-            }
-            .toMap()
+        val values =
+                content.lineSequence()
+                        .mapNotNull { line ->
+                            val key = line.substringBefore('=', missingDelimiterValue = "")
+                            val value = line.substringAfter('=', missingDelimiterValue = "")
+                            if (key.isBlank()) null else key to value
+                        }
+                        .toMap()
 
         return SettingsBundle(
-            folderUris = values["folderUris"]?.split(';')?.filter { it.isNotBlank() }.orEmpty(),
-            carModeEnabled = values["carModeEnabled"].toBoolean(),
-            lastSelectedSort = values["lastSelectedSort"].orEmpty(),
-            externalArtworkDownloadEnabled = values["externalArtworkDownloadEnabled"]?.toBoolean() ?: true
+                folderUris = values["folderUris"]?.split(';')?.filter { it.isNotBlank() }.orEmpty(),
+                carModeEnabled = values["carModeEnabled"].toBoolean(),
+                lastSelectedSort = values["lastSelectedSort"].orEmpty(),
+                externalArtworkDownloadEnabled =
+                        values["externalArtworkDownloadEnabled"]?.toBoolean() ?: true,
+                visualizerPreferred = values["visualizerPreferred"]?.toBoolean() ?: false
         )
     }
 }

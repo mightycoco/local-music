@@ -8,12 +8,14 @@ class SettingsImportExportTest {
 
     @Test
     fun roundTripSettingsBundle() {
-        val bundle = SettingsBundle(
-            folderUris = listOf("content://tree/music", "content://tree/downloads"),
-            carModeEnabled = true,
-            lastSelectedSort = "NewestAdded",
-            externalArtworkDownloadEnabled = false
-        )
+        val bundle =
+                SettingsBundle(
+                        folderUris = listOf("content://tree/music", "content://tree/downloads"),
+                        carModeEnabled = true,
+                        lastSelectedSort = "NewestAdded",
+                        externalArtworkDownloadEnabled = false,
+                        visualizerPreferred = true
+                )
 
         assertEquals(bundle, codec.parse(codec.export(bundle)))
     }
@@ -23,5 +25,6 @@ class SettingsImportExportTest {
         val parsed = codec.parse("folderUris=\ncarModeEnabled=false\nlastSelectedSort=Name\n")
 
         assertEquals(true, parsed.externalArtworkDownloadEnabled)
+        assertEquals(false, parsed.visualizerPreferred)
     }
 }

@@ -2,6 +2,7 @@
 
 ## 0.1.0 - Unreleased
 
+- Added a persisted Settings preference to show the Now Playing visualizer instead of available cover artwork.
 - Tuned visualizer response to suppress low-level bars while retaining full-height peaks.
 - Added directional cover-art transitions and cover-only swipe transport controls to Now Playing.
 - Made the compact mini-player progress control seekable and added bottom spacing for its slider thumb.

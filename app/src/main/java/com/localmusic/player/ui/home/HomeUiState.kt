@@ -22,6 +22,7 @@ data class HomeUiState(
         val repeatMode: RepeatMode = RepeatMode.Off,
         val themeMode: AppThemeMode = AppThemeMode.FollowSystem,
         val isExternalArtworkDownloadEnabled: Boolean = true,
+        val isVisualizerPreferred: Boolean = false,
         val selectedFilter: LibraryFilter = LibraryFilter.AllSongs,
         val selectedBrowseValue: String? = null,
         val sortOrder: SortOrder = SortOrder.NewestAdded,

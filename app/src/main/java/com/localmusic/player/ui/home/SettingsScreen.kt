@@ -42,7 +42,8 @@ internal fun SettingsContent(
         onDefaultFilterSelected: (LibraryFilter) -> Unit,
         onDefaultSortOrderSelected: (SortOrder) -> Unit,
         onCarModeManuallyEnabledChange: (Boolean) -> Unit,
-        onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit
+        onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit,
+        onVisualizerPreferredChange: (Boolean) -> Unit
 ) {
     var selectedLicenseNotice by remember { mutableStateOf<OpenSourceLicenseNotice?>(null) }
     Column(
@@ -72,6 +73,20 @@ internal fun SettingsContent(
             Switch(
                     checked = uiState.isExternalArtworkDownloadEnabled,
                     onCheckedChange = onExternalArtworkDownloadEnabledChange
+            )
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = "Prefer visualizer", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                        text =
+                                "Show the visualizer on Now Playing even when cover artwork is available.",
+                        style = MaterialTheme.typography.bodySmall
+                )
+            }
+            Switch(
+                    checked = uiState.isVisualizerPreferred,
+                    onCheckedChange = onVisualizerPreferredChange
             )
         }
         Spacer(modifier = Modifier.height(16.dp))

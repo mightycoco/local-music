@@ -321,6 +321,7 @@ fun HomeRoute(viewModel: HomeViewModel) {
             onDefaultSortOrderSelected = viewModel::setDefaultSortOrder,
             onCarModeManuallyEnabledChange = viewModel::setCarModeManuallyEnabled,
             onExternalArtworkDownloadEnabledChange = viewModel::setExternalArtworkDownloadEnabled,
+            onVisualizerPreferredChange = viewModel::setVisualizerPreferred,
             onRequestPermission = {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     permissionLauncher.launch(audioPermission)
@@ -371,6 +372,7 @@ fun HomeScreen(
         onDefaultSortOrderSelected: (SortOrder) -> Unit,
         onCarModeManuallyEnabledChange: (Boolean) -> Unit,
         onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit,
+        onVisualizerPreferredChange: (Boolean) -> Unit,
         onRequestPermission: () -> Unit
 ) {
     val libraryListState = rememberLazyListState()
@@ -601,7 +603,8 @@ fun HomeScreen(
                                         onCarModeManuallyEnabledChange =
                                                 onCarModeManuallyEnabledChange,
                                         onExternalArtworkDownloadEnabledChange =
-                                                onExternalArtworkDownloadEnabledChange
+                                                onExternalArtworkDownloadEnabledChange,
+                                        onVisualizerPreferredChange = onVisualizerPreferredChange
                                 )
                         HomeScreenDestination.PlaylistEditor -> {
                             val playlist =

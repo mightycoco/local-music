@@ -39,6 +39,7 @@ internal fun AnimatedNowPlayingArtwork(
         artworkUri: String?,
         visualizerLevels: List<Float>,
         isPlaying: Boolean,
+        preferVisualizer: Boolean,
         isPreviousTransition: Boolean,
         onPrevious: () -> Unit,
         onNext: () -> Unit,
@@ -151,6 +152,7 @@ internal fun AnimatedNowPlayingArtwork(
         }
         NowPlayingCoverArtwork(
                 cover = renderedCover,
+                preferVisualizer = preferVisualizer,
                 allowVisualizerToggle = outgoingCover == null,
                 onVisualizerEnabledChange = onVisualizerEnabledChange,
                 modifier =
@@ -166,6 +168,7 @@ internal fun AnimatedNowPlayingArtwork(
 private fun NowPlayingCoverArtwork(
         cover: NowPlayingCover,
         modifier: Modifier,
+        preferVisualizer: Boolean = false,
         allowVisualizerToggle: Boolean = false,
         onVisualizerEnabledChange: (Boolean) -> Unit = {}
 ) {
@@ -173,6 +176,7 @@ private fun NowPlayingCoverArtwork(
             artworkUri = cover.artworkUri,
             visualizerLevels = cover.visualizerLevels,
             isPlaying = cover.isPlaying,
+            preferVisualizer = preferVisualizer,
             allowVisualizerToggle = allowVisualizerToggle,
             onVisualizerEnabledChange = onVisualizerEnabledChange,
             modifier = modifier
