@@ -203,6 +203,7 @@ class HomeViewModel(
                         isCarModeManuallyEnabled = status.isCarModeManuallyEnabled,
                         themeMode = status.themeMode,
                         isExternalArtworkDownloadEnabled = status.isExternalArtworkDownloadEnabled,
+                        isVisualizerPreferred = status.isVisualizerPreferred,
                         isRefreshing = status.isRefreshing,
                         refreshError = status.refreshError
                 )

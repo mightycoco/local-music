@@ -1,6 +1,7 @@
 package com.localmusic.player.ui.home
 
 import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -42,6 +43,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.localmusic.player.playlist.M3uPlaylist
+import com.localmusic.player.ui.theme.UiAnimationTimings
 import kotlin.math.roundToInt
 
 @Composable
@@ -219,6 +221,8 @@ internal fun PlaylistEditorContent(
                                     targetValue =
                                             if (isDragged || previousIndex == index) 0
                                             else (previousIndex - index) * rowPitchPx.roundToInt(),
+                                    animationSpec =
+                                            tween(UiAnimationTimings.PLAYLIST_REORDER_MILLIS),
                                     label = "playlist-entry-placement"
                             )
                     LaunchedEffect(index) { previousIndex = index }

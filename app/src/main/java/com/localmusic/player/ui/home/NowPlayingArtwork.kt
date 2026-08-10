@@ -18,6 +18,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.localmusic.player.domain.model.Song
+import com.localmusic.player.ui.theme.UiAnimationTimings
 
 private const val COVER_TRANSITION_ROTATION_DEGREES = 20f
 
@@ -84,7 +85,10 @@ internal fun AnimatedNowPlayingArtwork(
                     CoverTransitionDirection.Next
                 }
         transitionProgress.snapTo(0f)
-        transitionProgress.animateTo(1f, animationSpec = tween(durationMillis = 320))
+        transitionProgress.animateTo(
+                1f,
+                animationSpec = tween(durationMillis = UiAnimationTimings.COVER_TRANSITION_MILLIS)
+        )
         outgoingCover = null
     }
 

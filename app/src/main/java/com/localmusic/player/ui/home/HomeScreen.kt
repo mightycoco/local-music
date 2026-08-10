@@ -62,6 +62,7 @@ import com.localmusic.player.domain.model.SortOrder
 import com.localmusic.player.playlist.M3uPlaylist
 import com.localmusic.player.playlist.toM3uEntry
 import com.localmusic.player.ui.theme.AppThemeMode
+import com.localmusic.player.ui.theme.UiAnimationTimings
 import kotlinx.coroutines.yield
 
 internal const val VISUALIZER_FPS = 20
@@ -507,12 +508,35 @@ fun HomeScreen(
                     transitionSpec = {
                         val moveForward = initialState.movesForwardTo(targetState)
                         val direction = if (moveForward) 1 else -1
-                        (slideInHorizontally(animationSpec = tween(280)) { it * direction } +
-                                        fadeIn(animationSpec = tween(180)))
+                        (slideInHorizontally(
+                                        animationSpec =
+                                                tween(
+                                                        UiAnimationTimings
+                                                                .SCREEN_NAVIGATION_SLIDE_MILLIS
+                                                )
+                                ) { it * direction } +
+                                        fadeIn(
+                                                animationSpec =
+                                                        tween(
+                                                                UiAnimationTimings
+                                                                        .SCREEN_NAVIGATION_FADE_IN_MILLIS
+                                                        )
+                                        ))
                                 .togetherWith(
-                                        slideOutHorizontally(animationSpec = tween(280)) {
-                                            -it * direction
-                                        } + fadeOut(animationSpec = tween(160))
+                                        slideOutHorizontally(
+                                                animationSpec =
+                                                        tween(
+                                                                UiAnimationTimings
+                                                                        .SCREEN_NAVIGATION_SLIDE_MILLIS
+                                                        )
+                                        ) { -it * direction } +
+                                                fadeOut(
+                                                        animationSpec =
+                                                                tween(
+                                                                        UiAnimationTimings
+                                                                                .SCREEN_NAVIGATION_FADE_OUT_MILLIS
+                                                                )
+                                                )
                                 )
                     },
                     label = "screenNavigation"

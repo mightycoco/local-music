@@ -45,6 +45,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.localmusic.player.ui.theme.UiAnimationTimings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -98,9 +99,17 @@ internal fun ArtworkThumbnail(
             targetState = canShowVisualizer to thumbnail,
             modifier = modifier.then(toggleModifier),
             transitionSpec = {
-                (fadeIn(animationSpec = tween(220)) + scaleIn(initialScale = 0.96f)).togetherWith(
-                        fadeOut(animationSpec = tween(160)) + scaleOut(targetScale = 1.04f)
-                )
+                (fadeIn(animationSpec = tween(UiAnimationTimings.ARTWORK_VISUALIZER_ENTER_MILLIS)) +
+                                scaleIn(initialScale = 0.96f))
+                        .togetherWith(
+                                fadeOut(
+                                        animationSpec =
+                                                tween(
+                                                        UiAnimationTimings
+                                                                .ARTWORK_VISUALIZER_EXIT_MILLIS
+                                                )
+                                ) + scaleOut(targetScale = 1.04f)
+                        )
             },
             label = "artworkVisualizerToggle"
     ) { (showVisualizer, displayedBitmap) ->
@@ -156,7 +165,9 @@ private fun NoArtworkVisualizer(levels: List<Float>, isPlaying: Boolean, modifie
                                     infiniteRepeatable(
                                             animation =
                                                     tween(
-                                                            durationMillis = 12_000,
+                                                            durationMillis =
+                                                                    UiAnimationTimings
+                                                                            .VISUALIZER_COLOR_CYCLE_MILLIS,
                                                             easing = LinearEasing
                                                     )
                                     ),
