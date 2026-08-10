@@ -13,6 +13,7 @@ import androidx.media3.session.MediaSessionService
 import com.localmusic.player.ui.home.VISUALIZER_FPS
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.math.pow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -57,6 +58,7 @@ internal object PlaybackAudioProcessor : BaseAudioProcessor() {
     private const val LEVELS_UPDATE_INTERVAL_MILLIS = 1_000L / VISUALIZER_FPS
     private const val MINIMUM_VISUALIZER_DECIBELS = -60f
     private const val MINIMUM_VISUALIZER_AMPLITUDE = 0.001f
+    private const val VISUALIZER_RESPONSE_EXPONENT = 2f
 
     private val _levels = MutableStateFlow<List<Float>>(emptyList())
     val levels = _levels.asStateFlow()
@@ -193,9 +195,11 @@ internal object PlaybackAudioProcessor : BaseAudioProcessor() {
     private fun Float.toLogarithmicVisualizerLevel(): Float {
         val amplitude = coerceIn(MINIMUM_VISUALIZER_AMPLITUDE, 1f)
         val decibels = 20f * kotlin.math.log10(amplitude)
-        return ((decibels - MINIMUM_VISUALIZER_DECIBELS) / -MINIMUM_VISUALIZER_DECIBELS).coerceIn(
-                0f,
-                1f
-        )
+        val normalizedLevel =
+                ((decibels - MINIMUM_VISUALIZER_DECIBELS) / -MINIMUM_VISUALIZER_DECIBELS).coerceIn(
+                        0f,
+                        1f
+                )
+        return normalizedLevel.pow(VISUALIZER_RESPONSE_EXPONENT)
     }
 }

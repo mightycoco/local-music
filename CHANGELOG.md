@@ -2,6 +2,7 @@
 
 ## 0.1.0 - Unreleased
 
+- Tuned visualizer response to suppress low-level bars while retaining full-height peaks.
 - Added directional cover-art transitions and cover-only swipe transport controls to Now Playing.
 - Made the compact mini-player progress control seekable and added bottom spacing for its slider thumb.
 - Split the home Compose UI into focused files, moving library, playlist editing, settings, Now Playing, reusable song-list controls, artwork/visualizer rendering, and the compact mini-player out of the navigation shell without changing behavior.
