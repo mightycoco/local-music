@@ -95,7 +95,7 @@ internal object PlaybackAudioProcessor : BaseAudioProcessor() {
         inputBuffer.position(inputBuffer.limit())
     }
 
-    private fun ByteBuffer.toVisualizerLevels(encoding: Int, barCount: Int = 9): List<Float> {
+    private fun ByteBuffer.toVisualizerLevels(encoding: Int, barCount: Int = 19): List<Float> {
         return when (encoding) {
             C.ENCODING_PCM_8BIT -> toPcm8VisualizerLevels(barCount)
             C.ENCODING_PCM_16BIT -> toPcm16VisualizerLevels(barCount)
