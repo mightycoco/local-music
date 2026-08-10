@@ -84,6 +84,7 @@ enum class Glyphs(val glyph: String) {
     PLAYER_QUEUE("≡"),
     MORE("⋮"),
     NO_ARTWORK("╭∩╮( •̀_•́ )╭∩╮"),
+    NO_ARTWORK_THUMB(".°•"),
     REORDER("≡")
 }
 

@@ -181,6 +181,7 @@ private fun NowPlayingCoverArtwork(
             visualizerLevels = cover.visualizerLevels,
             isPlaying = cover.isPlaying,
             preferVisualizer = preferVisualizer,
+            placeholderGlyph = Glyphs.NO_ARTWORK,
             allowVisualizerToggle = allowVisualizerToggle,
             onVisualizerEnabledChange = onVisualizerEnabledChange,
             modifier = modifier

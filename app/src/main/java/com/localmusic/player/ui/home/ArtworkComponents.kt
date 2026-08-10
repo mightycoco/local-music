@@ -56,6 +56,7 @@ internal fun ArtworkThumbnail(
         visualizerLevels: List<Float> = emptyList(),
         isPlaying: Boolean = false,
         preferVisualizer: Boolean = false,
+        placeholderGlyph: Glyphs = Glyphs.NO_ARTWORK_THUMB,
         allowVisualizerToggle: Boolean = false,
         onVisualizerEnabledChange: (Boolean) -> Unit = {}
 ) {
@@ -117,6 +118,7 @@ internal fun ArtworkThumbnail(
             NoArtworkVisualizer(
                     levels = visualizerLevels,
                     isPlaying = isPlaying,
+                    placeholderGlyph = placeholderGlyph,
                     modifier = Modifier.fillMaxSize()
             )
         } else if (displayedBitmap != null) {
@@ -127,13 +129,13 @@ internal fun ArtworkThumbnail(
                     contentScale = ContentScale.Crop
             )
         } else {
-            ArtworkPlaceholder(modifier = Modifier.fillMaxSize())
+            ArtworkPlaceholder(glyph = placeholderGlyph, modifier = Modifier.fillMaxSize())
         }
     }
 }
 
 @Composable
-private fun ArtworkPlaceholder(modifier: Modifier) {
+private fun ArtworkPlaceholder(glyph: Glyphs, modifier: Modifier) {
     Box(
             modifier =
                     modifier.background(
@@ -141,11 +143,16 @@ private fun ArtworkPlaceholder(modifier: Modifier) {
                             shape = MaterialTheme.shapes.large
                     ),
             contentAlignment = Alignment.Center
-    ) { Text(text = Glyphs.NO_ARTWORK.glyph, style = MaterialTheme.typography.displayMedium) }
+    ) { Text(text = glyph.glyph, style = MaterialTheme.typography.displayMedium) }
 }
 
 @Composable
-private fun NoArtworkVisualizer(levels: List<Float>, isPlaying: Boolean, modifier: Modifier) {
+private fun NoArtworkVisualizer(
+        levels: List<Float>,
+        isPlaying: Boolean,
+        placeholderGlyph: Glyphs,
+        modifier: Modifier
+) {
     val displayLevels = if (levels.isEmpty()) List(9) { 0f } else levels
     Box(
             modifier =
@@ -191,7 +198,7 @@ private fun NoArtworkVisualizer(levels: List<Float>, isPlaying: Boolean, modifie
                 )
             }
         } else {
-            ArtworkPlaceholder(modifier = Modifier.fillMaxSize())
+            ArtworkPlaceholder(glyph = placeholderGlyph, modifier = Modifier.fillMaxSize())
         }
     }
 }
