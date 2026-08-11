@@ -36,9 +36,11 @@ internal fun MiniPlayer(
 ) {
     var pendingProgress by remember { mutableFloatStateOf(progress) }
     LaunchedEffect(progress) { pendingProgress = progress }
-    val controlSize = if (isCarMode) 62.4.dp else 48.dp
-    val playerPadding = if (isCarMode) 12.dp else 8.dp
-    val controlPadding = if (isCarMode) 8.dp else 4.dp
+    val carModeModifier = if (isCarMode) 2 else 1
+    val artworkThumbnailSize = 48.dp * carModeModifier
+    val controlSize = 48.dp * carModeModifier
+    val playerPadding = 8.dp * carModeModifier
+    val controlPadding = 4.dp * carModeModifier
 
     Column(
             modifier = Modifier.fillMaxWidth().padding(playerPadding),
@@ -48,26 +50,61 @@ internal fun MiniPlayer(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(controlPadding)
         ) {
-            ArtworkThumbnail(artworkUri = artworkUri)
-            Column(
-                    modifier = Modifier.weight(1f).clickable(onClick = onOpenNowPlaying),
-                    verticalArrangement = Arrangement.Center
-            ) {
-                Text(text = song.title, maxLines = 1, style = MaterialTheme.typography.titleSmall)
-                Text(text = song.album, maxLines = 1, style = MaterialTheme.typography.bodySmall)
-            }
-            Row(
-                    modifier = Modifier.padding(horizontal = controlPadding),
-                    horizontalArrangement = Arrangement.spacedBy(controlPadding)
-            ) {
-                IconButton(onClick = onPrevious, modifier = Modifier.size(controlSize)) {
-                    Text(Glyphs.PLAYER_PREVIOUS.glyph)
+            if (!isCarMode) {
+                ArtworkThumbnail(
+                    artworkUri = artworkUri,
+                    modifier =
+                        Modifier.size(artworkThumbnailSize)
+                            .clickable(onClick = onOpenNowPlaying)
+                )
+                Column(
+                        modifier = Modifier.weight(1f).clickable(onClick = onOpenNowPlaying),
+                        verticalArrangement = Arrangement.Center
+                ) {
+                    Text(text = song.title, maxLines = 1, style = MaterialTheme.typography.titleSmall)
+                    Text(text = song.album, maxLines = 1, style = MaterialTheme.typography.bodySmall)
                 }
-                IconButton(onClick = onPlayPause, modifier = Modifier.size(controlSize)) {
-                    Text(if (isPlaying) Glyphs.PLAYER_PAUSE.glyph else Glyphs.PLAYER_PLAY.glyph)
+                Row(
+                        modifier = Modifier.padding(horizontal = controlPadding),
+                        horizontalArrangement = Arrangement.spacedBy(controlPadding)
+                ) {
+                    IconButton(onClick = onPrevious, modifier = Modifier.size(controlSize)) {
+                        Text(Glyphs.PLAYER_PREVIOUS.glyph)
+                    }
+                    IconButton(onClick = onPlayPause, modifier = Modifier.size(controlSize)) {
+                        Text(if (isPlaying) Glyphs.PLAYER_PAUSE.glyph else Glyphs.PLAYER_PLAY.glyph)
+                    }
+                    IconButton(onClick = onNext, modifier = Modifier.size(controlSize)) {
+                        Text(Glyphs.PLAYER_NEXT.glyph)
+                    }
                 }
-                IconButton(onClick = onNext, modifier = Modifier.size(controlSize)) {
-                    Text(Glyphs.PLAYER_NEXT.glyph)
+            } else {
+                ArtworkThumbnail(
+                    artworkUri = artworkUri,
+                    modifier =
+                        Modifier.size(artworkThumbnailSize)
+                            .clickable(onClick = onOpenNowPlaying)
+                )
+                Column(
+                        modifier = Modifier.weight(1f).clickable(onClick = onOpenNowPlaying),
+                        verticalArrangement = Arrangement.Center
+                ) {
+                    Text( text = song.title, maxLines = 2, style = MaterialTheme.typography.titleLarge)
+                    Text(text = song.album, maxLines = 1, style = MaterialTheme.typography.bodyLarge)
+                    Row(
+                        modifier = Modifier.padding(horizontal = controlPadding),
+                        horizontalArrangement = Arrangement.spacedBy(controlPadding)
+                    ) {
+                        IconButton(onClick = onPrevious, modifier = Modifier.size(controlSize)) {
+                            Text(Glyphs.PLAYER_PREVIOUS.glyph)
+                        }
+                        IconButton(onClick = onPlayPause, modifier = Modifier.size(controlSize)) {
+                            Text(if (isPlaying) Glyphs.PLAYER_PAUSE.glyph else Glyphs.PLAYER_PLAY.glyph)
+                        }
+                        IconButton(onClick = onNext, modifier = Modifier.size(controlSize)) {
+                            Text(Glyphs.PLAYER_NEXT.glyph)
+                        }
+                    }
                 }
             }
         }
@@ -75,7 +112,7 @@ internal fun MiniPlayer(
                 value = pendingProgress.coerceIn(0f, 1f),
                 onValueChange = { pendingProgress = it },
                 onValueChangeFinished = { onProgressChange(pendingProgress) },
-                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
+                modifier = Modifier.fillMaxWidth().padding(bottom = controlPadding)
         )
     }
 }
