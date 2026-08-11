@@ -87,7 +87,7 @@ enum class Glyphs(val glyph: String) {
     FAVOURITE("☆"),
     FAVOURITE_FULL("★"),
     SETTINGS("⫶"),
-    PLAYINGINDICATOR("▶︎၊၊|၊|။|||။၊|။•"),
+    PLAYINGINDICATOR("၊၊|၊|။|||။၊|။•"),
     PLAYER_PREVIOUS("⏮"),
     PLAYER_NEXT("⏭"),
     PLAYER_PLAY("▶"),
