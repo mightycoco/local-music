@@ -11,6 +11,7 @@ class ArtworkDiskCache(
 ) {
     private val artworkDirectory = File(cacheRoot, "artwork")
 
+    @Synchronized
     fun get(key: String): Uri? {
         val file = fileFor(key)
         if (!file.exists()) return null
@@ -19,20 +20,34 @@ class ArtworkDiskCache(
         return Uri.fromFile(file)
     }
 
-    fun put(key: String, bytes: ByteArray): Uri {
+    @Synchronized
+    fun put(key: String, bytes: ByteArray): Uri? {
+        if (bytes.isEmpty() || bytes.size > MAX_ARTWORK_BYTES) return null
         artworkDirectory.mkdirs()
         val file = fileFor(key)
-        file.writeBytes(bytes)
+        val temporaryFile = File.createTempFile("artwork-", ".tmp", artworkDirectory)
+        try {
+            temporaryFile.writeBytes(bytes)
+            if (!temporaryFile.renameTo(file)) {
+                file.delete()
+                check(temporaryFile.renameTo(file)) { "Unable to commit artwork cache entry" }
+            }
+        } finally {
+            temporaryFile.delete()
+        }
         prune()
         return Uri.fromFile(file)
     }
 
+    @Synchronized
     fun sizeBytes(): Long = artworkDirectory.listFiles().orEmpty().sumOf { file -> file.length() }
 
+    @Synchronized
     fun clear() {
         artworkDirectory.listFiles().orEmpty().forEach { file -> file.delete() }
     }
 
+    @Synchronized
     fun prune() {
         val files = artworkDirectory.listFiles().orEmpty().filter { it.isFile }
         val entries =
@@ -51,5 +66,6 @@ class ArtworkDiskCache(
 
     private companion object {
         const val DEFAULT_MAX_BYTES = 50L * 1024L * 1024L
+        const val MAX_ARTWORK_BYTES = 8 * 1024 * 1024
     }
 }

@@ -5,7 +5,7 @@ import android.content.SharedPreferences
 /** Persistent user settings controlling artwork discovery and presentation. */
 class ArtworkPreferences(private val sharedPreferences: SharedPreferences) {
     fun isExternalArtworkDownloadEnabled(): Boolean =
-            sharedPreferences.getBoolean(KEY_EXTERNAL_ARTWORK_DOWNLOAD_ENABLED, true)
+            sharedPreferences.getBoolean(KEY_EXTERNAL_ARTWORK_DOWNLOAD_ENABLED, false)
 
     fun setExternalArtworkDownloadEnabled(enabled: Boolean) {
         sharedPreferences.edit().putBoolean(KEY_EXTERNAL_ARTWORK_DOWNLOAD_ENABLED, enabled).apply()

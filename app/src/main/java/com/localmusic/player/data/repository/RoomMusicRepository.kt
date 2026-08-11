@@ -8,11 +8,14 @@ import com.localmusic.player.data.mediastore.MusicScanner
 import com.localmusic.player.data.saf.SafFolderSourceStore
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.repository.MusicRepository
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+
+private val nextScanGeneration = AtomicLong(System.currentTimeMillis())
 
 /** Room-backed repository for merged, de-duplicated local music metadata. */
 class RoomMusicRepository(
@@ -28,10 +31,14 @@ class RoomMusicRepository(
 
     override suspend fun refreshLibrary() =
             withContext(ioDispatcher) {
-                val scannedSongs = duplicateSongResolver.resolve(musicScanner.scan())
+                val scanResult = musicScanner.scan()
+                val scannedSongs = duplicateSongResolver.resolve(scanResult.songs)
                 val scannedEntities = scannedSongs.map { it.toEntity() }
-                val retainedEntities = songDao.songsByIds(scannedEntities.map { it.id })
-                songDao.replaceScannedLibrary(scannedEntities.mergeRetainedState(retainedEntities))
+                songDao.replaceScannedLibrary(
+                        songs = scannedEntities,
+                        generation = nextScanGeneration.incrementAndGet(),
+                        deleteMissing = scanResult.isComplete
+                )
             }
 
     override suspend fun addFolderSource(folderUri: String) =

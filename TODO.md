@@ -59,6 +59,8 @@
 - [x] Add a default-enabled Settings switch to opt out of external artwork downloading. This exception applies only to artwork metadata; local audio files remain the sole library and playback source, with no streaming or cloud music library support.
 - [x] Resolve embedded and folder artwork before background online artwork lookups, and limit initial remote fetches to keep the library responsive.
 - [x] Show a compact playback bar with artwork, track information, transport controls, and seekable progress outside the active Now Playing screen.
+- [x] Harden scanning, playlist persistence, artwork I/O, playback state, release packaging, and app-data privacy after the production optimization audit.
+- [x] Migrate legacy SharedPreferences playlists into per-playlist Room rows without losing installed-user data.
 
 ## Remaining Prompt Requirements
 
@@ -78,6 +80,7 @@
 	- [x] Keep Now Playing transport and seek controls accessible in short phone-landscape content using a two-pane layout and scrollable controls pane.
 - [ ] Prepare integration boundaries for notification controls, lock-screen controls, home-screen widgets, and Android Auto without implementing the surfaces yet.
 - [ ] Validate performance with a 50,000+ song library: pagination or bounded loading, indexed filtering/sorting, bounded artwork work, and measurable UI responsiveness.
+	- [x] Add indexed scan-generation reconciliation, one-pass facet counts, bounded artwork/document I/O, and release-only slider seeking.
 - [ ] Add explicit dependency-injection composition guidance or a lightweight DI solution once manual wiring no longer scales; keep UI, domain, and data dependencies directional.
 - [ ] Continue the class/function-size, KDoc coverage, duplicate UI-flow, and Mermaid documentation review. The home shell now delegates library, playlist, settings, Now Playing, shared song-list, artwork/visualizer, and mini-player UI to focused Compose files.
 - [x] Select and integrate MusicBrainz and Cover Art Archive with rate-limit handling, attribution, privacy disclosure, error handling, and cache behavior. It must never supply audio playback or a cloud music library.

@@ -2,6 +2,12 @@
 
 ## 0.1.0 - Unreleased
 
+- Hardened library scans against partial-result deletion and replaced large ID reconciliation with indexed scan generations.
+- Moved playlists to per-playlist Room rows, added legacy SharedPreferences migration, and bounded M3U document I/O.
+- Bounded artwork ingestion and downloads, sampled bitmap decoding, synchronized cache writes, and collision-resistant cache keys.
+- Reduced playback and UI churn with direct Media3 navigation, lifecycle-aware state collection, one-pass facet counts, and seek-on-release sliders.
+- Removed shell-wide swipe navigation that conflicted with lists, sliders, and child interactions.
+- Disabled app-data backup, isolated debug signing from release credentials, secured SVG XML parsing, and enabled R8 for release builds.
 - Normalized the Now Playing queue display so the current song is first and duplicate items are hidden.
 - Made Now Playing queue items selectable and added favourite toggles to their rows.
 - Starting a song from Favourites now replaces the active and persisted Queue playlist with all starred songs.

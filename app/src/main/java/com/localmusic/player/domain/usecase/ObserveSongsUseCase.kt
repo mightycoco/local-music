@@ -37,8 +37,11 @@ class StartPlaybackUseCase(private val playbackController: PlaybackController) {
     fun clearQueue() = playbackController.clearQueue()
     fun resume() = playbackController.resume()
     fun pause() = playbackController.pause()
+    fun skipToNext() = playbackController.skipToNext()
+    fun skipToPrevious() = playbackController.skipToPrevious()
     fun seekTo(progress: Float) = playbackController.seekTo(progress)
     fun setShuffleEnabled(enabled: Boolean) = playbackController.setShuffleEnabled(enabled)
     fun setRepeatMode(mode: RepeatMode) = playbackController.setRepeatMode(mode)
     fun setVisualizerEnabled(enabled: Boolean) = playbackController.setVisualizerEnabled(enabled)
+    fun close() = playbackController.close()
 }

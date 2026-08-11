@@ -93,9 +93,13 @@ class ObserveSongsUseCaseTest {
 
         useCase.setShuffleEnabled(true)
         useCase.setRepeatMode(RepeatMode.All)
+        useCase.skipToNext()
+        useCase.skipToPrevious()
 
         assertEquals(true, playbackController.shuffleEnabled)
         assertEquals(RepeatMode.All, playbackController.recordedRepeatMode)
+        assertEquals(1, playbackController.nextCount)
+        assertEquals(1, playbackController.previousCount)
     }
 
     private class FakeMusicRepository(private val songs: List<Song>) : MusicRepository {
@@ -126,6 +130,8 @@ class ObserveSongsUseCaseTest {
         var queueWasCleared = false
         var shuffleEnabled: Boolean? = null
         var recordedRepeatMode: RepeatMode? = null
+        var nextCount = 0
+        var previousCount = 0
 
         override fun observePlayback(): Flow<PlaybackSnapshot> = flowOf(PlaybackSnapshot())
 
@@ -145,6 +151,14 @@ class ObserveSongsUseCaseTest {
 
         override fun pause() = Unit
 
+        override fun skipToNext() {
+            nextCount++
+        }
+
+        override fun skipToPrevious() {
+            previousCount++
+        }
+
         override fun seekTo(progress: Float) = Unit
 
         override fun setShuffleEnabled(enabled: Boolean) {
@@ -156,6 +170,8 @@ class ObserveSongsUseCaseTest {
         }
 
         override fun setVisualizerEnabled(enabled: Boolean) = Unit
+
+        override fun close() = Unit
     }
 
     private fun testSong(id: String): Song =

@@ -1,11 +1,12 @@
 package com.localmusic.player.playlist
 
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class SharedPreferencesPlaylistStoreTest {
     @Test
-    fun savePersistsPlaylistsAcrossStoreInstances() {
+    fun savePersistsPlaylistsAcrossStoreInstances() = runTest {
         val preferences = FakeSharedPreferences()
         val playlist = testPlaylist(name = "Road")
 
@@ -16,7 +17,7 @@ class SharedPreferencesPlaylistStoreTest {
     }
 
     @Test
-    fun saveReplacesPlaylistWithSameName() {
+    fun saveReplacesPlaylistWithSameName() = runTest {
         val store = SharedPreferencesPlaylistStore(FakeSharedPreferences())
 
         store.save(testPlaylist(name = "Road", uri = "content://music/old"))
@@ -28,19 +29,18 @@ class SharedPreferencesPlaylistStoreTest {
     }
 
     @Test
-    fun deleteRemovesPlaylistByName() {
+    fun deleteRemovesPlaylistByName() = runTest {
         val store = SharedPreferencesPlaylistStore(FakeSharedPreferences())
         store.save(testPlaylist(name = "Road"))
         store.save(testPlaylist(name = "Focus"))
 
-        val remaining = store.delete("Road")
+        store.delete("Road")
 
-        assertEquals(listOf("Focus"), remaining.map { it.name })
         assertEquals(listOf("Focus"), store.playlists().map { it.name })
     }
 
     @Test
-    fun playlistsRestoresQueueBeforeAlphabeticalPlaylists() {
+    fun playlistsRestoresQueueBeforeAlphabeticalPlaylists() = runTest {
         val preferences = FakeSharedPreferences()
         val store = SharedPreferencesPlaylistStore(preferences)
         store.save(testPlaylist(name = "Road"))
@@ -49,24 +49,20 @@ class SharedPreferencesPlaylistStoreTest {
 
         val restored = SharedPreferencesPlaylistStore(preferences).playlists()
 
-        assertEquals(
-            listOf(M3uPlaylist.QUEUE_NAME, "Focus", "Road"),
-            restored.map { it.name }
-        )
+        assertEquals(listOf(M3uPlaylist.QUEUE_NAME, "Focus", "Road"), restored.map { it.name })
     }
 
-    private fun testPlaylist(
-        name: String,
-        uri: String = "content://music/song-1"
-    ): M3uPlaylist = M3uPlaylist(
-        name = name,
-        entries = listOf(
-            M3uPlaylistEntry(
-                title = "The Title",
-                artist = "The Artist",
-                durationSeconds = 181,
-                uri = uri
+    private fun testPlaylist(name: String, uri: String = "content://music/song-1"): M3uPlaylist =
+            M3uPlaylist(
+                    name = name,
+                    entries =
+                            listOf(
+                                    M3uPlaylistEntry(
+                                            title = "The Title",
+                                            artist = "The Artist",
+                                            durationSeconds = 181,
+                                            uri = uri
+                                    )
+                            )
             )
-        )
-    )
 }

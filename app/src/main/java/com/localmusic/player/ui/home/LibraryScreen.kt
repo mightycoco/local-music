@@ -231,8 +231,8 @@ private fun BrowseFacetList(
         songs: List<Song>,
         onBrowseValueSelected: (String) -> Unit
 ) {
-    val values = LibraryBrowser.values(songs, filter)
-    if (values.isEmpty()) {
+    val valueCounts = LibraryBrowser.valueCounts(songs, filter)
+    if (valueCounts.isEmpty()) {
         EmptyState(
                 title = "No ${filter.label.lowercase()} found",
                 message = "Refresh your local library or choose another filter."
@@ -241,8 +241,7 @@ private fun BrowseFacetList(
     }
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        items(values) { value ->
-            val songCount = songs.count { LibraryBrowser.matches(it, filter, value) }
+        items(valueCounts, key = { it.first.lowercase() }) { (value, songCount) ->
             ListItem(
                     modifier = Modifier.clickable { onBrowseValueSelected(value) },
                     headlineContent = { Text(value) },

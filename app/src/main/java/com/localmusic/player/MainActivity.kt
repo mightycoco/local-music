@@ -6,10 +6,11 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.util.UnstableApi
 import androidx.room.Room
 import com.localmusic.player.artwork.ArtworkDiskCache
 import com.localmusic.player.artwork.ArtworkPreferences
@@ -28,6 +29,7 @@ import com.localmusic.player.domain.usecase.RemoveFolderSourceUseCase
 import com.localmusic.player.domain.usecase.SetFavouriteUseCase
 import com.localmusic.player.domain.usecase.StartPlaybackUseCase
 import com.localmusic.player.playback.Media3PlaybackController
+import com.localmusic.player.playlist.RoomPlaylistStore
 import com.localmusic.player.playlist.SharedPreferencesPlaylistStore
 import com.localmusic.player.settings.LibraryPreferences
 import com.localmusic.player.ui.home.HomeRoute
@@ -36,6 +38,7 @@ import com.localmusic.player.ui.home.HomeViewModelFactory
 import com.localmusic.player.ui.theme.LocalMusicTheme
 
 /** Main Android entry point for the local music player. */
+@UnstableApi
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,7 +49,11 @@ class MainActivity : ComponentActivity() {
                                 LocalMusicDatabase::class.java,
                                 "local-music.db"
                         )
-                        .addMigrations(LocalMusicDatabase.MIGRATION_1_2)
+                        .addMigrations(
+                                LocalMusicDatabase.MIGRATION_1_2,
+                                LocalMusicDatabase.MIGRATION_2_3,
+                                LocalMusicDatabase.MIGRATION_3_4
+                        )
                         .build()
         val safFolderSourceStore =
                 SharedPreferencesSafFolderSourceStore(
@@ -85,8 +92,14 @@ class MainActivity : ComponentActivity() {
                         startPlayback =
                                 StartPlaybackUseCase(Media3PlaybackController(applicationContext)),
                         playlistStore =
-                                SharedPreferencesPlaylistStore(
-                                        getSharedPreferences("local-music-playlists", MODE_PRIVATE)
+                                RoomPlaylistStore(
+                                        database.playlistDao(),
+                                        SharedPreferencesPlaylistStore(
+                                                getSharedPreferences(
+                                                        "local-music-playlists",
+                                                        MODE_PRIVATE
+                                                )
+                                        )
                                 ),
                         artworkExtractor =
                                 EmbeddedArtworkExtractor(
@@ -110,12 +123,12 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val viewModel: HomeViewModel = viewModel(factory = factory)
-            val uiState by viewModel.uiState.collectAsState()
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             LocalMusicTheme(themeMode = uiState.themeMode) {
                 Surface(
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
-                ) { HomeRoute(viewModel = viewModel) }
+                ) { HomeRoute(viewModel = viewModel, uiState = uiState) }
             }
         }
     }

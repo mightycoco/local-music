@@ -1,9 +1,10 @@
 package com.localmusic.player.artwork
 
 import com.localmusic.player.domain.model.Song
+import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
-import java.net.URLEncoder
 import java.net.URL
+import java.net.URLEncoder
 
 /** Downloads artwork metadata only after local artwork sources have been exhausted. */
 interface ExternalArtworkProvider {
@@ -12,31 +13,37 @@ interface ExternalArtworkProvider {
 
 /** MusicBrainz release search with Cover Art Archive downloads and an artist-release fallback. */
 class MusicBrainzCoverArtProvider(
-    private val transport: ArtworkHttpTransport = UrlConnectionArtworkHttpTransport()
+        private val transport: ArtworkHttpTransport = UrlConnectionArtworkHttpTransport()
 ) : ExternalArtworkProvider {
     override fun artworkFor(song: Song): ByteArray? {
         if (song.artist.isUnknown() || song.album.isUnknown()) return null
 
         releaseId("release:\"${song.album}\" AND artist:\"${song.artist}\"")
-            ?.let(::coverArtForRelease)
-            ?.let { return it }
+                ?.let(::coverArtForRelease)
+                ?.let {
+                    return it
+                }
 
         return releaseId("artist:\"${song.artist}\" AND primarytype:album")
-            ?.let(::coverArtForRelease)
+                ?.let(::coverArtForRelease)
     }
 
     private fun releaseId(query: String): String? {
         val encodedQuery = URLEncoder.encode(query, Charsets.UTF_8.name())
-        val response = transport.get("https://musicbrainz.org/ws/2/release?fmt=json&limit=1&query=$encodedQuery")
-            ?: return null
-        return RELEASE_ID_PATTERN.find(response.toString(Charsets.UTF_8))
-            ?.groupValues
-            ?.getOrNull(1)
-            ?.takeIf { it.isNotBlank() }
+        val response =
+                transport.get(
+                        "https://musicbrainz.org/ws/2/release?fmt=json&limit=1&query=$encodedQuery"
+                )
+                        ?: return null
+        return RELEASE_ID_PATTERN
+                .find(response.toString(Charsets.UTF_8))
+                ?.groupValues
+                ?.getOrNull(1)
+                ?.takeIf { it.isNotBlank() }
     }
 
     private fun coverArtForRelease(releaseId: String): ByteArray? =
-        transport.get("https://coverartarchive.org/release/$releaseId/front-250")
+            transport.get("https://coverartarchive.org/release/$releaseId/front-250")
 
     private fun String.isUnknown(): Boolean = isBlank() || startsWith("Unknown", ignoreCase = true)
 
@@ -52,15 +59,32 @@ interface ArtworkHttpTransport {
 class UrlConnectionArtworkHttpTransport : ArtworkHttpTransport {
     override fun get(url: String): ByteArray? {
         rateLimiter.awaitTurn()
-        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
-            connectTimeout = 10_000
-            readTimeout = 15_000
-            requestMethod = "GET"
-            setRequestProperty("User-Agent", "LocalMusic/0.1.0 (local artwork lookup)")
-            setRequestProperty("Accept", "application/json, image/*")
-        }
+        val connection =
+                (URL(url).openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 10_000
+                    readTimeout = 15_000
+                    requestMethod = "GET"
+                    setRequestProperty("User-Agent", "LocalMusic/0.1.0 (local artwork lookup)")
+                    setRequestProperty("Accept", "application/json, image/*")
+                }
         return try {
-            if (connection.responseCode !in 200..299) null else connection.inputStream.use { it.readBytes() }
+            if (connection.responseCode !in 200..299 || connection.contentLengthLong > MAX_RE) {
+                null
+            } else {
+                connection.inputStream.use { input ->
+                    val output = ByteArrayOutputStream(DEFAULT_BUFFER_SIZE)
+                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                    var total = 0
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        total += read
+                        if (total > MAX_RESPONSE_BYTES) return null
+                        output.write(buffer, 0, read)
+                    }
+                    output.toByteArray()
+                }
+            }
         } catch (_: Exception) {
             null
         } finally {
@@ -70,13 +94,14 @@ class UrlConnectionArtworkHttpTransport : ArtworkHttpTransport {
 
     private companion object {
         val rateLimiter = ArtworkRequestRateLimiter()
+        const val MAX_RESPONSE_BYTES = 8 * 1024 * 1024
     }
 }
 
 class ArtworkRequestRateLimiter(
-    private val minimumIntervalMillis: Long = 1_100L,
-    private val clock: () -> Long = System::currentTimeMillis,
-    private val sleep: (Long) -> Unit = Thread::sleep
+        private val minimumIntervalMillis: Long = 1_100L,
+        private val clock: () -> Long = System::currentTimeMillis,
+        private val sleep: (Long) -> Unit = Thread::sleep
 ) {
     private var lastRequestMillis = Long.MIN_VALUE
 

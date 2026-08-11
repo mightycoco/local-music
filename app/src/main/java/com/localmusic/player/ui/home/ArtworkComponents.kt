@@ -1,5 +1,6 @@
 package com.localmusic.player.ui.home
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.compose.animation.AnimatedContent
@@ -71,7 +72,7 @@ internal fun ArtworkThumbnail(
                 artworkUri?.let { uri ->
                     withContext(Dispatchers.IO) {
                         context.contentResolver.openInputStream(Uri.parse(uri))?.use { input ->
-                            BitmapFactory.decodeStream(input)
+                            input.decodeSampledBitmap(MAX_ARTWORK_DIMENSION_PX)
                         }
                     }
                 }
@@ -239,9 +240,9 @@ internal fun ArtworkBackdrop(artworkUri: String?) {
         bitmap =
                 artworkUri?.let { uri ->
                     withContext(Dispatchers.IO) {
-                        context.contentResolver
-                                .openInputStream(Uri.parse(uri))
-                                ?.use(BitmapFactory::decodeStream)
+                        context.contentResolver.openInputStream(Uri.parse(uri))?.use { input ->
+                            input.decodeSampledBitmap(MAX_BACKDROP_DIMENSION_PX)
+                        }
                     }
                 }
     }
@@ -255,3 +256,25 @@ internal fun ArtworkBackdrop(artworkUri: String?) {
         )
     }
 }
+
+private fun java.io.InputStream.decodeSampledBitmap(maxDimension: Int): Bitmap? {
+    val bytes = readBytes()
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+
+    var sampleSize = 1
+    while (bounds.outWidth / sampleSize > maxDimension * 2 ||
+            bounds.outHeight / sampleSize > maxDimension * 2) {
+        sampleSize *= 2
+    }
+    return BitmapFactory.decodeByteArray(
+            bytes,
+            0,
+            bytes.size,
+            BitmapFactory.Options().apply { inSampleSize = sampleSize }
+    )
+}
+
+private const val MAX_ARTWORK_DIMENSION_PX = 1024
+private const val MAX_BACKDROP_DIMENSION_PX = 512

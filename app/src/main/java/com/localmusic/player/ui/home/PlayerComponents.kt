@@ -11,6 +11,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.localmusic.player.domain.model.Song
@@ -27,6 +32,9 @@ internal fun MiniPlayer(
         onNext: () -> Unit,
         onProgressChange: (Float) -> Unit
 ) {
+    var pendingProgress by remember { mutableFloatStateOf(progress) }
+    LaunchedEffect(progress) { pendingProgress = progress }
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -47,8 +55,9 @@ internal fun MiniPlayer(
             IconButton(onClick = onNext) { Text(Glyphs.PLAYER_NEXT.glyph) }
         }
         Slider(
-                value = progress.coerceIn(0f, 1f),
-                onValueChange = onProgressChange,
+                value = pendingProgress.coerceIn(0f, 1f),
+                onValueChange = { pendingProgress = it },
+                onValueChangeFinished = { onProgressChange(pendingProgress) },
                 modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)
         )
     }

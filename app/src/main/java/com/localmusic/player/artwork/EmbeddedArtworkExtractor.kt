@@ -52,17 +52,33 @@ class EmbeddedArtworkExtractor(
 
     private fun embeddedArtwork(song: Song): ByteArray? =
             runCatching {
-                        MediaMetadataRetriever().use { retriever ->
+                        val retriever = MediaMetadataRetriever()
+                        try {
                             retriever.setDataSource(context, lookup.embeddedArtworkCandidate(song))
-                            retriever.embeddedPicture
+                            retriever.embeddedPicture?.takeIf { it.size <= MAX_ARTWORK_BYTES }
+                        } finally {
+                            retriever.release()
                         }
                     }
                     .getOrNull()
 
     private fun siblingArtwork(song: Song, fileName: String): ByteArray? =
             artworkDocument(song, fileName)?.let(context.contentResolver::openInputStream)?.use {
-                it.readBytes()
+                it.readBytesLimited(MAX_ARTWORK_BYTES)
             }
+
+    private fun java.io.InputStream.readBytesLimited(maxBytes: Int): ByteArray? {
+        val output = java.io.ByteArrayOutputStream(minOf(maxBytes, DEFAULT_BUFFER_SIZE))
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var total = 0
+        while (true) {
+            val read = read(buffer)
+            if (read < 0) return output.toByteArray()
+            total += read
+            if (total > maxBytes) return null
+            output.write(buffer, 0, read)
+        }
+    }
 
     private fun artworkDocument(song: Song, fileName: String): Uri? =
             when (Uri.parse(song.uri).scheme) {
@@ -114,5 +130,9 @@ class EmbeddedArtworkExtractor(
                         null
                     }
                 }
+    }
+
+    private companion object {
+        const val MAX_ARTWORK_BYTES = 8 * 1024 * 1024
     }
 }

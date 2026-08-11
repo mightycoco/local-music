@@ -10,7 +10,10 @@ class LibraryBrowserTest {
     fun artistValuesAreDistinctAndCaseInsensitiveSorted() {
         val songs = listOf(song("Zebra"), song("alpha"), song("Zebra"))
 
-        assertEquals(listOf("alpha", "Zebra"), LibraryBrowser.values(songs, LibraryFilter.Artists))
+        assertEquals(
+                listOf("alpha" to 1, "Zebra" to 2),
+                LibraryBrowser.valueCounts(songs, LibraryFilter.Artists)
+        )
     }
 
     @Test
@@ -26,22 +29,26 @@ class LibraryBrowserTest {
     fun genreValuesAreAvailableForBrowsing() {
         val songs = listOf(song(genre = "Rock"), song(genre = "Jazz"), song(genre = "Rock"))
 
-        assertEquals(listOf("Jazz", "Rock"), LibraryBrowser.values(songs, LibraryFilter.Genres))
+        assertEquals(
+                listOf("Jazz" to 1, "Rock" to 2),
+                LibraryBrowser.valueCounts(songs, LibraryFilter.Genres)
+        )
     }
 
     private fun song(
-        artist: String = "Artist",
-        folder: String = "Music",
-        genre: String = "Unknown Genre"
-    ) = Song(
-        id = "$artist-$folder",
-        title = "Song",
-        artist = artist,
-        album = "Album",
-        genre = genre,
-        durationMillis = 1_000L,
-        dateAddedEpochSeconds = 1L,
-        folderName = folder,
-        uri = "content://media/$artist-$folder"
-    )
+            artist: String = "Artist",
+            folder: String = "Music",
+            genre: String = "Unknown Genre"
+    ) =
+            Song(
+                    id = "$artist-$folder",
+                    title = "Song",
+                    artist = artist,
+                    album = "Album",
+                    genre = genre,
+                    durationMillis = 1_000L,
+                    dateAddedEpochSeconds = 1L,
+                    folderName = folder,
+                    uri = "content://media/$artist-$folder"
+            )
 }

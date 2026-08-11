@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import androidx.core.content.ContextCompat
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 /** Sends local queue playback commands to the app Media3 session service. */
+@UnstableApi
 class Media3PlaybackController(
         private val context: Context,
         private val queueFactory: PlaybackQueueFactory = PlaybackQueueFactory()
@@ -33,10 +35,16 @@ class Media3PlaybackController(
                         var controller: MediaController? = null
                         var listener: Player.Listener? = null
                         val visualizerLevels = AtomicReference<List<Float>>(emptyList())
+                        val queueSongIds = AtomicReference<List<String>>(emptyList())
 
                         fun emitSnapshot() {
                             controller?.let { mediaController ->
-                                trySend(mediaController.toPlaybackSnapshot(visualizerLevels.get()))
+                                trySend(
+                                        mediaController.toPlaybackSnapshot(
+                                                queueSongIds.get(),
+                                                visualizerLevels.get()
+                                        )
+                                )
                             }
                         }
 
@@ -49,10 +57,14 @@ class Media3PlaybackController(
                                                 player: Player,
                                                 events: Player.Events
                                         ) {
+                                            if (events.contains(Player.EVENT_TIMELINE_CHANGED)) {
+                                                queueSongIds.set(player.queueSongIds())
+                                            }
                                             emitSnapshot()
                                         }
                                     }
                             mediaController.addListener(listener!!)
+                            queueSongIds.set(mediaController.queueSongIds())
                             emitSnapshot()
                         }
 
@@ -106,6 +118,14 @@ class Media3PlaybackController(
         withController { controller -> controller.pause() }
     }
 
+    override fun skipToNext() {
+        withController { controller -> controller.seekToNextMediaItem() }
+    }
+
+    override fun skipToPrevious() {
+        withController { controller -> controller.seekToPreviousMediaItem() }
+    }
+
     override fun seekTo(progress: Float) {
         withController { controller ->
             val duration = controller.duration.takeIf { it > 0 } ?: return@withController
@@ -132,6 +152,11 @@ class Media3PlaybackController(
         PlaybackAudioProcessor.setEnabled(enabled)
     }
 
+    override fun close() {
+        controllerFuture?.let(MediaController::releaseFuture)
+        controllerFuture = null
+    }
+
     private fun withController(command: (MediaController) -> Unit) {
         val future =
                 controllerFuture
@@ -139,10 +164,7 @@ class Media3PlaybackController(
                             controllerFuture = it
                         }
         future.addListener(
-                {
-                    val controller = future.get()
-                    command(controller)
-                },
+                { runCatching(future::get).getOrNull()?.let(command) },
                 ContextCompat.getMainExecutor(context)
         )
     }
@@ -151,11 +173,12 @@ class Media3PlaybackController(
             SessionToken(context, ComponentName(context, LocalMusicPlaybackService::class.java))
 
     private fun MediaController.toPlaybackSnapshot(
+            queueSongIds: List<String>,
             visualizerLevels: List<Float>
     ): PlaybackSnapshot =
             PlaybackSnapshot(
                     songId = currentMediaItem?.mediaId,
-                    queueSongIds = List(mediaItemCount) { index -> getMediaItemAt(index).mediaId },
+                    queueSongIds = queueSongIds,
                     isPlaying = isPlaying,
                     positionMillis = currentPosition.coerceAtLeast(0L),
                     durationMillis = duration.takeIf { it > 0L } ?: 0L,
@@ -168,4 +191,7 @@ class Media3PlaybackController(
                             },
                     visualizerLevels = visualizerLevels
             )
+
+    private fun Player.queueSongIds(): List<String> =
+            List(mediaItemCount) { index -> getMediaItemAt(index).mediaId }
 }

@@ -68,12 +68,12 @@ class HomeViewModel(
     private val isShuffleEnabled = MutableStateFlow(false)
     private val repeatMode = MutableStateFlow(RepeatMode.Off)
     private val themeMode = MutableStateFlow(AppThemeMode.FollowSystem)
-    private val importedPlaylists = MutableStateFlow(playlistStore?.playlists().orEmpty())
+    private val importedPlaylists = MutableStateFlow<List<M3uPlaylist>>(emptyList())
     private val sourceFolderUris = MutableStateFlow(folderSourceUris())
     private val artworkBySongId = MutableStateFlow<Map<String, String>>(emptyMap())
     private val artworkCacheSizeBytes = MutableStateFlow(artworkCache?.sizeBytes() ?: 0L)
     private val isExternalArtworkDownloadEnabled =
-            MutableStateFlow(artworkPreferences?.isExternalArtworkDownloadEnabled() ?: true)
+            MutableStateFlow(artworkPreferences?.isExternalArtworkDownloadEnabled() ?: false)
     private val isVisualizerPreferred =
             MutableStateFlow(artworkPreferences?.isVisualizerPreferred() ?: false)
     private val isCarAudioDetected = MutableStateFlow(false)
@@ -86,7 +86,13 @@ class HomeViewModel(
     private var hasRequestedInitialRefresh = false
 
     init {
-        ensureQueuePlaylist()
+        viewModelScope.launch(Dispatchers.IO) {
+            val storedPlaylists = playlistStore?.playlists().orEmpty()
+            withContext(Dispatchers.Main) {
+                importedPlaylists.value = storedPlaylists
+                ensureQueuePlaylist()
+            }
+        }
         viewModelScope.launch {
             startPlayback.observePlayback().collect { playback ->
                 nowPlayingSongId.value = playback.songId
@@ -210,16 +216,31 @@ class HomeViewModel(
             }
 
     private val projectedSongs =
-            combine(observeSongs(), controlsState) { songs, state -> songs to state }.map {
-                    (songs, state) ->
-                ProjectedSongs(
-                        allSongs = songs,
-                        visibleSongs =
-                                withContext(Dispatchers.Default) {
-                                    songs.applyLibraryProjection(state)
-                                }
-                )
+            combine(selectedFilter, selectedBrowseValue, sortOrder, searchQuery) {
+                    filter,
+                    browseValue,
+                    order,
+                    query ->
+                LibraryProjection(filter, browseValue, order, query)
             }
+                    .combine(observeSongs()) { projection, songs -> songs to projection }
+                    .map { (songs, projection) ->
+                        ProjectedSongs(
+                                allSongs = songs,
+                                visibleSongs =
+                                        withContext(Dispatchers.Default) {
+                                            songs.applyLibraryProjection(
+                                                    HomeUiState(
+                                                            selectedFilter = projection.filter,
+                                                            selectedBrowseValue =
+                                                                    projection.browseValue,
+                                                            sortOrder = projection.sortOrder,
+                                                            searchQuery = projection.searchQuery
+                                                    )
+                                            )
+                                        }
+                        )
+                    }
 
     val uiState: StateFlow<HomeUiState> =
             combine(projectedSongs, controlsState, artworkBySongId, playbackState) {
@@ -405,11 +426,15 @@ class HomeViewModel(
     }
 
     fun skipToNext() {
-        moveNowPlaying(offset = 1)
+        runCatching(startPlayback::skipToNext).onFailure { error ->
+            refreshError.value = error.message ?: "Next track failed"
+        }
     }
 
     fun skipToPrevious() {
-        moveNowPlaying(offset = -1)
+        runCatching(startPlayback::skipToPrevious).onFailure { error ->
+            refreshError.value = error.message ?: "Previous track failed"
+        }
     }
 
     fun updatePlaybackProgress(progress: Float) {
@@ -477,15 +502,6 @@ class HomeViewModel(
         }
     }
 
-    private fun moveNowPlaying(offset: Int) {
-        val songs = uiState.value.songs
-        if (songs.isEmpty()) return
-        val currentIndex =
-                songs.indexOfFirst { it.id == nowPlayingSongId.value }.takeIf { it >= 0 } ?: 0
-        val nextIndex = Math.floorMod(currentIndex + offset, songs.size)
-        playSong(songs[nextIndex])
-    }
-
     private fun refreshArtwork(songs: List<Song>) {
         val extractor = artworkExtractor ?: return
         val cachedArtworkIds = artworkBySongId.value.keys
@@ -530,20 +546,22 @@ class HomeViewModel(
 
     fun importPlaylist(name: String, content: String) {
         runCatching { playlistCodec.parse(name, content) }
-                .onSuccess { playlist ->
-                    importedPlaylists.value =
-                            playlistStore?.save(playlist) ?: importedPlaylists.value + playlist
-                }
+                .onSuccess { playlist -> savePlaylist(playlist) }
                 .onFailure { error ->
                     refreshError.value = error.message ?: "Playlist import failed"
                 }
     }
 
+    override fun onCleared() {
+        startPlayback.setVisualizerEnabled(false)
+        startPlayback.close()
+        super.onCleared()
+    }
+
     fun deletePlaylist(playlist: M3uPlaylist) {
         if (playlist.name == M3uPlaylist.QUEUE_NAME) return
-        importedPlaylists.value =
-                playlistStore?.delete(playlist.name)
-                        ?: importedPlaylists.value.filterNot { it.name == playlist.name }
+        importedPlaylists.value = importedPlaylists.value.filterNot { it.name == playlist.name }
+        viewModelScope.launch(Dispatchers.IO) { playlistStore?.delete(playlist.name) }
     }
 
     fun createPlaylist(name: String) {
@@ -551,10 +569,7 @@ class HomeViewModel(
         if (normalizedName.isEmpty()) return
 
         val playlist = M3uPlaylist(name = normalizedName, entries = emptyList())
-        importedPlaylists.value =
-                playlistStore?.save(playlist)
-                        ?: (importedPlaylists.value.filterNot { it.name == normalizedName } +
-                                playlist)
+        savePlaylist(playlist)
     }
 
     fun renamePlaylist(playlist: M3uPlaylist, newName: String) {
@@ -563,13 +578,15 @@ class HomeViewModel(
         if (normalizedName.isEmpty() || normalizedName == playlist.name) return
 
         val renamedPlaylist = playlist.copy(name = normalizedName)
-        playlistStore?.delete(playlist.name)
         importedPlaylists.value =
-                playlistStore?.save(renamedPlaylist)
-                        ?: (importedPlaylists.value.filterNot {
-                                    it.name == playlist.name || it.name == normalizedName
-                                } + renamedPlaylist)
-                                .withQueueFirst()
+                (importedPlaylists.value.filterNot {
+                            it.name == playlist.name || it.name == normalizedName
+                        } + renamedPlaylist)
+                        .withQueueFirst()
+        viewModelScope.launch(Dispatchers.IO) {
+            playlistStore?.delete(playlist.name)
+            playlistStore?.save(renamedPlaylist)
+        }
     }
 
     fun duplicatePlaylist(playlist: M3uPlaylist, name: String) {
@@ -578,11 +595,7 @@ class HomeViewModel(
         if (normalizedName.isEmpty()) return
 
         val duplicate = playlist.copy(name = normalizedName)
-        importedPlaylists.value =
-                playlistStore?.save(duplicate)
-                        ?: (importedPlaylists.value.filterNot { it.name == normalizedName } +
-                                        duplicate)
-                                .withQueueFirst()
+        savePlaylist(duplicate)
     }
 
     fun removePlaylistEntry(playlist: M3uPlaylist, entryIndex: Int) {
@@ -666,10 +679,9 @@ class HomeViewModel(
 
     private fun savePlaylist(playlist: M3uPlaylist) {
         importedPlaylists.value =
-                playlistStore?.save(playlist)
-                        ?: (importedPlaylists.value.filterNot { it.name == playlist.name } +
-                                        playlist)
-                                .withQueueFirst()
+                (importedPlaylists.value.filterNot { it.name == playlist.name } + playlist)
+                        .withQueueFirst()
+        viewModelScope.launch(Dispatchers.IO) { playlistStore?.save(playlist) }
     }
 
     fun exportCurrentPlaylist(): String =
@@ -778,6 +790,13 @@ private data class AppearanceState(
 private data class CarModeState(val isEnabled: Boolean, val isManuallyEnabled: Boolean)
 
 private data class ProjectedSongs(val allSongs: List<Song>, val visibleSongs: List<Song>)
+
+private data class LibraryProjection(
+        val filter: LibraryFilter,
+        val browseValue: String?,
+        val sortOrder: SortOrder,
+        val searchQuery: String
+)
 
 internal fun resolvePlaybackQueue(
         queueSongIds: List<String>,

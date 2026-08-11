@@ -28,6 +28,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -344,6 +345,9 @@ private fun NowPlayingDetailsAndControls(
         onNext: () -> Unit,
         modifier: Modifier = Modifier
 ) {
+    var pendingProgress by remember { mutableFloatStateOf(uiState.playbackProgress) }
+    LaunchedEffect(uiState.playbackProgress) { pendingProgress = uiState.playbackProgress }
+
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
@@ -362,8 +366,9 @@ private fun NowPlayingDetailsAndControls(
             )
         }
         Slider(
-                value = uiState.playbackProgress.coerceIn(0f, 1f),
-                onValueChange = onProgressChange,
+                value = pendingProgress.coerceIn(0f, 1f),
+                onValueChange = { pendingProgress = it },
+                onValueChangeFinished = { onProgressChange(pendingProgress) },
                 modifier = Modifier.fillMaxWidth()
         )
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

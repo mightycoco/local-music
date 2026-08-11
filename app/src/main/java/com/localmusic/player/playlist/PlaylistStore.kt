@@ -1,7 +1,7 @@
 package com.localmusic.player.playlist
 
 interface PlaylistStore {
-    fun playlists(): List<M3uPlaylist>
-    fun save(playlist: M3uPlaylist): List<M3uPlaylist>
-    fun delete(name: String): List<M3uPlaylist>
+    suspend fun playlists(): List<M3uPlaylist>
+    suspend fun save(playlist: M3uPlaylist)
+    suspend fun delete(name: String)
 }

@@ -11,10 +11,13 @@ interface PlaybackController {
     fun clearQueue()
     fun resume()
     fun pause()
+    fun skipToNext()
+    fun skipToPrevious()
     fun seekTo(progress: Float)
     fun setShuffleEnabled(enabled: Boolean)
     fun setRepeatMode(mode: RepeatMode)
     fun setVisualizerEnabled(enabled: Boolean)
+    fun close()
 }
 
 enum class RepeatMode {

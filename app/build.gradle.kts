@@ -6,6 +6,7 @@ plugins {
 }
 
 import java.io.File
+import javax.xml.XMLConstants
 import javax.xml.parsers.DocumentBuilderFactory
 
 val appIconSource = layout.projectDirectory.file("src/main/icon/app_icon.svg")
@@ -16,8 +17,15 @@ val generateAppIcon by tasks.registering {
     outputs.dir(generatedIconResources)
 
     doLast {
-        val svgDocument =
-            DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(appIconSource.asFile)
+        val documentBuilderFactory = DocumentBuilderFactory.newInstance().apply {
+            setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)
+            setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+            setFeature("http://xml.org/sax/features/external-general-entities", false)
+            setFeature("http://xml.org/sax/features/external-parameter-entities", false)
+            isXIncludeAware = false
+            isExpandEntityReferences = false
+        }
+        val svgDocument = documentBuilderFactory.newDocumentBuilder().parse(appIconSource.asFile)
         val svg = svgDocument.documentElement
         val viewBox = svg.getAttribute("viewBox").trim().split(Regex("\\s+"))
         require(viewBox.size == 4) { "App icon SVG must declare a four-value viewBox." }
@@ -121,13 +129,8 @@ android {
     }
 
     buildTypes {
-        debug {
-            if (hasReleaseSigningConfig) {
-                signingConfig = signingConfigs.getByName("release")
-            }
-        }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             if (hasReleaseSigningConfig) {
                 signingConfig = signingConfigs.getByName("release")
             }

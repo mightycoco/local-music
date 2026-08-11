@@ -1,6 +1,7 @@
 package com.localmusic.player.ui.home
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothA2dp
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
@@ -22,7 +23,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -42,13 +42,12 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -60,9 +59,14 @@ import com.localmusic.player.domain.model.LibraryFilter
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.SortOrder
 import com.localmusic.player.playlist.M3uPlaylist
+import com.localmusic.player.playlist.M3uPlaylistCodec
 import com.localmusic.player.playlist.toM3uEntry
 import com.localmusic.player.ui.theme.AppThemeMode
 import com.localmusic.player.ui.theme.UiAnimationTimings
+import java.io.Reader
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 
 internal const val VISUALIZER_FPS = 20
@@ -89,9 +93,9 @@ enum class Glyphs(val glyph: String) {
 }
 
 @Composable
-fun HomeRoute(viewModel: HomeViewModel) {
+fun HomeRoute(viewModel: HomeViewModel, uiState: HomeUiState) {
     val context = LocalContext.current
-    val uiState by viewModel.uiState.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
     val audioPermission =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 Manifest.permission.READ_MEDIA_AUDIO
@@ -149,13 +153,17 @@ fun HomeRoute(viewModel: HomeViewModel) {
                             else null
                         }
                                 ?: "Imported Playlist"
-                val content =
-                        context.contentResolver
-                                .openInputStream(playlistUri)
-                                ?.bufferedReader()
-                                ?.use { it.readText() }
-                                .orEmpty()
-                viewModel.importPlaylist(name, content)
+                coroutineScope.launch {
+                    val content =
+                            withContext(Dispatchers.IO) {
+                                context.contentResolver
+                                        .openInputStream(playlistUri)
+                                        ?.bufferedReader()
+                                        ?.use { it.readTextLimited(MAX_PLAYLIST_IMPORT_CHARS) }
+                                        .orEmpty()
+                            }
+                    viewModel.importPlaylist(name, content)
+                }
             }
     var playlistToExport by remember { mutableStateOf<M3uPlaylist?>(null) }
     val playlistExportLauncher =
@@ -164,9 +172,11 @@ fun HomeRoute(viewModel: HomeViewModel) {
             ) { playlistUri ->
                 val playlist = playlistToExport
                 if (playlistUri != null && playlist != null) {
-                    context.contentResolver.openOutputStream(playlistUri)?.bufferedWriter()?.use {
-                            writer ->
-                        writer.write(viewModel.exportPlaylist(playlist))
+                    coroutineScope.launch(Dispatchers.IO) {
+                        context.contentResolver
+                                .openOutputStream(playlistUri)
+                                ?.bufferedWriter()
+                                ?.use { writer -> M3uPlaylistCodec().write(playlist, writer) }
                     }
                 }
                 playlistToExport = null
@@ -334,6 +344,20 @@ fun HomeRoute(viewModel: HomeViewModel) {
     )
 }
 
+private fun Reader.readTextLimited(maxCharacters: Int): String {
+    val output = StringBuilder(minOf(maxCharacters, DEFAULT_PLAYLIST_BUFFER_CHARS))
+    val buffer = CharArray(DEFAULT_PLAYLIST_BUFFER_CHARS)
+    while (true) {
+        val read = read(buffer)
+        if (read < 0) return output.toString()
+        require(output.length + read <= maxCharacters) { "Playlist file is too large" }
+        output.append(buffer, 0, read)
+    }
+}
+
+private const val MAX_PLAYLIST_IMPORT_CHARS = 4 * 1024 * 1024
+private const val DEFAULT_PLAYLIST_BUFFER_CHARS = 8 * 1024
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -382,7 +406,6 @@ fun HomeScreen(
         onRequestPermission: () -> Unit
 ) {
     val libraryListState = rememberLazyListState()
-    val swipeThreshold = 96.dp
     val showTopBar = uiState.selectedScreen != HomeScreenDestination.NowPlaying
     var playlistEditorName by remember { mutableStateOf<String?>(null) }
     var playlistEditorReturnDestination by remember {
@@ -453,38 +476,7 @@ fun HomeScreen(
                 }
             }
     ) { padding ->
-        Column(
-                modifier =
-                        Modifier.fillMaxSize()
-                                .padding(padding)
-                                .padding(horizontal = 16.dp)
-                                .pointerInput(uiState.selectedScreen) {
-                                    var totalDrag = 0f
-                                    var navigationTriggered = false
-                                    detectHorizontalDragGestures(
-                                            onDragStart = {
-                                                totalDrag = 0f
-                                                navigationTriggered = false
-                                            },
-                                            onHorizontalDrag = { _, dragAmount ->
-                                                if (navigationTriggered) {
-                                                    return@detectHorizontalDragGestures
-                                                }
-
-                                                totalDrag += dragAmount
-                                                if (totalDrag >= swipeThreshold.toPx()) {
-                                                    onScreenSelected(
-                                                            uiState.selectedScreen.previous()
-                                                    )
-                                                    navigationTriggered = true
-                                                } else if (totalDrag <= -swipeThreshold.toPx()) {
-                                                    onScreenSelected(uiState.selectedScreen.next())
-                                                    navigationTriggered = true
-                                                }
-                                            }
-                                    )
-                                }
-        ) {
+        Column(modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
             if (!hasAudioPermission) {
                 PermissionBanner(onRequestPermission = onRequestPermission)
                 Spacer(modifier = Modifier.height(12.dp))
@@ -702,12 +694,13 @@ private fun PermissionBanner(onRequestPermission: () -> Unit) {
     }
 }
 
+@SuppressLint("MissingPermission")
 private fun android.content.Context.isConnectedToCarAudio(): Boolean {
     val bluetoothManager = getSystemService(BluetoothManager::class.java) ?: return false
     val adapter: BluetoothAdapter = bluetoothManager.adapter ?: return false
     return runCatching {
                 adapter.getProfileConnectionState(BluetoothProfile.A2DP) ==
-                        BluetoothProfile.STATE_CONNECTED
+                        BluetoothAdapter.STATE_CONNECTED
             }
             .getOrDefault(false)
 }

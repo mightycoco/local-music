@@ -4,6 +4,7 @@ import android.os.SystemClock
 import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.BaseAudioProcessor
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.audio.AudioSink
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /** Media3 session service for local playback and external media controls. */
+@UnstableApi
 class LocalMusicPlaybackService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
     private var player: ExoPlayer? = null
@@ -54,6 +56,7 @@ class LocalMusicPlaybackService : MediaSessionService() {
     }
 }
 
+@UnstableApi
 internal object PlaybackAudioProcessor : BaseAudioProcessor() {
     private const val LEVELS_UPDATE_INTERVAL_MILLIS = 1_000L / VISUALIZER_FPS
     private const val MINIMUM_VISUALIZER_DECIBELS = -60f
@@ -83,8 +86,7 @@ internal object PlaybackAudioProcessor : BaseAudioProcessor() {
 
     override fun queueInput(inputBuffer: ByteBuffer) {
         val now = SystemClock.elapsedRealtime()
-        if (isEnabled &&
-                        inputBuffer.hasRemaining() &&
+        if (inputBuffer.hasRemaining() &&
                         now - lastLevelsUpdateMillis >= LEVELS_UPDATE_INTERVAL_MILLIS
         ) {
             _levels.value = inputBuffer.toVisualizerLevels(inputEncoding)
@@ -94,6 +96,8 @@ internal object PlaybackAudioProcessor : BaseAudioProcessor() {
         replaceOutputBuffer(inputCopy.remaining()).put(inputCopy).flip()
         inputBuffer.position(inputBuffer.limit())
     }
+
+    override fun isActive(): Boolean = isEnabled && super.isActive()
 
     private fun ByteBuffer.toVisualizerLevels(encoding: Int, barCount: Int = 19): List<Float> {
         return when (encoding) {
