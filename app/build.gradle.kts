@@ -85,7 +85,7 @@ $vectorPaths
         colorsFile.writeText(
             """<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#174A4A</color>
+    <color name="ic_launcher_background">#00000000</color>
 </resources>
 """
         )
