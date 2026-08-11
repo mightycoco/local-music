@@ -8,7 +8,7 @@
 - Reduced playback and UI churn with direct Media3 navigation, lifecycle-aware state collection, one-pass facet counts, and seek-on-release sliders.
 - Restored horizontal swipe navigation across primary views with direction and distance thresholds while yielding gestures consumed by sliders and other child controls.
 - Disabled app-data backup, isolated debug signing from release credentials, secured SVG XML parsing, and enabled R8 for release builds.
-- Made Car Mode enlarge compact-player transport controls by 30 percent, with full-width layout and progress-bar clearance, without showing a persistent heading.
+- Gave Car Mode a dedicated compact-player layout with 72 dp full-width transport controls, larger artwork and metadata, and progress-bar clearance without showing a persistent heading.
 - Hid the system status bar while the compact player is visible and restored it when leaving the compact-player layout.
 - Normalized the Now Playing queue display so the current song is first and duplicate items are hidden.
 - Made Now Playing queue items selectable and added favourite toggles to their rows.
