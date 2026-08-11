@@ -6,7 +6,7 @@
 - Moved playlists to per-playlist Room rows, added legacy SharedPreferences migration, and bounded M3U document I/O.
 - Bounded artwork ingestion and downloads, sampled bitmap decoding, synchronized cache writes, and collision-resistant cache keys.
 - Reduced playback and UI churn with direct Media3 navigation, lifecycle-aware state collection, one-pass facet counts, and seek-on-release sliders.
-- Removed shell-wide swipe navigation that conflicted with lists, sliders, and child interactions.
+- Restored horizontal swipe navigation across primary views with direction and distance thresholds while yielding gestures consumed by sliders and other child controls.
 - Disabled app-data backup, isolated debug signing from release credentials, secured SVG XML parsing, and enabled R8 for release builds.
 - Made Car Mode enlarge compact-player transport controls by 30 percent, with full-width layout and progress-bar clearance, without showing a persistent heading.
 - Hid the system status bar while the compact player is visible and restored it when leaving the compact-player layout.

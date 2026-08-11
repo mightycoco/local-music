@@ -23,6 +23,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -49,8 +51,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,6 +76,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
+import kotlin.math.abs
 
 internal const val VISUALIZER_FPS = 20
 
@@ -409,6 +416,7 @@ fun HomeScreen(
 ) {
     val libraryListState = rememberLazyListState()
     val showTopBar = uiState.selectedScreen != HomeScreenDestination.NowPlaying
+    val screenSwipeThreshold = with(LocalDensity.current) { 72.dp.toPx() }
     var playlistEditorName by remember { mutableStateOf<String?>(null) }
     var playlistEditorReturnDestination by remember {
         mutableStateOf(HomeScreenDestination.Playlists)
@@ -498,6 +506,45 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(12.dp))
             }
             AnimatedContent(
+                    modifier =
+                            Modifier.fillMaxSize().pointerInput(
+                                    uiState.selectedScreen,
+                                    screenSwipeThreshold
+                            ) {
+                                if (uiState.selectedScreen == HomeScreenDestination.PlaylistEditor) {
+                                    return@pointerInput
+                                }
+                                awaitEachGesture {
+                                    val down =
+                                            awaitFirstDown(
+                                                    requireUnconsumed = false,
+                                                    pass = PointerEventPass.Initial
+                                            )
+                                    var drag = Offset.Zero
+                                    var consumedByChild = false
+                                    do {
+                                        val event = awaitPointerEvent(PointerEventPass.Final)
+                                        val change =
+                                                event.changes.firstOrNull { it.id == down.id }
+                                                        ?: break
+                                        consumedByChild = consumedByChild || change.isConsumed
+                                        drag += change.position - change.previousPosition
+                                    } while (change.pressed)
+
+                                    if (!consumedByChild &&
+                                                    abs(drag.x) >= screenSwipeThreshold &&
+                                                    abs(drag.x) > abs(drag.y) * 1.5f
+                                    ) {
+                                        onScreenSelected(
+                                                if (drag.x > 0f) {
+                                                    uiState.selectedScreen.previous()
+                                                } else {
+                                                    uiState.selectedScreen.next()
+                                                }
+                                        )
+                                    }
+                                }
+                            },
                     targetState = uiState.selectedScreen,
                     transitionSpec = {
                         val moveForward = initialState.movesForwardTo(targetState)
