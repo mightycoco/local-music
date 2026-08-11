@@ -6,8 +6,11 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.util.UnstableApi
@@ -124,6 +127,23 @@ class MainActivity : ComponentActivity() {
         setContent {
             val viewModel: HomeViewModel = viewModel(factory = factory)
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+            val isMiniPlayerVisible =
+                    uiState.nowPlayingSong != null &&
+                            uiState.selectedScreen !=
+                                    com.localmusic.player.ui.home.HomeScreenDestination.NowPlaying
+            DisposableEffect(isMiniPlayerVisible) {
+                val insetsController = WindowInsetsControllerCompat(window, window.decorView)
+                if (isMiniPlayerVisible) {
+                    insetsController.hide(WindowInsetsCompat.Type.statusBars())
+                } else {
+                    insetsController.show(WindowInsetsCompat.Type.statusBars())
+                }
+                onDispose {
+                    if (isMiniPlayerVisible) {
+                        insetsController.show(WindowInsetsCompat.Type.statusBars())
+                    }
+                }
+            }
             LocalMusicTheme(themeMode = uiState.themeMode) {
                 Surface(
                         modifier = Modifier.fillMaxSize(),

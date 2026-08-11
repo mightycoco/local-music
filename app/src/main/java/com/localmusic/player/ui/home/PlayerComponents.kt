@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -26,6 +27,7 @@ internal fun MiniPlayer(
         artworkUri: String?,
         isPlaying: Boolean,
         progress: Float,
+        isCarMode: Boolean,
         onOpenNowPlaying: () -> Unit,
         onPrevious: () -> Unit,
         onPlayPause: () -> Unit,
@@ -34,11 +36,17 @@ internal fun MiniPlayer(
 ) {
     var pendingProgress by remember { mutableFloatStateOf(progress) }
     LaunchedEffect(progress) { pendingProgress = progress }
+    val controlSize = if (isCarMode) 62.4.dp else 48.dp
+    val playerPadding = if (isCarMode) 12.dp else 8.dp
+    val controlPadding = if (isCarMode) 8.dp else 4.dp
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(
+            modifier = Modifier.fillMaxWidth().padding(playerPadding),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
         Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(controlPadding)
         ) {
             ArtworkThumbnail(artworkUri = artworkUri)
             Column(
@@ -48,11 +56,20 @@ internal fun MiniPlayer(
                 Text(text = song.title, maxLines = 1, style = MaterialTheme.typography.titleSmall)
                 Text(text = song.album, maxLines = 1, style = MaterialTheme.typography.bodySmall)
             }
-            IconButton(onClick = onPrevious) { Text(Glyphs.PLAYER_PREVIOUS.glyph) }
-            IconButton(onClick = onPlayPause) {
-                Text(if (isPlaying) Glyphs.PLAYER_PAUSE.glyph else Glyphs.PLAYER_PLAY.glyph)
+            Row(
+                    modifier = Modifier.padding(horizontal = controlPadding),
+                    horizontalArrangement = Arrangement.spacedBy(controlPadding)
+            ) {
+                IconButton(onClick = onPrevious, modifier = Modifier.size(controlSize)) {
+                    Text(Glyphs.PLAYER_PREVIOUS.glyph)
+                }
+                IconButton(onClick = onPlayPause, modifier = Modifier.size(controlSize)) {
+                    Text(if (isPlaying) Glyphs.PLAYER_PAUSE.glyph else Glyphs.PLAYER_PLAY.glyph)
+                }
+                IconButton(onClick = onNext, modifier = Modifier.size(controlSize)) {
+                    Text(Glyphs.PLAYER_NEXT.glyph)
+                }
             }
-            IconButton(onClick = onNext) { Text(Glyphs.PLAYER_NEXT.glyph) }
         }
         Slider(
                 value = pendingProgress.coerceIn(0f, 1f),

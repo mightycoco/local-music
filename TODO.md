@@ -39,6 +39,7 @@
 - [ ] Complete Car Mode: observe A2DP connection changes, allow marking devices as cars, and apply driving-safe 80-96dp touch targets and simplified controls.
 	- [x] Persist an explicit user-controlled Car Mode override in Settings.
 	- [x] Observe A2DP connection changes while Bluetooth access is available.
+	- [x] Increase compact-player transport targets by 30 percent and provide a full-width, non-overlapping layout while Car Mode is active.
 - [x] Complete Now Playing: shuffle, repeat, swipe navigation, a system equalizer entry point, elapsed/remaining time, favourites, and queue contents.
 	- [x] Show the active playback playlist below the controls and position it at the current song whenever Now Playing becomes visible.
 - [x] The selection of the screen must be at the bottom (Home/Now Playing/Playlists/Favourites/Settings)

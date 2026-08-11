@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -37,6 +38,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -431,32 +433,35 @@ fun HomeScreen(
     Scaffold(
             topBar = {
                 if (showTopBar) {
-                    TopAppBar(
-                            title = {
-                                val nowPlayingSong = uiState.nowPlayingSong
-                                if (nowPlayingSong == null) {
+                    val nowPlayingSong = uiState.nowPlayingSong
+                    if (nowPlayingSong == null) {
+                        TopAppBar(
+                                title = {
                                     Text(
                                             text = "Local Music",
                                             style = MaterialTheme.typography.headlineMedium,
                                             fontWeight = FontWeight.Light
                                     )
-                                } else {
-                                    MiniPlayer(
-                                            song = nowPlayingSong,
-                                            artworkUri = uiState.artworkBySongId[nowPlayingSong.id],
-                                            isPlaying = uiState.isPlaying,
-                                            progress = uiState.playbackProgress,
-                                            onOpenNowPlaying = {
-                                                onScreenSelected(HomeScreenDestination.NowPlaying)
-                                            },
-                                            onPrevious = onPrevious,
-                                            onPlayPause = onPlayPause,
-                                            onNext = onNext,
-                                            onProgressChange = onProgressChange
-                                    )
                                 }
-                            }
-                    )
+                        )
+                    } else {
+                        Surface(modifier = Modifier.fillMaxWidth(), tonalElevation = 2.dp) {
+                            MiniPlayer(
+                                    song = nowPlayingSong,
+                                    artworkUri = uiState.artworkBySongId[nowPlayingSong.id],
+                                    isPlaying = uiState.isPlaying,
+                                    progress = uiState.playbackProgress,
+                                    isCarMode = uiState.isCarMode,
+                                    onOpenNowPlaying = {
+                                        onScreenSelected(HomeScreenDestination.NowPlaying)
+                                    },
+                                    onPrevious = onPrevious,
+                                    onPlayPause = onPlayPause,
+                                    onNext = onNext,
+                                    onProgressChange = onProgressChange
+                            )
+                        }
+                    }
                 }
             },
             bottomBar = {
@@ -489,14 +494,6 @@ fun HomeScreen(
                 Text(
                         text = "Refreshing local music...",
                         style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-            if (uiState.isCarMode) {
-                Text(
-                        text = "Car Mode",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold
                 )
                 Spacer(modifier = Modifier.height(12.dp))
             }

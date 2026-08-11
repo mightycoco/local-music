@@ -68,7 +68,9 @@ class UrlConnectionArtworkHttpTransport : ArtworkHttpTransport {
                     setRequestProperty("Accept", "application/json, image/*")
                 }
         return try {
-            if (connection.responseCode !in 200..299 || connection.contentLengthLong > MAX_RE) {
+            if (connection.responseCode !in 200..299 ||
+                            connection.contentLengthLong > MAX_RESPONSE_BYTES
+            ) {
                 null
             } else {
                 connection.inputStream.use { input ->

@@ -1,0 +1,13 @@
+{
+    "kotlin.languageServer.enabled": false,
+    "kotlin.languageServer.watchFiles": [
+        "**/*.kt",
+        "**/*.kts",
+        "**/*.java",
+        "**/*.gradle",
+        "**/*.gradle.kts",
+        "**/gradle/libs.versions.toml",
+        "**/settings.gradle",
+        "**/settings.gradle.kts"
+    ]
+}
