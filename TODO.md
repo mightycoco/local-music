@@ -67,7 +67,7 @@
 
 - [ ] Verify all required local formats on device and document Media3 fallback behavior: MP3, AAC, M4A, FLAC, WAV, AIFF, OGG, and Opus.
 - [x] Complete Home filters: Artists, Albums, Genres, and Folders provide local drill-down browsing.
-- [ ] Expand the song metadata model and instant search to include album artist, genre, composer, year, comments, description, and playlist names.
+- [x] Expand the song metadata model and instant search to include album artist, genre, composer, year, comments, description, and playlist names.
 - [ ] Add the No Artwork smart playlist. Never Played and Last 30 Days are available as Home filters.
 - [ ] Complete Settings: artwork cache controls, default filter/sort, Car Mode and Bluetooth preferences, About/version, and licenses UI.
 	- [x] Manage selected local folders from Settings, including removal and persisted URI permission release.

@@ -2,6 +2,7 @@
 
 ## 0.1.0 - Unreleased
 
+- Expanded indexed song metadata and instant search to include album artist, genre, composer, year, comments, description, and playlist membership names.
 - Hardened library scans against partial-result deletion and replaced large ID reconciliation with indexed scan generations.
 - Moved playlists to per-playlist Room rows, added legacy SharedPreferences migration, and bounded M3U document I/O.
 - Bounded artwork ingestion and downloads, sampled bitmap decoding, synchronized cache writes, and collision-resistant cache keys.

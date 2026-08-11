@@ -47,90 +47,91 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val database =
-                Room.databaseBuilder(
-                                applicationContext,
-                                LocalMusicDatabase::class.java,
-                                "local-music.db"
-                        )
-                        .addMigrations(
-                                LocalMusicDatabase.MIGRATION_1_2,
-                                LocalMusicDatabase.MIGRATION_2_3,
-                                LocalMusicDatabase.MIGRATION_3_4
-                        )
-                        .build()
+            Room.databaseBuilder(
+                applicationContext,
+                LocalMusicDatabase::class.java,
+                "local-music.db"
+            )
+                .addMigrations(
+                    LocalMusicDatabase.MIGRATION_1_2,
+                    LocalMusicDatabase.MIGRATION_2_3,
+                    LocalMusicDatabase.MIGRATION_3_4,
+                    LocalMusicDatabase.MIGRATION_4_5
+                )
+                .build()
         val safFolderSourceStore =
-                SharedPreferencesSafFolderSourceStore(
-                        getSharedPreferences("local-music-sources", MODE_PRIVATE)
-                )
+            SharedPreferencesSafFolderSourceStore(
+                getSharedPreferences("local-music-sources", MODE_PRIVATE)
+            )
         val repository =
-                RoomMusicRepository(
-                        songDao = database.songDao(),
-                        musicScanner =
-                                CompositeMusicScanner(
-                                        listOf(
-                                                MediaStoreMusicScanner(contentResolver),
-                                                SafFolderMusicScanner(
-                                                        applicationContext,
-                                                        safFolderSourceStore
-                                                )
-                                        )
-                                ),
-                        safFolderSourceStore = safFolderSourceStore,
-                        persistSafFolderPermission = { folderUri ->
-                            contentResolver.takePersistableUriPermission(
-                                    android.net.Uri.parse(folderUri),
-                                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+            RoomMusicRepository(
+                songDao = database.songDao(),
+                musicScanner =
+                    CompositeMusicScanner(
+                        listOf(
+                            MediaStoreMusicScanner(contentResolver),
+                            SafFolderMusicScanner(
+                                applicationContext,
+                                safFolderSourceStore
                             )
-                        }
-                )
+                        )
+                    ),
+                safFolderSourceStore = safFolderSourceStore,
+                persistSafFolderPermission = { folderUri ->
+                    contentResolver.takePersistableUriPermission(
+                        android.net.Uri.parse(folderUri),
+                        android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                }
+            )
         val artworkCache = ArtworkDiskCache(filesDir)
         val factory =
-                HomeViewModelFactory(
-                        observeSongs = ObserveSongsUseCase(repository),
-                        refreshMusicLibrary = RefreshMusicLibraryUseCase(repository),
-                        addFolderSource = AddFolderSourceUseCase(repository),
-                        removeFolderSource = RemoveFolderSourceUseCase(repository),
-                        folderSourceUris = safFolderSourceStore::folders,
-                        setFavourite = SetFavouriteUseCase(repository),
-                        startPlayback =
-                                StartPlaybackUseCase(Media3PlaybackController(applicationContext)),
-                        playlistStore =
-                                RoomPlaylistStore(
-                                        database.playlistDao(),
-                                        SharedPreferencesPlaylistStore(
-                                                getSharedPreferences(
-                                                        "local-music-playlists",
-                                                        MODE_PRIVATE
-                                                )
-                                        )
-                                ),
-                        artworkExtractor =
-                                EmbeddedArtworkExtractor(
-                                        context = applicationContext,
-                                        cache = artworkCache
-                                ),
-                        artworkCache = artworkCache,
-                        artworkPreferences =
-                                ArtworkPreferences(
-                                        getSharedPreferences("local-music-artwork", MODE_PRIVATE)
-                                ),
-                        libraryPreferences =
-                                LibraryPreferences(
-                                        getSharedPreferences("local-music-library", MODE_PRIVATE)
-                                ),
-                        carModePreferences =
-                                CarModePreferences(
-                                        getSharedPreferences("local-music-car-mode", MODE_PRIVATE)
-                                )
-                )
+            HomeViewModelFactory(
+                observeSongs = ObserveSongsUseCase(repository),
+                refreshMusicLibrary = RefreshMusicLibraryUseCase(repository),
+                addFolderSource = AddFolderSourceUseCase(repository),
+                removeFolderSource = RemoveFolderSourceUseCase(repository),
+                folderSourceUris = safFolderSourceStore::folders,
+                setFavourite = SetFavouriteUseCase(repository),
+                startPlayback =
+                    StartPlaybackUseCase(Media3PlaybackController(applicationContext)),
+                playlistStore =
+                    RoomPlaylistStore(
+                        database.playlistDao(),
+                        SharedPreferencesPlaylistStore(
+                            getSharedPreferences(
+                                "local-music-playlists",
+                                MODE_PRIVATE
+                            )
+                        )
+                    ),
+                artworkExtractor =
+                    EmbeddedArtworkExtractor(
+                        context = applicationContext,
+                        cache = artworkCache
+                    ),
+                artworkCache = artworkCache,
+                artworkPreferences =
+                    ArtworkPreferences(
+                        getSharedPreferences("local-music-artwork", MODE_PRIVATE)
+                    ),
+                libraryPreferences =
+                    LibraryPreferences(
+                        getSharedPreferences("local-music-library", MODE_PRIVATE)
+                    ),
+                carModePreferences =
+                    CarModePreferences(
+                        getSharedPreferences("local-music-car-mode", MODE_PRIVATE)
+                    )
+            )
 
         setContent {
             val viewModel: HomeViewModel = viewModel(factory = factory)
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val isMiniPlayerVisible =
-                    uiState.nowPlayingSong != null &&
-                            uiState.selectedScreen !=
-                                    com.localmusic.player.ui.home.HomeScreenDestination.NowPlaying
+                uiState.nowPlayingSong != null &&
+                        uiState.selectedScreen !=
+                        com.localmusic.player.ui.home.HomeScreenDestination.NowPlaying
             DisposableEffect(isMiniPlayerVisible) {
                 val insetsController = WindowInsetsControllerCompat(window, window.decorView)
                 if (isMiniPlayerVisible) {
@@ -146,8 +147,8 @@ class MainActivity : ComponentActivity() {
             }
             LocalMusicTheme(themeMode = uiState.themeMode) {
                 Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.background
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
                 ) { HomeRoute(viewModel = viewModel, uiState = uiState) }
             }
         }

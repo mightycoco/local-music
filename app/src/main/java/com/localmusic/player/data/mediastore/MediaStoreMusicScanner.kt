@@ -12,93 +12,101 @@ import kotlinx.coroutines.withContext
 
 /** Scans Android MediaStore for supported local audio files. */
 class MediaStoreMusicScanner(
-        private val contentResolver: ContentResolver,
-        private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    private val contentResolver: ContentResolver,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : MusicScanner {
     override suspend fun scan(): MusicScanResult =
-            withContext(ioDispatcher) {
-                val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-                val projection =
-                        buildList {
-                                    add(MediaStore.Audio.Media._ID)
-                                    add(MediaStore.MediaColumns.DISPLAY_NAME)
-                                    add(MediaStore.Audio.Media.TITLE)
-                                    add(MediaStore.Audio.Media.ARTIST)
-                                    add(MediaStore.Audio.Media.ALBUM)
-                                    add(MediaStore.Audio.Media.GENRE)
-                                    add(MediaStore.Audio.Media.DURATION)
-                                    add(MediaStore.Audio.Media.DATE_ADDED)
-                                    add(MediaStore.MediaColumns.SIZE)
-                                    add(MediaStore.MediaColumns.MIME_TYPE)
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                        add(MediaStore.MediaColumns.RELATIVE_PATH)
-                                    }
-                                }
-                                .toTypedArray()
-
-                val songs = mutableListOf<Song>()
-                val cursor =
-                        contentResolver.query(
-                                collection,
-                                projection,
-                                "${MediaStore.Audio.Media.IS_MUSIC} != 0",
-                                null,
-                                "${MediaStore.Audio.Media.DATE_ADDED} DESC"
-                        )
-                                ?: return@withContext MusicScanResult(
-                                        emptyList(),
-                                        isComplete = false
-                                )
-                cursor.use {
-                    while (cursor.moveToNext()) {
-                        val mimeType = cursor.string(MediaStore.MediaColumns.MIME_TYPE)
-                        if (mimeType !in supportedMimeTypes) continue
-
-                        val id = cursor.long(MediaStore.Audio.Media._ID)
-                        val fileName =
-                                cursor.string(MediaStore.MediaColumns.DISPLAY_NAME).ifBlank {
-                                    "audio-$id"
-                                }
-                        val title =
-                                cursor.string(MediaStore.Audio.Media.TITLE).ifBlank {
-                                    fileName.substringBeforeLast('.', fileName)
-                                }
-
-                        songs +=
-                                Song(
-                                        id = "mediastore:$id",
-                                        fileName = fileName,
-                                        title = title,
-                                        artist =
-                                                cursor.string(MediaStore.Audio.Media.ARTIST)
-                                                        .ifBlank { "Unknown Artist" },
-                                        album =
-                                                cursor.string(MediaStore.Audio.Media.ALBUM)
-                                                        .ifBlank { "Unknown Album" },
-                                        genre =
-                                                cursor.string(MediaStore.Audio.Media.GENRE)
-                                                        .ifBlank { "Unknown Genre" },
-                                        durationMillis =
-                                                cursor.long(MediaStore.Audio.Media.DURATION),
-                                        dateAddedEpochSeconds =
-                                                cursor.long(MediaStore.Audio.Media.DATE_ADDED),
-                                        folderName = cursor.folderName(),
-                                        uri = ContentUris.withAppendedId(collection, id).toString(),
-                                        mimeType = mimeType,
-                                        sizeBytes = cursor.long(MediaStore.MediaColumns.SIZE)
-                                )
+        withContext(ioDispatcher) {
+            val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+            val projection =
+                buildList {
+                    add(MediaStore.Audio.Media._ID)
+                    add(MediaStore.MediaColumns.DISPLAY_NAME)
+                    add(MediaStore.Audio.Media.TITLE)
+                    add(MediaStore.Audio.Media.ARTIST)
+                    add(MediaStore.Audio.Media.ALBUM)
+                    add(MediaStore.Audio.Media.GENRE)
+                    add(MediaStore.Audio.Media.ALBUM_ARTIST)
+                    add(MediaStore.Audio.Media.COMPOSER)
+                    add(MediaStore.Audio.Media.YEAR)
+                    add(MediaStore.Audio.Media.DURATION)
+                    add(MediaStore.Audio.Media.DATE_ADDED)
+                    add(MediaStore.MediaColumns.SIZE)
+                    add(MediaStore.MediaColumns.MIME_TYPE)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        add(MediaStore.MediaColumns.RELATIVE_PATH)
                     }
                 }
+                    .toTypedArray()
 
-                MusicScanResult(songs, isComplete = true)
+            val songs = mutableListOf<Song>()
+            val cursor =
+                contentResolver.query(
+                    collection,
+                    projection,
+                    "${MediaStore.Audio.Media.IS_MUSIC} != 0",
+                    null,
+                    "${MediaStore.Audio.Media.DATE_ADDED} DESC"
+                )
+                    ?: return@withContext MusicScanResult(
+                        emptyList(),
+                        isComplete = false
+                    )
+            cursor.use {
+                while (cursor.moveToNext()) {
+                    val mimeType = cursor.string(MediaStore.MediaColumns.MIME_TYPE)
+                    if (mimeType !in supportedMimeTypes) continue
+
+                    val id = cursor.long(MediaStore.Audio.Media._ID)
+                    val fileName =
+                        cursor.string(MediaStore.MediaColumns.DISPLAY_NAME).ifBlank {
+                            "audio-$id"
+                        }
+                    val title =
+                        cursor.string(MediaStore.Audio.Media.TITLE).ifBlank {
+                            fileName.substringBeforeLast('.', fileName)
+                        }
+
+                    songs +=
+                        Song(
+                            id = "mediastore:$id",
+                            fileName = fileName,
+                            title = title,
+                            artist =
+                                cursor.string(MediaStore.Audio.Media.ARTIST)
+                                    .ifBlank { "Unknown Artist" },
+                            album =
+                                cursor.string(MediaStore.Audio.Media.ALBUM)
+                                    .ifBlank { "Unknown Album" },
+                            genre =
+                                cursor.string(MediaStore.Audio.Media.GENRE)
+                                    .ifBlank { "Unknown Genre" },
+                            albumArtist =
+                                cursor.string(MediaStore.Audio.Media.ALBUM_ARTIST),
+                            composer = cursor.string(MediaStore.Audio.Media.COMPOSER),
+                            year =
+                                cursor.intOrNull(MediaStore.Audio.Media.YEAR),
+                            durationMillis =
+                                cursor.long(MediaStore.Audio.Media.DURATION),
+                            dateAddedEpochSeconds =
+                                cursor.long(MediaStore.Audio.Media.DATE_ADDED),
+                            folderName = cursor.folderName(),
+                            uri = ContentUris.withAppendedId(collection, id).toString(),
+                            mimeType = mimeType,
+                            sizeBytes = cursor.long(MediaStore.MediaColumns.SIZE)
+                        )
+                }
             }
+
+            MusicScanResult(songs, isComplete = true)
+        }
 
     private fun Cursor.folderName(): String {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return "Device Music"
         return string(MediaStore.MediaColumns.RELATIVE_PATH)
-                .trim('/', '\\')
-                .substringAfterLast('/', "Device Music")
-                .ifBlank { "Device Music" }
+            .trim('/', '\\')
+            .substringAfterLast('/', "Device Music")
+            .ifBlank { "Device Music" }
     }
 
     private fun Cursor.string(column: String): String {
@@ -111,20 +119,25 @@ class MediaStoreMusicScanner(
         return if (index >= 0 && !isNull(index)) getLong(index) else 0L
     }
 
+    private fun Cursor.intOrNull(column: String): Int? {
+        val index = getColumnIndex(column)
+        return if (index >= 0 && !isNull(index)) getInt(index).takeIf { it > 0 } else null
+    }
+
     private companion object {
         val supportedMimeTypes =
-                setOf(
-                        "audio/mpeg",
-                        "audio/aac",
-                        "audio/mp4",
-                        "audio/x-m4a",
-                        "audio/flac",
-                        "audio/wav",
-                        "audio/x-wav",
-                        "audio/aiff",
-                        "audio/x-aiff",
-                        "audio/ogg",
-                        "audio/opus"
-                )
+            setOf(
+                "audio/mpeg",
+                "audio/aac",
+                "audio/mp4",
+                "audio/x-m4a",
+                "audio/flac",
+                "audio/wav",
+                "audio/x-wav",
+                "audio/aiff",
+                "audio/x-aiff",
+                "audio/ogg",
+                "audio/opus"
+            )
     }
 }
