@@ -61,13 +61,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import com.localmusic.player.bluetooth.CarAudioConnectionTracker
+import com.localmusic.player.bluetooth.CarAudioDevice
 import com.localmusic.player.bluetooth.CarModeDetector
 import com.localmusic.player.domain.model.LibraryFilter
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.SortOrder
 import com.localmusic.player.playlist.M3uPlaylist
 import com.localmusic.player.playlist.M3uPlaylistCodec
+import com.localmusic.player.playlist.M3uPlaylistEntry
 import com.localmusic.player.playlist.toM3uEntry
 import com.localmusic.player.ui.theme.AppThemeMode
 import com.localmusic.player.ui.theme.UiAnimationTimings
@@ -96,6 +97,7 @@ enum class Glyphs(val glyph: String) {
     PLAYER_NOSHUFFLE("⇉"),
     PLAYER_QUEUE("≡"),
     MORE("⋮"),
+    TRASH("🗑"),
     NO_ARTWORK("╭∩╮( •̀_•́ )╭∩╮"),
     NO_ARTWORK_THUMB(".°•"),
     REORDER("≡")
@@ -106,90 +108,88 @@ fun HomeRoute(viewModel: HomeViewModel, uiState: HomeUiState) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val audioPermission =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                Manifest.permission.READ_MEDIA_AUDIO
-            } else {
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Manifest.permission.READ_MEDIA_AUDIO
+        } else {
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        }
     val bluetoothPermission = Manifest.permission.BLUETOOTH_CONNECT
     var hasAudioPermission by remember {
         mutableStateOf(
-                ContextCompat.checkSelfPermission(context, audioPermission) ==
-                        PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(context, audioPermission) ==
+                    PackageManager.PERMISSION_GRANTED
         )
     }
     var hasBluetoothPermission by remember {
         mutableStateOf(
-                Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
-                        ContextCompat.checkSelfPermission(context, bluetoothPermission) ==
-                                PackageManager.PERMISSION_GRANTED
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+                    ContextCompat.checkSelfPermission(context, bluetoothPermission) ==
+                    PackageManager.PERMISSION_GRANTED
         )
     }
     val permissionLauncher =
-            rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.RequestPermission()
-            ) { granted ->
-                hasAudioPermission = granted
-                if (granted) viewModel.refreshLibraryOnce()
-            }
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            hasAudioPermission = granted
+            if (granted) viewModel.refreshLibraryOnce()
+        }
     val bluetoothPermissionLauncher =
-            rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.RequestPermission()
-            ) { granted ->
-                hasBluetoothPermission = granted
-                if (granted) viewModel.updateCarMode(context.isConnectedToCarAudio())
-            }
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            hasBluetoothPermission = granted
+            if (!granted) viewModel.updateConnectedCarAudioDevices(emptyList())
+        }
     val folderLauncher =
-            rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.OpenDocumentTree()
-            ) { folderUri ->
-                folderUri ?: return@rememberLauncherForActivityResult
-                context.contentResolver.takePersistableUriPermission(
-                        folderUri,
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-                viewModel.addFolderSource(folderUri.toString())
-            }
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.OpenDocumentTree()
+        ) { folderUri ->
+            folderUri ?: return@rememberLauncherForActivityResult
+            context.contentResolver.takePersistableUriPermission(
+                folderUri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+            viewModel.addFolderSource(folderUri.toString())
+        }
     val playlistImportLauncher =
-            rememberLauncherForActivityResult(contract = ActivityResultContracts.OpenDocument()) {
-                    playlistUri ->
-                playlistUri ?: return@rememberLauncherForActivityResult
-                val name =
-                        context.contentResolver.query(playlistUri, null, null, null, null)?.use {
-                                cursor ->
-                            val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                            if (cursor.moveToFirst() && index >= 0) cursor.getString(index)
-                            else null
-                        }
-                                ?: "Imported Playlist"
-                coroutineScope.launch {
-                    val content =
-                            withContext(Dispatchers.IO) {
-                                context.contentResolver
-                                        .openInputStream(playlistUri)
-                                        ?.bufferedReader()
-                                        ?.use { it.readTextLimited(MAX_PLAYLIST_IMPORT_CHARS) }
-                                        .orEmpty()
-                            }
-                    viewModel.importPlaylist(name, content)
+        rememberLauncherForActivityResult(contract = ActivityResultContracts.OpenDocument()) { playlistUri ->
+            playlistUri ?: return@rememberLauncherForActivityResult
+            val name =
+                context.contentResolver.query(playlistUri, null, null, null, null)?.use { cursor ->
+                    val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (cursor.moveToFirst() && index >= 0) cursor.getString(index)
+                    else null
                 }
+                    ?: "Imported Playlist"
+            coroutineScope.launch {
+                val content =
+                    withContext(Dispatchers.IO) {
+                        context.contentResolver
+                            .openInputStream(playlistUri)
+                            ?.bufferedReader()
+                            ?.use { it.readTextLimited(MAX_PLAYLIST_IMPORT_CHARS) }
+                            .orEmpty()
+                    }
+                viewModel.importPlaylist(name, content)
             }
+        }
     var playlistToExport by remember { mutableStateOf<M3uPlaylist?>(null) }
     val playlistExportLauncher =
-            rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.CreateDocument("audio/x-mpegurl")
-            ) { playlistUri ->
-                val playlist = playlistToExport
-                if (playlistUri != null && playlist != null) {
-                    coroutineScope.launch(Dispatchers.IO) {
-                        context.contentResolver
-                                .openOutputStream(playlistUri)
-                                ?.bufferedWriter()
-                                ?.use { writer -> M3uPlaylistCodec().write(playlist, writer) }
-                    }
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.CreateDocument("audio/x-mpegurl")
+        ) { playlistUri ->
+            val playlist = playlistToExport
+            if (playlistUri != null && playlist != null) {
+                coroutineScope.launch(Dispatchers.IO) {
+                    context.contentResolver
+                        .openOutputStream(playlistUri)
+                        ?.bufferedWriter()
+                        ?.use { writer -> M3uPlaylistCodec().write(playlist, writer) }
                 }
-                playlistToExport = null
             }
+            playlistToExport = null
+        }
 
     LaunchedEffect(hasAudioPermission) {
         yield()
@@ -198,9 +198,7 @@ fun HomeRoute(viewModel: HomeViewModel, uiState: HomeUiState) {
 
     LaunchedEffect(Unit) {
         yield()
-        if (hasBluetoothPermission) {
-            viewModel.updateCarMode(context.isConnectedToCarAudio())
-        } else {
+        if (!hasBluetoothPermission) {
             bluetoothPermissionLauncher.launch(bluetoothPermission)
         }
     }
@@ -209,64 +207,58 @@ fun HomeRoute(viewModel: HomeViewModel, uiState: HomeUiState) {
         if (!hasBluetoothPermission) return@DisposableEffect onDispose {}
 
         val detector = CarModeDetector()
-        val tracker = CarAudioConnectionTracker()
         val bluetoothManager = context.getSystemService(BluetoothManager::class.java)
         val adapter = bluetoothManager?.adapter
         var a2dpProxy: BluetoothProfile? = null
-        val profileListener =
-                object : BluetoothProfile.ServiceListener {
-                    override fun onServiceConnected(profile: Int, proxy: BluetoothProfile) {
-                        if (profile != BluetoothProfile.A2DP) return
-
-                        a2dpProxy = proxy
-                        val connectedCarDeviceIds =
-                                runCatching {
-                                            proxy.connectedDevices
-                                                    .filter(detector::isLikelyCarDevice)
-                                                    .mapNotNull(BluetoothDevice::safeAddress)
-                                        }
-                                        .getOrDefault(emptyList())
-                        viewModel.updateCarMode(
-                                tracker.replaceConnectedDevices(connectedCarDeviceIds)
-                        )
-                    }
-
-                    override fun onServiceDisconnected(profile: Int) {
-                        if (profile == BluetoothProfile.A2DP) {
-                            a2dpProxy = null
-                            viewModel.updateCarMode(tracker.replaceConnectedDevices(emptyList()))
+        fun refreshConnectedDevices(proxy: BluetoothProfile) {
+            val connectedDevices =
+                runCatching {
+                    proxy.connectedDevices.mapNotNull { device ->
+                        device.safeAddress()?.let { deviceId ->
+                            CarAudioDevice(
+                                id = deviceId,
+                                name = device.safeName(),
+                                isLikelyCarDevice = detector.isLikelyCarDevice(device)
+                            )
                         }
                     }
                 }
-        val receiver =
-                object : BroadcastReceiver() {
-                    override fun onReceive(
-                            receiverContext: android.content.Context,
-                            intent: Intent
-                    ) {
-                        if (intent.action != BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED) return
+                    .getOrDefault(emptyList())
+            viewModel.updateConnectedCarAudioDevices(connectedDevices)
+        }
 
-                        val connectionState =
-                                intent.getIntExtra(
-                                        BluetoothProfile.EXTRA_STATE,
-                                        BluetoothProfile.STATE_DISCONNECTED
-                                )
-                        val device = intent.bluetoothDevice()
-                        val deviceId = device?.safeAddress() ?: return
-                        viewModel.updateCarMode(
-                                tracker.update(
-                                        deviceId,
-                                        detector.isLikelyCarDevice(device),
-                                        connectionState
-                                )
-                        )
+        val profileListener =
+            object : BluetoothProfile.ServiceListener {
+                override fun onServiceConnected(profile: Int, proxy: BluetoothProfile) {
+                    if (profile != BluetoothProfile.A2DP) return
+
+                    a2dpProxy = proxy
+                    refreshConnectedDevices(proxy)
+                }
+
+                override fun onServiceDisconnected(profile: Int) {
+                    if (profile == BluetoothProfile.A2DP) {
+                        a2dpProxy = null
+                        viewModel.updateConnectedCarAudioDevices(emptyList())
                     }
                 }
+            }
+        val receiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(
+                    receiverContext: android.content.Context,
+                    intent: Intent
+                ) {
+                    if (intent.action != BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED) return
+
+                    a2dpProxy?.let(::refreshConnectedDevices)
+                }
+            }
         ContextCompat.registerReceiver(
-                context,
-                receiver,
-                IntentFilter(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED),
-                ContextCompat.RECEIVER_NOT_EXPORTED
+            context,
+            receiver,
+            IntentFilter(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED),
+            ContextCompat.RECEIVER_NOT_EXPORTED
         )
         runCatching { adapter?.getProfileProxy(context, profileListener, BluetoothProfile.A2DP) }
         onDispose {
@@ -276,80 +268,84 @@ fun HomeRoute(viewModel: HomeViewModel, uiState: HomeUiState) {
     }
 
     HomeScreen(
-            uiState = uiState,
-            hasAudioPermission = hasAudioPermission,
-            onSearchChange = viewModel::updateSearchQuery,
-            onScreenSelected = viewModel::selectScreen,
-            onFilterSelected = viewModel::selectFilter,
-            onBrowseValueSelected = viewModel::selectBrowseValue,
-            onSortSelected = viewModel::selectSortOrder,
-            onAddFolderSource = { folderLauncher.launch(null) },
-            onRemoveFolderSource = { folderUri ->
-                runCatching {
-                    context.contentResolver.releasePersistableUriPermission(
-                            android.net.Uri.parse(folderUri),
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    )
-                }
-                viewModel.removeFolderSource(folderUri)
-            },
-            onImportPlaylist = {
-                playlistImportLauncher.launch(
-                        arrayOf(
-                                "audio/x-mpegurl",
-                                "audio/mpegurl",
-                                "text/plain",
-                                "application/octet-stream"
-                        )
+        uiState = uiState,
+        hasAudioPermission = hasAudioPermission,
+        onSearchChange = viewModel::updateSearchQuery,
+        onScreenSelected = viewModel::selectScreen,
+        onFilterSelected = viewModel::selectFilter,
+        onBrowseValueSelected = viewModel::selectBrowseValue,
+        onSortSelected = viewModel::selectSortOrder,
+        onAddFolderSource = { folderLauncher.launch(null) },
+        onRemoveFolderSource = { folderUri ->
+            runCatching {
+                context.contentResolver.releasePersistableUriPermission(
+                    android.net.Uri.parse(folderUri),
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
                 )
-            },
-            onExportPlaylist = {
-                playlistToExport =
-                        M3uPlaylist(
-                                name = "Local Music Library",
-                                entries = uiState.songs.map { it.toM3uEntry() }
-                        )
-                playlistExportLauncher.launch("local-music-library.m3u")
-            },
-            onExportIndividualPlaylist = { playlist ->
-                playlistToExport = playlist
-                playlistExportLauncher.launch("${playlist.name}.m3u")
-            },
-            onSongSelected = viewModel::playSong,
-            onFavouriteSongSelected = viewModel::playFavourites,
-            onQueueSongSelected = viewModel::playQueuedSong,
-            onFavouriteToggle = viewModel::toggleFavourite,
-            onDeletePlaylist = viewModel::deletePlaylist,
-            onCreatePlaylist = viewModel::createPlaylist,
-            onRenamePlaylist = viewModel::renamePlaylist,
-            onDuplicatePlaylist = viewModel::duplicatePlaylist,
-            onPlayPlaylist = viewModel::playPlaylist,
-            onMovePlaylistEntry = viewModel::movePlaylistEntry,
-            onAddNowPlayingToPlaylist = viewModel::addNowPlayingToPlaylist,
-            onAddNowPlayingToQueue = viewModel::addNowPlayingToQueue,
-            onClearQueue = viewModel::clearQueue,
-            onClearPlaylist = viewModel::clearPlaylist,
-            onAddSongToPlaylist = viewModel::addSongToPlaylist,
-            onAddSongToQueue = viewModel::addSongToQueue,
-            onPlayPause = viewModel::togglePlayback,
-            onNext = viewModel::skipToNext,
-            onPrevious = viewModel::skipToPrevious,
-            onProgressChange = viewModel::updatePlaybackProgress,
-            onShuffleToggle = viewModel::toggleShuffle,
-            onRepeatCycle = viewModel::cycleRepeatMode,
-            onVisualizerEnabledChange = viewModel::setVisualizerEnabled,
-            onThemeSelected = viewModel::selectThemeMode,
-            onClearArtworkCache = viewModel::clearArtworkCache,
-            onDefaultFilterSelected = viewModel::setDefaultFilter,
-            onDefaultSortOrderSelected = viewModel::setDefaultSortOrder,
-            onCarModeManuallyEnabledChange = viewModel::setCarModeManuallyEnabled,
-            onExternalArtworkDownloadEnabledChange = viewModel::setExternalArtworkDownloadEnabled,
-            onVisualizerPreferredChange = viewModel::setVisualizerPreferred,
-            onRequestPermission = {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    permissionLauncher.launch(audioPermission)
-                }
             }
+            viewModel.removeFolderSource(folderUri)
+        },
+        onImportPlaylist = {
+            playlistImportLauncher.launch(
+                arrayOf(
+                    "audio/x-mpegurl",
+                    "audio/mpegurl",
+                    "text/plain",
+                    "application/octet-stream"
+                )
+            )
+        },
+        onExportPlaylist = {
+            playlistToExport =
+                M3uPlaylist(
+                    name = "Local Music Library",
+                    entries = uiState.songs.map { it.toM3uEntry() }
+                )
+            playlistExportLauncher.launch("local-music-library.m3u")
+        },
+        onExportIndividualPlaylist = { playlist ->
+            playlistToExport = playlist
+            playlistExportLauncher.launch("${playlist.name}.m3u")
+        },
+        onSongSelected = viewModel::playSong,
+        onFavouriteSongSelected = viewModel::playFavourites,
+        onQueueSongSelected = viewModel::playQueuedSong,
+        onFavouriteToggle = viewModel::toggleFavourite,
+        onDeletePlaylist = viewModel::deletePlaylist,
+        onCreatePlaylist = viewModel::createPlaylist,
+        onRenamePlaylist = viewModel::renamePlaylist,
+        onDuplicatePlaylist = viewModel::duplicatePlaylist,
+        onPlayPlaylist = viewModel::playPlaylist,
+        onMovePlaylistEntry = viewModel::movePlaylistEntry,
+        onPlaylistEntryFavouriteToggle = viewModel::togglePlaylistEntryFavourite,
+        onRemovePlaylistEntry = viewModel::removePlaylistEntry,
+        onAddNowPlayingToPlaylist = viewModel::addNowPlayingToPlaylist,
+        onAddNowPlayingToQueue = viewModel::addNowPlayingToQueue,
+        onClearQueue = viewModel::clearQueue,
+        onClearPlaylist = viewModel::clearPlaylist,
+        onAddStreamToPlaylist = viewModel::addStreamToPlaylist,
+        onAddSongToPlaylist = viewModel::addSongToPlaylist,
+        onAddSongToQueue = viewModel::addSongToQueue,
+        onPlayPause = viewModel::togglePlayback,
+        onNext = viewModel::skipToNext,
+        onPrevious = viewModel::skipToPrevious,
+        onProgressChange = viewModel::updatePlaybackProgress,
+        onShuffleToggle = viewModel::toggleShuffle,
+        onRepeatCycle = viewModel::cycleRepeatMode,
+        onVisualizerEnabledChange = viewModel::setVisualizerEnabled,
+        onThemeSelected = viewModel::selectThemeMode,
+        onClearArtworkCache = viewModel::clearArtworkCache,
+        onDefaultFilterSelected = viewModel::setDefaultFilter,
+        onDefaultSortOrderSelected = viewModel::setDefaultSortOrder,
+        onCarModeManuallyEnabledChange = viewModel::setCarModeManuallyEnabled,
+        onCarDeviceMarkedChange = viewModel::setCarDeviceMarked,
+        onExternalArtworkDownloadEnabledChange = viewModel::setExternalArtworkDownloadEnabled,
+        onVisualizerPreferredChange = viewModel::setVisualizerPreferred,
+        onRequestPermission = {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                permissionLauncher.launch(audioPermission)
+            }
+        }
     )
 }
 
@@ -370,49 +366,53 @@ private const val DEFAULT_PLAYLIST_BUFFER_CHARS = 8 * 1024
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-        uiState: HomeUiState,
-        hasAudioPermission: Boolean,
-        onSearchChange: (String) -> Unit,
-        onScreenSelected: (HomeScreenDestination) -> Unit,
-        onFilterSelected: (LibraryFilter) -> Unit,
-        onBrowseValueSelected: (String?) -> Unit,
-        onSortSelected: (SortOrder) -> Unit,
-        onAddFolderSource: () -> Unit,
-        onRemoveFolderSource: (String) -> Unit,
-        onImportPlaylist: () -> Unit,
-        onExportPlaylist: () -> Unit,
-        onExportIndividualPlaylist: (M3uPlaylist) -> Unit,
-        onSongSelected: (Song) -> Unit,
-        onFavouriteSongSelected: (Song) -> Unit,
-        onQueueSongSelected: (Song) -> Unit,
-        onFavouriteToggle: (Song) -> Unit,
-        onDeletePlaylist: (M3uPlaylist) -> Unit,
-        onCreatePlaylist: (String) -> Unit,
-        onRenamePlaylist: (M3uPlaylist, String) -> Unit,
-        onDuplicatePlaylist: (M3uPlaylist, String) -> Unit,
-        onPlayPlaylist: (M3uPlaylist) -> Unit,
-        onMovePlaylistEntry: (M3uPlaylist, Int, Int) -> Unit,
-        onAddNowPlayingToPlaylist: (String) -> Unit,
-        onAddNowPlayingToQueue: () -> Unit,
-        onClearQueue: () -> Unit,
-        onClearPlaylist: (M3uPlaylist) -> Unit,
-        onAddSongToPlaylist: (Song, String) -> Unit,
-        onAddSongToQueue: (Song) -> Unit,
-        onPlayPause: () -> Unit,
-        onNext: () -> Unit,
-        onPrevious: () -> Unit,
-        onProgressChange: (Float) -> Unit,
-        onShuffleToggle: () -> Unit,
-        onRepeatCycle: () -> Unit,
-        onVisualizerEnabledChange: (Boolean) -> Unit,
-        onThemeSelected: (AppThemeMode) -> Unit,
-        onClearArtworkCache: () -> Unit,
-        onDefaultFilterSelected: (LibraryFilter) -> Unit,
-        onDefaultSortOrderSelected: (SortOrder) -> Unit,
-        onCarModeManuallyEnabledChange: (Boolean) -> Unit,
-        onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit,
-        onVisualizerPreferredChange: (Boolean) -> Unit,
-        onRequestPermission: () -> Unit
+    uiState: HomeUiState,
+    hasAudioPermission: Boolean,
+    onSearchChange: (String) -> Unit,
+    onScreenSelected: (HomeScreenDestination) -> Unit,
+    onFilterSelected: (LibraryFilter) -> Unit,
+    onBrowseValueSelected: (String?) -> Unit,
+    onSortSelected: (SortOrder) -> Unit,
+    onAddFolderSource: () -> Unit,
+    onRemoveFolderSource: (String) -> Unit,
+    onImportPlaylist: () -> Unit,
+    onExportPlaylist: () -> Unit,
+    onExportIndividualPlaylist: (M3uPlaylist) -> Unit,
+    onSongSelected: (Song) -> Unit,
+    onFavouriteSongSelected: (Song) -> Unit,
+    onQueueSongSelected: (Song) -> Unit,
+    onFavouriteToggle: (Song) -> Unit,
+    onDeletePlaylist: (M3uPlaylist) -> Unit,
+    onCreatePlaylist: (String) -> Unit,
+    onRenamePlaylist: (M3uPlaylist, String) -> Unit,
+    onDuplicatePlaylist: (M3uPlaylist, String) -> Unit,
+    onPlayPlaylist: (M3uPlaylist) -> Unit,
+    onMovePlaylistEntry: (M3uPlaylist, Int, Int) -> Unit,
+    onPlaylistEntryFavouriteToggle: (M3uPlaylistEntry) -> Unit,
+    onRemovePlaylistEntry: (M3uPlaylist, Int) -> Unit,
+    onAddNowPlayingToPlaylist: (String) -> Unit,
+    onAddNowPlayingToQueue: () -> Unit,
+    onClearQueue: () -> Unit,
+    onClearPlaylist: (M3uPlaylist) -> Unit,
+    onAddStreamToPlaylist: (M3uPlaylist, String) -> Unit,
+    onAddSongToPlaylist: (Song, String) -> Unit,
+    onAddSongToQueue: (Song) -> Unit,
+    onPlayPause: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit,
+    onProgressChange: (Float) -> Unit,
+    onShuffleToggle: () -> Unit,
+    onRepeatCycle: () -> Unit,
+    onVisualizerEnabledChange: (Boolean) -> Unit,
+    onThemeSelected: (AppThemeMode) -> Unit,
+    onClearArtworkCache: () -> Unit,
+    onDefaultFilterSelected: (LibraryFilter) -> Unit,
+    onDefaultSortOrderSelected: (SortOrder) -> Unit,
+    onCarModeManuallyEnabledChange: (Boolean) -> Unit,
+    onCarDeviceMarkedChange: (String, Boolean) -> Unit,
+    onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit,
+    onVisualizerPreferredChange: (Boolean) -> Unit,
+    onRequestPermission: () -> Unit
 ) {
     val libraryListState = rememberLazyListState()
     val showTopBar = uiState.selectedScreen != HomeScreenDestination.NowPlaying
@@ -430,64 +430,64 @@ fun HomeScreen(
 
     BackHandler(enabled = uiState.selectedScreen != HomeScreenDestination.Home) {
         onScreenSelected(
-                if (uiState.selectedScreen == HomeScreenDestination.PlaylistEditor) {
-                    playlistEditorReturnDestination
-                } else {
-                    HomeScreenDestination.Home
-                }
+            if (uiState.selectedScreen == HomeScreenDestination.PlaylistEditor) {
+                playlistEditorReturnDestination
+            } else {
+                HomeScreenDestination.Home
+            }
         )
     }
 
     Scaffold(
-            topBar = {
-                if (showTopBar) {
-                    val nowPlayingSong = uiState.nowPlayingSong
-                    if (nowPlayingSong == null) {
-                        TopAppBar(
-                                title = {
-                                    Text(
-                                            text = "Local Music",
-                                            style = MaterialTheme.typography.headlineMedium,
-                                            fontWeight = FontWeight.Light
-                                    )
-                                }
+        topBar = {
+            if (showTopBar) {
+                val nowPlayingSong = uiState.nowPlayingSong
+                if (nowPlayingSong == null) {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                text = "Local Music",
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Light
+                            )
+                        }
+                    )
+                } else {
+                    Surface(modifier = Modifier.fillMaxWidth(), tonalElevation = 2.dp) {
+                        MiniPlayer(
+                            song = nowPlayingSong,
+                            artworkUri = uiState.artworkBySongId[nowPlayingSong.id],
+                            isPlaying = uiState.isPlaying,
+                            progress = uiState.playbackProgress,
+                            isCarMode = uiState.isCarMode,
+                            onOpenNowPlaying = {
+                                onScreenSelected(HomeScreenDestination.NowPlaying)
+                            },
+                            onPrevious = onPrevious,
+                            onPlayPause = onPlayPause,
+                            onNext = onNext,
+                            onProgressChange = onProgressChange
                         )
-                    } else {
-                        Surface(modifier = Modifier.fillMaxWidth(), tonalElevation = 2.dp) {
-                            MiniPlayer(
-                                    song = nowPlayingSong,
-                                    artworkUri = uiState.artworkBySongId[nowPlayingSong.id],
-                                    isPlaying = uiState.isPlaying,
-                                    progress = uiState.playbackProgress,
-                                    isCarMode = uiState.isCarMode,
-                                    onOpenNowPlaying = {
-                                        onScreenSelected(HomeScreenDestination.NowPlaying)
-                                    },
-                                    onPrevious = onPrevious,
-                                    onPlayPause = onPlayPause,
-                                    onNext = onNext,
-                                    onProgressChange = onProgressChange
-                            )
-                        }
-                    }
-                }
-            },
-            bottomBar = {
-                if (uiState.selectedScreen != HomeScreenDestination.PlaylistEditor) {
-                    NavigationBar {
-                        navigationDestinations.forEach { destination ->
-                            NavigationBarItem(
-                                    selected = uiState.selectedScreen == destination,
-                                    onClick = { onScreenSelected(destination) },
-                                    icon = {
-                                        Text(text = destination.iconLabel(), fontSize = 28.sp)
-                                    },
-                                    label = null
-                            )
-                        }
                     }
                 }
             }
+        },
+        bottomBar = {
+            if (uiState.selectedScreen != HomeScreenDestination.PlaylistEditor) {
+                NavigationBar {
+                    navigationDestinations.forEach { destination ->
+                        NavigationBarItem(
+                            selected = uiState.selectedScreen == destination,
+                            onClick = { onScreenSelected(destination) },
+                            icon = {
+                                Text(text = destination.iconLabel(), fontSize = 28.sp)
+                            },
+                            label = null
+                        )
+                    }
+                }
+            }
+        }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
             if (!hasAudioPermission) {
@@ -500,197 +500,208 @@ fun HomeScreen(
             }
             if (uiState.isRefreshing) {
                 Text(
-                        text = "Refreshing local music...",
-                        style = MaterialTheme.typography.bodyMedium
+                    text = "Refreshing local music...",
+                    style = MaterialTheme.typography.bodyMedium
                 )
                 Spacer(modifier = Modifier.height(12.dp))
             }
             AnimatedContent(
-                    modifier =
-                            Modifier.fillMaxSize().pointerInput(
-                                    uiState.selectedScreen,
-                                    screenSwipeThreshold
-                            ) {
-                                if (uiState.selectedScreen == HomeScreenDestination.PlaylistEditor) {
-                                    return@pointerInput
-                                }
-                                awaitEachGesture {
-                                    val down =
-                                            awaitFirstDown(
-                                                    requireUnconsumed = false,
-                                                    pass = PointerEventPass.Initial
-                                            )
-                                    var drag = Offset.Zero
-                                    var consumedByChild = false
-                                    do {
-                                        val event = awaitPointerEvent(PointerEventPass.Final)
-                                        val change =
-                                                event.changes.firstOrNull { it.id == down.id }
-                                                        ?: break
-                                        consumedByChild = consumedByChild || change.isConsumed
-                                        drag += change.position - change.previousPosition
-                                    } while (change.pressed)
-
-                                    if (!consumedByChild &&
-                                                    abs(drag.x) >= screenSwipeThreshold &&
-                                                    abs(drag.x) > abs(drag.y) * 1.5f
-                                    ) {
-                                        onScreenSelected(
-                                                if (drag.x > 0f) {
-                                                    uiState.selectedScreen.previous()
-                                                } else {
-                                                    uiState.selectedScreen.next()
-                                                }
-                                        )
-                                    }
-                                }
-                            },
-                    targetState = uiState.selectedScreen,
-                    transitionSpec = {
-                        val moveForward = initialState.movesForwardTo(targetState)
-                        val direction = if (moveForward) 1 else -1
-                        (slideInHorizontally(
-                                        animationSpec =
-                                                tween(
-                                                        UiAnimationTimings
-                                                                .SCREEN_NAVIGATION_SLIDE_MILLIS
-                                                )
-                                ) { it * direction } +
-                                        fadeIn(
-                                                animationSpec =
-                                                        tween(
-                                                                UiAnimationTimings
-                                                                        .SCREEN_NAVIGATION_FADE_IN_MILLIS
-                                                        )
-                                        ))
-                                .togetherWith(
-                                        slideOutHorizontally(
-                                                animationSpec =
-                                                        tween(
-                                                                UiAnimationTimings
-                                                                        .SCREEN_NAVIGATION_SLIDE_MILLIS
-                                                        )
-                                        ) { -it * direction } +
-                                                fadeOut(
-                                                        animationSpec =
-                                                                tween(
-                                                                        UiAnimationTimings
-                                                                                .SCREEN_NAVIGATION_FADE_OUT_MILLIS
-                                                                )
-                                                )
+                modifier =
+                    Modifier.fillMaxSize().pointerInput(
+                        uiState.selectedScreen,
+                        screenSwipeThreshold
+                    ) {
+                        if (uiState.selectedScreen == HomeScreenDestination.PlaylistEditor) {
+                            return@pointerInput
+                        }
+                        awaitEachGesture {
+                            val down =
+                                awaitFirstDown(
+                                    requireUnconsumed = false,
+                                    pass = PointerEventPass.Initial
                                 )
+                            var drag = Offset.Zero
+                            var consumedByChild = false
+                            do {
+                                val event = awaitPointerEvent(PointerEventPass.Final)
+                                val change =
+                                    event.changes.firstOrNull { it.id == down.id }
+                                        ?: break
+                                consumedByChild = consumedByChild || change.isConsumed
+                                drag += change.position - change.previousPosition
+                            } while (change.pressed)
+
+                            if (!consumedByChild &&
+                                abs(drag.x) >= screenSwipeThreshold &&
+                                abs(drag.x) > abs(drag.y) * 1.5f
+                            ) {
+                                onScreenSelected(
+                                    if (drag.x > 0f) {
+                                        uiState.selectedScreen.previous()
+                                    } else {
+                                        uiState.selectedScreen.next()
+                                    }
+                                )
+                            }
+                        }
                     },
-                    label = "screenNavigation"
+                targetState = uiState.selectedScreen,
+                transitionSpec = {
+                    val moveForward = initialState.movesForwardTo(targetState)
+                    val direction = if (moveForward) 1 else -1
+                    (slideInHorizontally(
+                        animationSpec =
+                            tween(
+                                UiAnimationTimings
+                                    .SCREEN_NAVIGATION_SLIDE_MILLIS
+                            )
+                    ) { it * direction } +
+                            fadeIn(
+                                animationSpec =
+                                    tween(
+                                        UiAnimationTimings
+                                            .SCREEN_NAVIGATION_FADE_IN_MILLIS
+                                    )
+                            ))
+                        .togetherWith(
+                            slideOutHorizontally(
+                                animationSpec =
+                                    tween(
+                                        UiAnimationTimings
+                                            .SCREEN_NAVIGATION_SLIDE_MILLIS
+                                    )
+                            ) { -it * direction } +
+                                    fadeOut(
+                                        animationSpec =
+                                            tween(
+                                                UiAnimationTimings
+                                                    .SCREEN_NAVIGATION_FADE_OUT_MILLIS
+                                            )
+                                    )
+                        )
+                },
+                label = "screenNavigation"
             ) { destination ->
                 Column(modifier = Modifier.fillMaxSize()) {
                     when (destination) {
                         HomeScreenDestination.Home ->
-                                LibraryContent(
-                                        uiState = uiState,
-                                        listState = libraryListState,
-                                        onSearchChange = onSearchChange,
-                                        onFilterSelected = onFilterSelected,
-                                        onBrowseValueSelected = onBrowseValueSelected,
-                                        onSortSelected = onSortSelected,
-                                        onAddFolderSource = onAddFolderSource,
-                                        onSongSelected = onSongSelected,
-                                        onFavouriteToggle = onFavouriteToggle,
-                                        onCreatePlaylist = onCreatePlaylist,
-                                        onAddSongToPlaylist = onAddSongToPlaylist,
-                                        onAddSongToQueue = onAddSongToQueue
-                                )
+                            LibraryContent(
+                                uiState = uiState,
+                                listState = libraryListState,
+                                onSearchChange = onSearchChange,
+                                onFilterSelected = onFilterSelected,
+                                onBrowseValueSelected = onBrowseValueSelected,
+                                onSortSelected = onSortSelected,
+                                onAddFolderSource = onAddFolderSource,
+                                onSongSelected = onSongSelected,
+                                onFavouriteToggle = onFavouriteToggle,
+                                onCreatePlaylist = onCreatePlaylist,
+                                onAddSongToPlaylist = onAddSongToPlaylist,
+                                onAddSongToQueue = onAddSongToQueue
+                            )
+
                         HomeScreenDestination.NowPlaying ->
-                                NowPlayingContent(
-                                        uiState = uiState,
-                                        onPlayPause = onPlayPause,
-                                        onNext = onNext,
-                                        onPrevious = onPrevious,
-                                        onProgressChange = onProgressChange,
-                                        onShuffleToggle = onShuffleToggle,
-                                        onRepeatCycle = onRepeatCycle,
-                                        onVisualizerEnabledChange = onVisualizerEnabledChange,
-                                        onQueueSongSelected = onQueueSongSelected,
-                                        onFavouriteToggle = onFavouriteToggle,
-                                        onCreatePlaylist = onCreatePlaylist,
-                                        onAddToPlaylist = onAddNowPlayingToPlaylist,
-                                        onAddToQueue = onAddNowPlayingToQueue,
-                                        onShowQueue = {
-                                            openPlaylistEditor(
-                                                    M3uPlaylist.QUEUE_NAME,
-                                                    HomeScreenDestination.NowPlaying
-                                            )
-                                        },
-                                        onReturnHome = {
-                                            onScreenSelected(HomeScreenDestination.Home)
-                                        }
-                                )
+                            NowPlayingContent(
+                                uiState = uiState,
+                                onPlayPause = onPlayPause,
+                                onNext = onNext,
+                                onPrevious = onPrevious,
+                                onProgressChange = onProgressChange,
+                                onShuffleToggle = onShuffleToggle,
+                                onRepeatCycle = onRepeatCycle,
+                                onVisualizerEnabledChange = onVisualizerEnabledChange,
+                                onQueueSongSelected = onQueueSongSelected,
+                                onFavouriteToggle = onFavouriteToggle,
+                                onCreatePlaylist = onCreatePlaylist,
+                                onAddToPlaylist = onAddNowPlayingToPlaylist,
+                                onAddToQueue = onAddNowPlayingToQueue,
+                                onShowQueue = {
+                                    openPlaylistEditor(
+                                        M3uPlaylist.QUEUE_NAME,
+                                        HomeScreenDestination.NowPlaying
+                                    )
+                                },
+                                onReturnHome = {
+                                    onScreenSelected(HomeScreenDestination.Home)
+                                }
+                            )
+
                         HomeScreenDestination.Playlists ->
-                                PlaylistContent(
-                                        uiState = uiState,
-                                        onDeletePlaylist = onDeletePlaylist,
-                                        onRenamePlaylist = onRenamePlaylist,
-                                        onDuplicatePlaylist = onDuplicatePlaylist,
-                                        onPlayPlaylist = onPlayPlaylist,
-                                        onImportPlaylist = onImportPlaylist,
-                                        onExportLibrary = onExportPlaylist,
-                                        onExportPlaylist = onExportIndividualPlaylist,
-                                        onClearQueue = onClearQueue,
-                                        onOpenPlaylistEditor = { playlist ->
-                                            openPlaylistEditor(
-                                                    playlist.name,
-                                                    HomeScreenDestination.Playlists
-                                            )
-                                        }
-                                )
+                            PlaylistContent(
+                                uiState = uiState,
+                                onDeletePlaylist = onDeletePlaylist,
+                                onCreatePlaylist = onCreatePlaylist,
+                                onRenamePlaylist = onRenamePlaylist,
+                                onDuplicatePlaylist = onDuplicatePlaylist,
+                                onPlayPlaylist = onPlayPlaylist,
+                                onImportPlaylist = onImportPlaylist,
+                                onExportLibrary = onExportPlaylist,
+                                onExportPlaylist = onExportIndividualPlaylist,
+                                onClearQueue = onClearQueue,
+                                onOpenPlaylistEditor = { playlist ->
+                                    openPlaylistEditor(
+                                        playlist.name,
+                                        HomeScreenDestination.Playlists
+                                    )
+                                }
+                            )
+
                         HomeScreenDestination.Favourites ->
-                                SongList(
-                                        songs = uiState.songs.filter { it.isFavourite },
-                                        artworkBySongId = uiState.artworkBySongId,
-                                        nowPlayingSongId = uiState.nowPlayingSong?.id,
-                                        isPlaying = uiState.isPlaying,
-                                        emptyTitle = "No favourites yet",
-                                        emptyMessage =
-                                                "Mark local songs as favourites to pin them here.",
-                                        onSongSelected = onFavouriteSongSelected,
-                                        onFavouriteToggle = onFavouriteToggle,
-                                        playlists = uiState.importedPlaylists,
-                                        onCreatePlaylist = onCreatePlaylist,
-                                        onAddSongToPlaylist = onAddSongToPlaylist,
-                                        onAddSongToQueue = onAddSongToQueue
-                                )
+                            SongList(
+                                songs = uiState.favouriteSongs,
+                                artworkBySongId = uiState.artworkBySongId,
+                                nowPlayingSongId = uiState.nowPlayingSong?.id,
+                                isPlaying = uiState.isPlaying,
+                                emptyTitle = "No favourites yet",
+                                emptyMessage =
+                                    "Mark songs or online streams as favourites to pin them here.",
+                                onSongSelected = onFavouriteSongSelected,
+                                onFavouriteToggle = onFavouriteToggle,
+                                playlists = uiState.importedPlaylists,
+                                onCreatePlaylist = onCreatePlaylist,
+                                onAddSongToPlaylist = onAddSongToPlaylist,
+                                onAddSongToQueue = onAddSongToQueue
+                            )
+
                         HomeScreenDestination.Settings ->
-                                SettingsContent(
-                                        uiState = uiState,
-                                        onThemeSelected = onThemeSelected,
-                                        onAddFolderSource = onAddFolderSource,
-                                        onRemoveFolderSource = onRemoveFolderSource,
-                                        onClearArtworkCache = onClearArtworkCache,
-                                        onDefaultFilterSelected = onDefaultFilterSelected,
-                                        onDefaultSortOrderSelected = onDefaultSortOrderSelected,
-                                        onCarModeManuallyEnabledChange =
-                                                onCarModeManuallyEnabledChange,
-                                        onExternalArtworkDownloadEnabledChange =
-                                                onExternalArtworkDownloadEnabledChange,
-                                        onVisualizerPreferredChange = onVisualizerPreferredChange
-                                )
+                            SettingsContent(
+                                uiState = uiState,
+                                onThemeSelected = onThemeSelected,
+                                onAddFolderSource = onAddFolderSource,
+                                onRemoveFolderSource = onRemoveFolderSource,
+                                onClearArtworkCache = onClearArtworkCache,
+                                onDefaultFilterSelected = onDefaultFilterSelected,
+                                onDefaultSortOrderSelected = onDefaultSortOrderSelected,
+                                onCarModeManuallyEnabledChange =
+                                    onCarModeManuallyEnabledChange,
+                                onCarDeviceMarkedChange = onCarDeviceMarkedChange,
+                                onExternalArtworkDownloadEnabledChange =
+                                    onExternalArtworkDownloadEnabledChange,
+                                onVisualizerPreferredChange = onVisualizerPreferredChange
+                            )
+
                         HomeScreenDestination.PlaylistEditor -> {
                             val playlist =
-                                    uiState.importedPlaylists.firstOrNull {
-                                        it.name == playlistEditorName
-                                    }
+                                uiState.importedPlaylists.firstOrNull {
+                                    it.name == playlistEditorName
+                                }
                             if (playlist == null) {
                                 LaunchedEffect(playlistEditorName) {
                                     onScreenSelected(playlistEditorReturnDestination)
                                 }
                             } else {
                                 PlaylistEditorContent(
-                                        playlist = playlist,
-                                        onBack = {
-                                            onScreenSelected(playlistEditorReturnDestination)
-                                        },
-                                        onMoveEntry = onMovePlaylistEntry,
-                                        onClearPlaylist = onClearPlaylist,
-                                        onDeletePlaylist = onDeletePlaylist
+                                    playlist = playlist,
+                                    favouriteUris = uiState.favouriteSongs.mapTo(mutableSetOf()) { it.uri },
+                                    onBack = {
+                                        onScreenSelected(playlistEditorReturnDestination)
+                                    },
+                                    onPlay = onPlayPlaylist,
+                                    onMoveEntry = onMovePlaylistEntry,
+                                    onFavouriteToggle = onPlaylistEntryFavouriteToggle,
+                                    onRemoveEntry = onRemovePlaylistEntry,
+                                    onClearPlaylist = onClearPlaylist,
+                                    onAddStream = onAddStreamToPlaylist
                                 )
                             }
                         }
@@ -702,14 +713,14 @@ fun HomeScreen(
 }
 
 private fun HomeScreenDestination.iconLabel(): String =
-        when (this) {
-            HomeScreenDestination.Home -> Glyphs.HOME.glyph
-            HomeScreenDestination.NowPlaying -> Glyphs.NOW_PLAYING.glyph
-            HomeScreenDestination.Playlists -> Glyphs.PLAYLISTS.glyph
-            HomeScreenDestination.Favourites -> Glyphs.FAVOURITE.glyph
-            HomeScreenDestination.Settings -> Glyphs.SETTINGS.glyph
-            HomeScreenDestination.PlaylistEditor -> Glyphs.PLAYLISTS.glyph
-        }
+    when (this) {
+        HomeScreenDestination.Home -> Glyphs.HOME.glyph
+        HomeScreenDestination.NowPlaying -> Glyphs.NOW_PLAYING.glyph
+        HomeScreenDestination.Playlists -> Glyphs.PLAYLISTS.glyph
+        HomeScreenDestination.Favourites -> Glyphs.FAVOURITE.glyph
+        HomeScreenDestination.Settings -> Glyphs.SETTINGS.glyph
+        HomeScreenDestination.PlaylistEditor -> Glyphs.PLAYLISTS.glyph
+    }
 
 private fun HomeScreenDestination.previous(): HomeScreenDestination {
     val destinations = navigationDestinations
@@ -722,17 +733,17 @@ private fun HomeScreenDestination.next(): HomeScreenDestination {
 }
 
 private fun HomeScreenDestination.movesForwardTo(target: HomeScreenDestination): Boolean =
-        target == next() || (target != previous() && target.ordinal > ordinal)
+    target == next() || (target != previous() && target.ordinal > ordinal)
 
 private val navigationDestinations =
-        HomeScreenDestination.entries.filterNot { it == HomeScreenDestination.PlaylistEditor }
+    HomeScreenDestination.entries.filterNot { it == HomeScreenDestination.PlaylistEditor }
 
 @Composable
 private fun PermissionBanner(onRequestPermission: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-                text = "Allow audio access to index local songs.",
-                style = MaterialTheme.typography.bodyLarge
+            text = "Allow audio access to index local songs.",
+            style = MaterialTheme.typography.bodyLarge
         )
         Button(onClick = onRequestPermission) { Text("Allow Audio Access") }
     }
@@ -743,18 +754,22 @@ private fun android.content.Context.isConnectedToCarAudio(): Boolean {
     val bluetoothManager = getSystemService(BluetoothManager::class.java) ?: return false
     val adapter: BluetoothAdapter = bluetoothManager.adapter ?: return false
     return runCatching {
-                adapter.getProfileConnectionState(BluetoothProfile.A2DP) ==
-                        BluetoothAdapter.STATE_CONNECTED
-            }
-            .getOrDefault(false)
+        adapter.getProfileConnectionState(BluetoothProfile.A2DP) ==
+                BluetoothAdapter.STATE_CONNECTED
+    }
+        .getOrDefault(false)
 }
 
 @Suppress("DEPRECATION")
 private fun Intent.bluetoothDevice(): BluetoothDevice? =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
-        } else {
-            getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
-        }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
+    } else {
+        getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+    }
 
 private fun BluetoothDevice.safeAddress(): String? = runCatching { address }.getOrNull()
+
+@SuppressLint("MissingPermission")
+private fun BluetoothDevice.safeName(): String =
+    runCatching { name }.getOrNull()?.takeIf(String::isNotBlank) ?: "Bluetooth audio device"

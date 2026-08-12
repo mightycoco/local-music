@@ -5,7 +5,10 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /** Persisted song metadata used for fast library queries and playback history. */
-@Entity(tableName = "songs", indices = [Index("dateAddedEpochSeconds"), Index("scanGeneration")])
+@Entity(
+    tableName = "songs",
+    indices = [Index("dateAddedEpochSeconds"), Index("scanGeneration"), Index("uri", unique = true)]
+)
 data class SongEntity(
     @PrimaryKey val id: String,
     val fileName: String,
@@ -27,5 +30,6 @@ data class SongEntity(
     val playCount: Int,
     val lastPlayedEpochMillis: Long?,
     val isFavourite: Boolean,
-    val scanGeneration: Long = 0L
+    val scanGeneration: Long = 0L,
+    val sourceType: String = "LOCAL"
 )

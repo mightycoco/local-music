@@ -25,70 +25,70 @@ import kotlinx.coroutines.launch
 /** Sends local queue playback commands to the app Media3 session service. */
 @UnstableApi
 class Media3PlaybackController(
-        private val context: Context,
-        private val queueFactory: PlaybackQueueFactory = PlaybackQueueFactory()
+    private val context: Context,
+    private val queueFactory: PlaybackQueueFactory = PlaybackQueueFactory()
 ) : PlaybackController {
     private var controllerFuture: ListenableFuture<MediaController>? = null
 
     override fun observePlayback(): Flow<PlaybackSnapshot> =
-            callbackFlow {
-                        var controller: MediaController? = null
-                        var listener: Player.Listener? = null
-                        val visualizerLevels = AtomicReference<List<Float>>(emptyList())
-                        val queueSongIds = AtomicReference<List<String>>(emptyList())
+        callbackFlow {
+            var controller: MediaController? = null
+            var listener: Player.Listener? = null
+            val visualizerLevels = AtomicReference<List<Float>>(emptyList())
+            val queueSongIds = AtomicReference<List<String>>(emptyList())
 
-                        fun emitSnapshot() {
-                            controller?.let { mediaController ->
-                                trySend(
-                                        mediaController.toPlaybackSnapshot(
-                                                queueSongIds.get(),
-                                                visualizerLevels.get()
-                                        )
-                                )
+            fun emitSnapshot() {
+                controller?.let { mediaController ->
+                    trySend(
+                        mediaController.toPlaybackSnapshot(
+                            queueSongIds.get(),
+                            visualizerLevels.get()
+                        )
+                    )
+                }
+            }
+
+            withController { mediaController ->
+                controller = mediaController
+
+                listener =
+                    object : Player.Listener {
+                        override fun onEvents(
+                            player: Player,
+                            events: Player.Events
+                        ) {
+                            if (events.contains(Player.EVENT_TIMELINE_CHANGED)) {
+                                queueSongIds.set(player.queueSongIds())
                             }
-                        }
-
-                        withController { mediaController ->
-                            controller = mediaController
-
-                            listener =
-                                    object : Player.Listener {
-                                        override fun onEvents(
-                                                player: Player,
-                                                events: Player.Events
-                                        ) {
-                                            if (events.contains(Player.EVENT_TIMELINE_CHANGED)) {
-                                                queueSongIds.set(player.queueSongIds())
-                                            }
-                                            emitSnapshot()
-                                        }
-                                    }
-                            mediaController.addListener(listener!!)
-                            queueSongIds.set(mediaController.queueSongIds())
                             emitSnapshot()
                         }
-
-                        val visualizerCollector = launch {
-                            PlaybackAudioProcessor.levels.collect { levels ->
-                                visualizerLevels.set(levels)
-                                emitSnapshot()
-                            }
-                        }
-
-                        val ticker = launch {
-                            while (true) {
-                                emitSnapshot()
-                                delay(500L)
-                            }
-                        }
-
-                        awaitClose {
-                            ticker.cancel()
-                            visualizerCollector.cancel()
-                            listener?.let { controller?.removeListener(it) }
-                        }
                     }
-                    .buffer(Channel.CONFLATED)
+                mediaController.addListener(listener!!)
+                queueSongIds.set(mediaController.queueSongIds())
+                emitSnapshot()
+            }
+
+            val visualizerCollector = launch {
+                PlaybackAudioProcessor.levels.collect { levels ->
+                    visualizerLevels.set(levels)
+                    emitSnapshot()
+                }
+            }
+
+            val ticker = launch {
+                while (true) {
+                    emitSnapshot()
+                    delay(500L)
+                }
+            }
+
+            awaitClose {
+                ticker.cancel()
+                visualizerCollector.cancel()
+                listener?.let { controller?.removeListener(it) }
+            }
+        }
+            .buffer(Channel.CONFLATED)
 
     override fun play(songs: List<Song>, startSongId: String) {
         val queue = queueFactory.createQueue(songs, startSongId)
@@ -140,11 +140,11 @@ class Media3PlaybackController(
     override fun setRepeatMode(mode: RepeatMode) {
         withController { controller ->
             controller.repeatMode =
-                    when (mode) {
-                        RepeatMode.Off -> Player.REPEAT_MODE_OFF
-                        RepeatMode.One -> Player.REPEAT_MODE_ONE
-                        RepeatMode.All -> Player.REPEAT_MODE_ALL
-                    }
+                when (mode) {
+                    RepeatMode.Off -> Player.REPEAT_MODE_OFF
+                    RepeatMode.One -> Player.REPEAT_MODE_ONE
+                    RepeatMode.All -> Player.REPEAT_MODE_ALL
+                }
         }
     }
 
@@ -159,39 +159,41 @@ class Media3PlaybackController(
 
     private fun withController(command: (MediaController) -> Unit) {
         val future =
-                controllerFuture
-                        ?: MediaController.Builder(context, sessionToken()).buildAsync().also {
-                            controllerFuture = it
-                        }
+            controllerFuture
+                ?: MediaController.Builder(context, sessionToken()).buildAsync().also {
+                    controllerFuture = it
+                }
         future.addListener(
-                { runCatching(future::get).getOrNull()?.let(command) },
-                ContextCompat.getMainExecutor(context)
+            { runCatching(future::get).getOrNull()?.let(command) },
+            ContextCompat.getMainExecutor(context)
         )
     }
 
     private fun sessionToken(): SessionToken =
-            SessionToken(context, ComponentName(context, LocalMusicPlaybackService::class.java))
+        SessionToken(context, ComponentName(context, LocalMusicPlaybackService::class.java))
 
     private fun MediaController.toPlaybackSnapshot(
-            queueSongIds: List<String>,
-            visualizerLevels: List<Float>
+        queueSongIds: List<String>,
+        visualizerLevels: List<Float>
     ): PlaybackSnapshot =
-            PlaybackSnapshot(
-                    songId = currentMediaItem?.mediaId,
-                    queueSongIds = queueSongIds,
-                    isPlaying = isPlaying,
-                    positionMillis = currentPosition.coerceAtLeast(0L),
-                    durationMillis = duration.takeIf { it > 0L } ?: 0L,
-                    isShuffleEnabled = shuffleModeEnabled,
-                    repeatMode =
-                            when (repeatMode) {
-                                Player.REPEAT_MODE_ONE -> RepeatMode.One
-                                Player.REPEAT_MODE_ALL -> RepeatMode.All
-                                else -> RepeatMode.Off
-                            },
-                    visualizerLevels = visualizerLevels
-            )
+        PlaybackSnapshot(
+            songId = currentMediaItem?.mediaId,
+            queueSongIds = queueSongIds,
+            title = mediaMetadata.title?.toString(),
+            artist = mediaMetadata.artist?.toString(),
+            isPlaying = isPlaying,
+            positionMillis = currentPosition.coerceAtLeast(0L),
+            durationMillis = duration.takeIf { it > 0L } ?: 0L,
+            isShuffleEnabled = shuffleModeEnabled,
+            repeatMode =
+                when (repeatMode) {
+                    Player.REPEAT_MODE_ONE -> RepeatMode.One
+                    Player.REPEAT_MODE_ALL -> RepeatMode.All
+                    else -> RepeatMode.Off
+                },
+            visualizerLevels = visualizerLevels
+        )
 
     private fun Player.queueSongIds(): List<String> =
-            List(mediaItemCount) { index -> getMediaItemAt(index).mediaId }
+        List(mediaItemCount) { index -> getMediaItemAt(index).mediaId }
 }

@@ -8,6 +8,7 @@ data class M3uPlaylist(
 ) {
     companion object {
         const val QUEUE_NAME = "Queue"
+        const val ONLINE_FAVOURITES_NAME = "__online_favourites__"
     }
 }
 

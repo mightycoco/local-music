@@ -6,7 +6,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 /** Room database for local library metadata and user-owned music state. */
-@Database(entities = [SongEntity::class, PlaylistEntity::class], version = 5, exportSchema = true)
+@Database(entities = [SongEntity::class, PlaylistEntity::class], version = 6, exportSchema = true)
 abstract class LocalMusicDatabase : RoomDatabase() {
     abstract fun songDao(): SongDao
     abstract fun playlistDao(): PlaylistDao
@@ -60,6 +60,18 @@ abstract class LocalMusicDatabase : RoomDatabase() {
                     )
                     database.execSQL(
                         "ALTER TABLE songs ADD COLUMN description TEXT NOT NULL DEFAULT ''"
+                    )
+                }
+            }
+
+        val MIGRATION_5_6 =
+            object : Migration(5, 6) {
+                override fun migrate(database: SupportSQLiteDatabase) {
+                    database.execSQL(
+                        "ALTER TABLE songs ADD COLUMN sourceType TEXT NOT NULL DEFAULT 'LOCAL'"
+                    )
+                    database.execSQL(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS index_songs_uri ON songs(uri)"
                     )
                 }
             }

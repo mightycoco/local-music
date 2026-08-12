@@ -1,6 +1,7 @@
 package com.localmusic.player.data.database
 
 import com.localmusic.player.domain.model.Song
+import com.localmusic.player.domain.model.SongSource
 
 fun SongEntity.toDomain(): Song = Song(
     id = id,
@@ -22,7 +23,8 @@ fun SongEntity.toDomain(): Song = Song(
     sizeBytes = sizeBytes,
     playCount = playCount,
     lastPlayedEpochMillis = lastPlayedEpochMillis,
-    isFavourite = isFavourite
+    isFavourite = isFavourite,
+    source = SongSource.entries.firstOrNull { it.name == sourceType } ?: SongSource.LOCAL
 )
 
 fun Song.toEntity(): SongEntity = SongEntity(
@@ -45,5 +47,6 @@ fun Song.toEntity(): SongEntity = SongEntity(
     sizeBytes = sizeBytes,
     playCount = playCount,
     lastPlayedEpochMillis = lastPlayedEpochMillis,
-    isFavourite = isFavourite
+    isFavourite = isFavourite,
+    sourceType = source.name
 )

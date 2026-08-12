@@ -39,34 +39,34 @@ import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.SortOrder
 
 private val browsableFilters =
-        setOf(
-                LibraryFilter.Artists,
-                LibraryFilter.Albums,
-                LibraryFilter.Genres,
-                LibraryFilter.Folders
-        )
+    setOf(
+        LibraryFilter.Artists,
+        LibraryFilter.Albums,
+        LibraryFilter.Genres,
+        LibraryFilter.Folders
+    )
 
 @Composable
 internal fun LibraryContent(
-        uiState: HomeUiState,
-        listState: LazyListState,
-        onSearchChange: (String) -> Unit,
-        onFilterSelected: (LibraryFilter) -> Unit,
-        onBrowseValueSelected: (String?) -> Unit,
-        onSortSelected: (SortOrder) -> Unit,
-        onAddFolderSource: () -> Unit,
-        onSongSelected: (Song) -> Unit,
-        onFavouriteToggle: (Song) -> Unit,
-        onCreatePlaylist: (String) -> Unit,
-        onAddSongToPlaylist: (Song, String) -> Unit,
-        onAddSongToQueue: (Song) -> Unit
+    uiState: HomeUiState,
+    listState: LazyListState,
+    onSearchChange: (String) -> Unit,
+    onFilterSelected: (LibraryFilter) -> Unit,
+    onBrowseValueSelected: (String?) -> Unit,
+    onSortSelected: (SortOrder) -> Unit,
+    onAddFolderSource: () -> Unit,
+    onSongSelected: (Song) -> Unit,
+    onFavouriteToggle: (Song) -> Unit,
+    onCreatePlaylist: (String) -> Unit,
+    onAddSongToPlaylist: (Song, String) -> Unit,
+    onAddSongToQueue: (Song) -> Unit
 ) {
     OutlinedTextField(
-            value = uiState.searchQuery,
-            onValueChange = onSearchChange,
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            label = { Text("Search") }
+        value = uiState.searchQuery,
+        onValueChange = onSearchChange,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        label = { Text("Search") }
     )
     Spacer(modifier = Modifier.height(12.dp))
     if (uiState.songs.isEmpty()) {
@@ -74,54 +74,54 @@ internal fun LibraryContent(
         Spacer(modifier = Modifier.height(12.dp))
     } else {
         Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             FilterRow(
-                    uiState = uiState,
-                    onFilterSelected = onFilterSelected,
-                    modifier = Modifier.weight(1f)
+                uiState = uiState,
+                onFilterSelected = onFilterSelected,
+                modifier = Modifier.weight(1f)
             )
             SortOrderDropdown(
-                    selectedSortOrder = uiState.sortOrder,
-                    onSortSelected = onSortSelected
+                selectedSortOrder = uiState.sortOrder,
+                onSortSelected = onSortSelected
             )
         }
     }
     Spacer(modifier = Modifier.height(12.dp))
     AdaptiveLibraryContent(
-            uiState = uiState,
-            listState = listState,
-            onBrowseValueSelected = onBrowseValueSelected,
-            onSongSelected = onSongSelected,
-            onFavouriteToggle = onFavouriteToggle,
-            onCreatePlaylist = onCreatePlaylist,
-            onAddSongToPlaylist = onAddSongToPlaylist,
-            onAddSongToQueue = onAddSongToQueue
+        uiState = uiState,
+        listState = listState,
+        onBrowseValueSelected = onBrowseValueSelected,
+        onSongSelected = onSongSelected,
+        onFavouriteToggle = onFavouriteToggle,
+        onCreatePlaylist = onCreatePlaylist,
+        onAddSongToPlaylist = onAddSongToPlaylist,
+        onAddSongToQueue = onAddSongToQueue
     )
 }
 
 @Composable
 private fun FilterRow(
-        uiState: HomeUiState,
-        onFilterSelected: (LibraryFilter) -> Unit,
-        modifier: Modifier = Modifier
+    uiState: HomeUiState,
+    onFilterSelected: (LibraryFilter) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Row(
-            modifier = modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         LibraryFilter.entries.forEach { filter ->
             AssistChip(
-                    onClick = { onFilterSelected(filter) },
-                    label = { Text(filter.label) },
-                    enabled = filter != uiState.selectedFilter,
-                    border =
-                            AssistChipDefaults.assistChipBorder(
-                                    enabled = filter != uiState.selectedFilter,
-                                    borderColor = Color.Transparent,
-                                    disabledBorderColor = Color.Transparent
-                            )
+                onClick = { onFilterSelected(filter) },
+                label = { Text(filter.label) },
+                enabled = filter != uiState.selectedFilter,
+                border =
+                    AssistChipDefaults.assistChipBorder(
+                        enabled = filter != uiState.selectedFilter,
+                        borderColor = Color.Transparent,
+                        disabledBorderColor = Color.Transparent
+                    )
             )
         }
     }
@@ -138,11 +138,11 @@ private fun SortOrderDropdown(selectedSortOrder: SortOrder, onSortSelected: (Sor
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             SortOrder.entries.forEach { sortOrder ->
                 DropdownMenuItem(
-                        text = { Text(sortOrder.label) },
-                        onClick = {
-                            onSortSelected(sortOrder)
-                            expanded = false
-                        }
+                    text = { Text(sortOrder.label) },
+                    onClick = {
+                        onSortSelected(sortOrder)
+                        expanded = false
+                    }
                 )
             }
         }
@@ -151,20 +151,20 @@ private fun SortOrderDropdown(selectedSortOrder: SortOrder, onSortSelected: (Sor
 
 @Composable
 private fun AdaptiveLibraryContent(
-        uiState: HomeUiState,
-        listState: LazyListState,
-        onBrowseValueSelected: (String?) -> Unit,
-        onSongSelected: (Song) -> Unit,
-        onFavouriteToggle: (Song) -> Unit,
-        onCreatePlaylist: (String) -> Unit,
-        onAddSongToPlaylist: (Song, String) -> Unit,
-        onAddSongToQueue: (Song) -> Unit
+    uiState: HomeUiState,
+    listState: LazyListState,
+    onBrowseValueSelected: (String?) -> Unit,
+    onSongSelected: (Song) -> Unit,
+    onFavouriteToggle: (Song) -> Unit,
+    onCreatePlaylist: (String) -> Unit,
+    onAddSongToPlaylist: (Song, String) -> Unit,
+    onAddSongToQueue: (Song) -> Unit
 ) {
     if (uiState.selectedFilter in browsableFilters && uiState.selectedBrowseValue == null) {
         BrowseFacetList(
-                filter = uiState.selectedFilter,
-                songs = uiState.songs,
-                onBrowseValueSelected = onBrowseValueSelected
+            filter = uiState.selectedFilter,
+            songs = uiState.songs,
+            onBrowseValueSelected = onBrowseValueSelected
         )
         return
     }
@@ -178,48 +178,48 @@ private fun AdaptiveLibraryContent(
         if (maxWidth >= 840.dp) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 SongList(
-                        songs = uiState.songs,
-                        artworkBySongId = uiState.artworkBySongId,
-                        nowPlayingSongId = uiState.nowPlayingSong?.id,
-                        isPlaying = uiState.isPlaying,
-                        listState = listState,
-                        modifier = Modifier.weight(1f),
-                        onSongSelected = onSongSelected,
-                        onFavouriteToggle = onFavouriteToggle,
-                        playlists = uiState.importedPlaylists,
-                        onCreatePlaylist = onCreatePlaylist,
-                        onAddSongToPlaylist = onAddSongToPlaylist,
-                        onAddSongToQueue = onAddSongToQueue
-                )
-                SongList(
-                        songs = uiState.songs.filter { it.isFavourite },
-                        artworkBySongId = uiState.artworkBySongId,
-                        nowPlayingSongId = uiState.nowPlayingSong?.id,
-                        isPlaying = uiState.isPlaying,
-                        emptyTitle = "No favourites yet",
-                        emptyMessage = "Mark local songs as favourites to pin them here.",
-                        modifier = Modifier.width(320.dp),
-                        onSongSelected = onSongSelected,
-                        onFavouriteToggle = onFavouriteToggle,
-                        playlists = uiState.importedPlaylists,
-                        onCreatePlaylist = onCreatePlaylist,
-                        onAddSongToPlaylist = onAddSongToPlaylist,
-                        onAddSongToQueue = onAddSongToQueue
-                )
-            }
-        } else {
-            SongList(
                     songs = uiState.songs,
                     artworkBySongId = uiState.artworkBySongId,
                     nowPlayingSongId = uiState.nowPlayingSong?.id,
                     isPlaying = uiState.isPlaying,
                     listState = listState,
+                    modifier = Modifier.weight(1f),
                     onSongSelected = onSongSelected,
                     onFavouriteToggle = onFavouriteToggle,
                     playlists = uiState.importedPlaylists,
                     onCreatePlaylist = onCreatePlaylist,
                     onAddSongToPlaylist = onAddSongToPlaylist,
                     onAddSongToQueue = onAddSongToQueue
+                )
+                SongList(
+                    songs = uiState.favouriteSongs,
+                    artworkBySongId = uiState.artworkBySongId,
+                    nowPlayingSongId = uiState.nowPlayingSong?.id,
+                    isPlaying = uiState.isPlaying,
+                    emptyTitle = "No favourites yet",
+                    emptyMessage = "Mark songs or online streams as favourites to pin them here.",
+                    modifier = Modifier.width(320.dp),
+                    onSongSelected = onSongSelected,
+                    onFavouriteToggle = onFavouriteToggle,
+                    playlists = uiState.importedPlaylists,
+                    onCreatePlaylist = onCreatePlaylist,
+                    onAddSongToPlaylist = onAddSongToPlaylist,
+                    onAddSongToQueue = onAddSongToQueue
+                )
+            }
+        } else {
+            SongList(
+                songs = uiState.songs,
+                artworkBySongId = uiState.artworkBySongId,
+                nowPlayingSongId = uiState.nowPlayingSong?.id,
+                isPlaying = uiState.isPlaying,
+                listState = listState,
+                onSongSelected = onSongSelected,
+                onFavouriteToggle = onFavouriteToggle,
+                playlists = uiState.importedPlaylists,
+                onCreatePlaylist = onCreatePlaylist,
+                onAddSongToPlaylist = onAddSongToPlaylist,
+                onAddSongToQueue = onAddSongToQueue
             )
         }
     }
@@ -227,15 +227,15 @@ private fun AdaptiveLibraryContent(
 
 @Composable
 private fun BrowseFacetList(
-        filter: LibraryFilter,
-        songs: List<Song>,
-        onBrowseValueSelected: (String) -> Unit
+    filter: LibraryFilter,
+    songs: List<Song>,
+    onBrowseValueSelected: (String) -> Unit
 ) {
     val valueCounts = LibraryBrowser.valueCounts(songs, filter)
     if (valueCounts.isEmpty()) {
         EmptyState(
-                title = "No ${filter.label.lowercase()} found",
-                message = "Refresh your local library or choose another filter."
+            title = "No ${filter.label.lowercase()} found",
+            message = "Refresh your local library or choose another filter."
         )
         return
     }
@@ -243,9 +243,9 @@ private fun BrowseFacetList(
     LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         items(valueCounts, key = { it.first.lowercase() }) { (value, songCount) ->
             ListItem(
-                    modifier = Modifier.clickable { onBrowseValueSelected(value) },
-                    headlineContent = { Text(value) },
-                    supportingContent = { Text("$songCount songs") }
+                modifier = Modifier.clickable { onBrowseValueSelected(value) },
+                headlineContent = { Text(value) },
+                supportingContent = { Text("$songCount songs") }
             )
         }
     }

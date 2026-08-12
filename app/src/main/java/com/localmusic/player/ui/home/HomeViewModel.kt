@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.localmusic.player.artwork.ArtworkDiskCache
 import com.localmusic.player.artwork.ArtworkPreferences
 import com.localmusic.player.artwork.EmbeddedArtworkExtractor
+import com.localmusic.player.bluetooth.CarAudioDevice
 import com.localmusic.player.bluetooth.CarModePreferences
 import com.localmusic.player.domain.model.LibraryBrowser
 import com.localmusic.player.domain.model.LibraryFilter
@@ -14,13 +15,16 @@ import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.SortOrder
 import com.localmusic.player.domain.repository.RepeatMode
 import com.localmusic.player.domain.usecase.AddFolderSourceUseCase
+import com.localmusic.player.domain.usecase.ImportStreamSourceUseCase
 import com.localmusic.player.domain.usecase.ObserveSongsUseCase
 import com.localmusic.player.domain.usecase.RefreshMusicLibraryUseCase
 import com.localmusic.player.domain.usecase.RemoveFolderSourceUseCase
 import com.localmusic.player.domain.usecase.SetFavouriteUseCase
 import com.localmusic.player.domain.usecase.StartPlaybackUseCase
+import com.localmusic.player.domain.usecase.UpdateStreamMetadataUseCase
 import com.localmusic.player.playlist.M3uPlaylist
 import com.localmusic.player.playlist.M3uPlaylistCodec
+import com.localmusic.player.playlist.M3uPlaylistEntry
 import com.localmusic.player.playlist.PlaylistStore
 import com.localmusic.player.playlist.toM3uEntry
 import com.localmusic.player.playlist.withQueueFirst
@@ -44,6 +48,8 @@ class HomeViewModel(
     private val removeFolderSource: RemoveFolderSourceUseCase,
     private val folderSourceUris: () -> List<String> = { emptyList() },
     private val setFavourite: SetFavouriteUseCase,
+    private val importStreamSource: ImportStreamSourceUseCase,
+    private val updateStreamMetadata: UpdateStreamMetadataUseCase,
     private val startPlayback: StartPlaybackUseCase,
     private val playlistStore: PlaylistStore? = null,
     private val artworkExtractor: EmbeddedArtworkExtractor? = null,
@@ -61,6 +67,7 @@ class HomeViewModel(
     private val selectedScreen = MutableStateFlow(HomeScreenDestination.Home)
     private val nowPlayingSongId = MutableStateFlow<String?>(null)
     private val playbackQueueSongIds = MutableStateFlow<List<String>>(emptyList())
+    private val playbackSongsById = MutableStateFlow<Map<String, Song>>(emptyMap())
     private val isPlaying = MutableStateFlow(false)
     private val playbackProgress = MutableStateFlow(0f)
     private val playbackDurationMillis = MutableStateFlow(0L)
@@ -79,6 +86,9 @@ class HomeViewModel(
     private val isCarAudioDetected = MutableStateFlow(false)
     private val isCarModeManuallyEnabled =
         MutableStateFlow(carModePreferences?.isManuallyEnabled() ?: false)
+    private val connectedCarAudioDevices = MutableStateFlow<List<CarAudioDevice>>(emptyList())
+    private val markedCarDeviceIds =
+        MutableStateFlow(carModePreferences?.markedCarDeviceIds().orEmpty())
     private val isRefreshing = MutableStateFlow(false)
     private val refreshError = MutableStateFlow<String?>(null)
     private val playlistCodec = M3uPlaylistCodec()
@@ -97,6 +107,7 @@ class HomeViewModel(
             startPlayback.observePlayback().collect { playback ->
                 nowPlayingSongId.value = playback.songId
                 playbackQueueSongIds.value = playback.queueSongIds
+                updateRemoteStreamMetadata(playback)
                 isPlaying.value = playback.isPlaying
                 playbackProgress.value = playback.progress
                 playbackDurationMillis.value = playback.durationMillis
@@ -133,11 +144,17 @@ class HomeViewModel(
         }
 
     private val carModeState =
-        combine(isCarAudioDetected, isCarModeManuallyEnabled) { carAudioDetected,
-                                                                manuallyEnabled ->
+        combine(
+            isCarAudioDetected,
+            isCarModeManuallyEnabled,
+            connectedCarAudioDevices,
+            markedCarDeviceIds
+        ) { carAudioDetected, manuallyEnabled, connectedDevices, markedDeviceIds ->
             CarModeState(
                 isEnabled = carAudioDetected || manuallyEnabled,
-                isManuallyEnabled = manuallyEnabled
+                isManuallyEnabled = manuallyEnabled,
+                connectedDevices = connectedDevices,
+                markedDeviceIds = markedDeviceIds
             )
         }
 
@@ -151,6 +168,8 @@ class HomeViewModel(
                 importedPlaylists = playlists,
                 isCarMode = carMode.isEnabled,
                 isCarModeManuallyEnabled = carMode.isManuallyEnabled,
+                connectedCarAudioDevices = carMode.connectedDevices,
+                markedCarDeviceIds = carMode.markedDeviceIds,
                 themeMode = appearance.themeMode,
                 isExternalArtworkDownloadEnabled =
                     appearance.isExternalArtworkDownloadEnabled,
@@ -203,6 +222,8 @@ class HomeViewModel(
                 importedPlaylists = status.importedPlaylists,
                 isCarMode = status.isCarMode,
                 isCarModeManuallyEnabled = status.isCarModeManuallyEnabled,
+                connectedCarAudioDevices = status.connectedCarAudioDevices,
+                markedCarDeviceIds = status.markedCarDeviceIds,
                 themeMode = status.themeMode,
                 isExternalArtworkDownloadEnabled = status.isExternalArtworkDownloadEnabled,
                 isVisualizerPreferred = status.isVisualizerPreferred,
@@ -240,15 +261,20 @@ class HomeViewModel(
             }
 
     val uiState: StateFlow<HomeUiState> =
-        combine(projectedSongs, controlsState, artworkBySongId, playbackState) { projected,
-                                                                                 state,
-                                                                                 artwork,
-                                                                                 playback ->
+        combine(
+            projectedSongs,
+            controlsState,
+            artworkBySongId,
+            playbackState,
+            playbackSongsById
+        ) { projected, state, artwork, playback, activePlaybackSongs ->
             refreshArtwork(projected.visibleSongs.take(ARTWORK_PREFETCH_LIMIT))
-            val songsById = projected.allSongs.associateBy(Song::id)
+            val songsById = projected.allSongs.associateBy(Song::id) + activePlaybackSongs
             val nowPlaying = songsById[playback.songId]
             state.copy(
                 songs = projected.visibleSongs,
+                librarySongs = projected.allSongs,
+                favouriteSongs = projected.allSongs.filter(Song::isFavourite),
                 nowPlayingSong = nowPlaying,
                 playbackQueue =
                     resolvePlaybackQueue(
@@ -358,12 +384,16 @@ class HomeViewModel(
         }
     }
 
+    fun togglePlaylistEntryFavourite(entry: M3uPlaylistEntry) {
+        uiState.value.librarySongs.firstOrNull { it.uri == entry.uri }?.let(::toggleFavourite)
+    }
+
     fun playSong(song: Song) {
         playSongs(queue = uiState.value.songs, startSong = song)
     }
 
     fun playFavourites(song: Song) {
-        val favourites = uiState.value.songs.filter(Song::isFavourite)
+        val favourites = uiState.value.favouriteSongs
         if (song !in favourites) return
 
         savePlaylist(
@@ -383,20 +413,22 @@ class HomeViewModel(
     }
 
     fun playPlaylist(playlist: M3uPlaylist) {
-        val songsByUri = uiState.value.songs.associateBy(Song::uri)
+        val songsByUri = uiState.value.librarySongs.associateBy(Song::uri)
         val playlistSongs = playlist.entries.mapNotNull { entry -> songsByUri[entry.uri] }
         val firstSong = playlistSongs.firstOrNull()
         if (firstSong == null) {
-            refreshError.value = "No available local songs found in ${playlist.name}"
+            refreshError.value = "No playable songs found in ${playlist.name}"
             return
         }
 
+        savePlaylist(M3uPlaylist(name = M3uPlaylist.QUEUE_NAME, entries = playlist.entries))
         playSongs(queue = playlistSongs, startSong = firstSong)
     }
 
     private fun playSongs(queue: List<Song>, startSong: Song) {
         nowPlayingSongId.value = startSong.id
         playbackQueueSongIds.value = queue.map(Song::id)
+        playbackSongsById.value = queue.associateBy(Song::id)
         isPlaying.value = true
         playbackProgress.value = 0f
         playbackDurationMillis.value = 0L
@@ -604,6 +636,25 @@ class HomeViewModel(
         updatePlaylistEntries(playlist, 0) { emptyList() }
     }
 
+    fun addStreamToPlaylist(playlist: M3uPlaylist, streamUrl: String) {
+        if (playlist.name == M3uPlaylist.QUEUE_NAME) return
+        viewModelScope.launch {
+            runCatching { importStreamSource(streamUrl) }
+                .onSuccess { stations ->
+                    val currentPlaylist =
+                        importedPlaylists.value.firstOrNull { it.name == playlist.name } ?: return@onSuccess
+                    val newEntries =
+                        stations.map(Song::toM3uEntry).filter { station ->
+                            currentPlaylist.entries.none { it.uri == station.uri }
+                        }
+                    savePlaylist(currentPlaylist.copy(entries = currentPlaylist.entries + newEntries))
+                }
+                .onFailure { error ->
+                    refreshError.value = error.message ?: "Stream import failed"
+                }
+        }
+    }
+
     fun movePlaylistEntry(playlist: M3uPlaylist, entryIndex: Int, offset: Int) {
         updatePlaylistEntries(playlist, entryIndex) { entries ->
             val targetIndex = entryIndex + offset
@@ -680,6 +731,23 @@ class HomeViewModel(
         viewModelScope.launch(Dispatchers.IO) { playlistStore?.save(playlist) }
     }
 
+    private fun updateRemoteStreamMetadata(playback: com.localmusic.player.domain.repository.PlaybackSnapshot) {
+        val songId = playback.songId ?: return
+        val activeSong = playbackSongsById.value[songId] ?: return
+        if (activeSong.source != com.localmusic.player.domain.model.SongSource.STREAM) return
+
+        val updatedTitle = playback.title?.trim().takeUnless { it.isNullOrEmpty() } ?: activeSong.title
+        val updatedArtist = playback.artist?.trim().takeUnless { it.isNullOrEmpty() } ?: activeSong.artist
+        if (updatedTitle == activeSong.title && updatedArtist == activeSong.artist) return
+
+        playbackSongsById.value =
+            playbackSongsById.value +
+                    (songId to activeSong.copy(title = updatedTitle, artist = updatedArtist))
+        viewModelScope.launch {
+            updateStreamMetadata(songId, updatedTitle, updatedArtist)
+        }
+    }
+
     fun exportCurrentPlaylist(): String =
         playlistCodec.export(
             M3uPlaylist(
@@ -692,6 +760,24 @@ class HomeViewModel(
 
     fun updateCarMode(enabled: Boolean) {
         isCarAudioDetected.value = enabled
+    }
+
+    fun updateConnectedCarAudioDevices(devices: List<CarAudioDevice>) {
+        connectedCarAudioDevices.value = devices
+        refreshCarAudioDetection()
+    }
+
+    fun setCarDeviceMarked(deviceId: String, marked: Boolean) {
+        carModePreferences?.setCarDeviceMarked(deviceId, marked)
+        markedCarDeviceIds.value = carModePreferences?.markedCarDeviceIds().orEmpty()
+        refreshCarAudioDetection()
+    }
+
+    private fun refreshCarAudioDetection() {
+        isCarAudioDetected.value =
+            connectedCarAudioDevices.value.any { device ->
+                device.isLikelyCarDevice || device.id in markedCarDeviceIds.value
+            }
     }
 
     fun setCarModeManuallyEnabled(enabled: Boolean) {
@@ -810,7 +896,12 @@ private data class AppearanceState(
     val isVisualizerPreferred: Boolean
 )
 
-private data class CarModeState(val isEnabled: Boolean, val isManuallyEnabled: Boolean)
+private data class CarModeState(
+    val isEnabled: Boolean,
+    val isManuallyEnabled: Boolean,
+    val connectedDevices: List<CarAudioDevice>,
+    val markedDeviceIds: Set<String>
+)
 
 private data class ProjectedSongs(val allSongs: List<Song>, val visibleSongs: List<Song>)
 
@@ -848,6 +939,8 @@ class HomeViewModelFactory(
     private val removeFolderSource: RemoveFolderSourceUseCase,
     private val folderSourceUris: () -> List<String> = { emptyList() },
     private val setFavourite: SetFavouriteUseCase,
+    private val importStreamSource: ImportStreamSourceUseCase,
+    private val updateStreamMetadata: UpdateStreamMetadataUseCase,
     private val startPlayback: StartPlaybackUseCase,
     private val playlistStore: PlaylistStore? = null,
     private val artworkExtractor: EmbeddedArtworkExtractor? = null,
@@ -866,6 +959,8 @@ class HomeViewModelFactory(
             removeFolderSource,
             folderSourceUris,
             setFavourite,
+            importStreamSource,
+            updateStreamMetadata,
             startPlayback,
             playlistStore,
             artworkExtractor,

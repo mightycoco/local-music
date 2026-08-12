@@ -35,11 +35,13 @@
 - [x] Persist and toggle favourites from the song list.
 - [x] Connect song taps to the Media3 playback service.
 - [x] Complete playlist management: open/play playlists, rename, duplicate, remove entries, reorder entries, and export an individual playlist.
+	- [x] Append HTTP(S) radio-stream or remote-M3U URLs from the playlist editor.
+	- [x] Play HTTP(S) playlist entries through the existing Media3 queue without indexing them in the local library.
 - [x] Add album-art extraction, disk cache pruning, and UI image loading.
-- [ ] Complete Car Mode: observe A2DP connection changes, allow marking devices as cars, and apply driving-safe 80-96dp touch targets and simplified controls.
+- [x] Complete Car Mode: observe A2DP connection changes, allow marking devices as cars, and apply driving-safe 80-96dp touch targets and simplified controls.
 	- [x] Persist an explicit user-controlled Car Mode override in Settings.
 	- [x] Observe A2DP connection changes while Bluetooth access is available.
-	- [x] Increase compact-player transport targets by 30 percent and provide a full-width, non-overlapping layout while Car Mode is active.
+	- [x] Preserve the compact-player full-width transport layout with 80 dp Car Mode targets and additional spacing.
 - [x] Complete Now Playing: shuffle, repeat, swipe navigation, a system equalizer entry point, elapsed/remaining time, favourites, and queue contents.
 	- [x] Show the active playback playlist below the controls and position it at the current song whenever Now Playing becomes visible.
 - [x] The selection of the screen must be at the bottom (Home/Now Playing/Playlists/Favourites/Settings)
@@ -68,8 +70,7 @@
 - [ ] Verify all required local formats on device and document Media3 fallback behavior: MP3, AAC, M4A, FLAC, WAV, AIFF, OGG, and Opus.
 - [x] Complete Home filters: Artists, Albums, Genres, and Folders provide local drill-down browsing.
 - [x] Expand the song metadata model and instant search to include album artist, genre, composer, year, comments, description, and playlist names.
-- [ ] Add the No Artwork smart playlist. Never Played and Last 30 Days are available as Home filters.
-- [ ] Complete Settings: artwork cache controls, default filter/sort, Car Mode and Bluetooth preferences, About/version, and licenses UI.
+- [x] Complete Settings: artwork cache controls, default filter/sort, Car Mode and Bluetooth preferences, About/version, and licenses UI.
 	- [x] Manage selected local folders from Settings, including removal and persisted URI permission release.
 	- [x] Show the artwork cache size and clear cached artwork from Settings.
 	- [x] Persist configurable default library filter and sort selections.

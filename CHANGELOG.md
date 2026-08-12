@@ -9,7 +9,7 @@
 - Reduced playback and UI churn with direct Media3 navigation, lifecycle-aware state collection, one-pass facet counts, and seek-on-release sliders.
 - Restored horizontal swipe navigation across primary views with direction and distance thresholds while yielding gestures consumed by sliders and other child controls.
 - Disabled app-data backup, isolated debug signing from release credentials, secured SVG XML parsing, and enabled R8 for release builds.
-- Gave Car Mode a dedicated compact-player layout with 72 dp full-width transport controls, larger artwork and metadata, and progress-bar clearance without showing a persistent heading.
+- Gave Car Mode a dedicated compact-player layout with 80 dp full-width transport controls, larger artwork and metadata, and progress-bar clearance without showing a persistent heading.
 - Hid the system status bar while the compact player is visible and restored it when leaving the compact-player layout.
 - Normalized the Now Playing queue display so the current song is first and duplicate items are hidden.
 - Made Now Playing queue items selectable and added favourite toggles to their rows.
@@ -27,6 +27,7 @@
 - Added a Settings About section with the generated app version and scrollable open-source license notices.
 - Added a persisted Settings switch for manually enabling Car Mode alongside Bluetooth car-audio detection.
 - Added lifecycle-bound A2DP connection observation to refresh Car Mode as Bluetooth audio devices connect or disconnect.
+- Added persistent marking for connected A2DP car devices and 80 dp MiniPlayer transport targets while preserving the full-width Car Mode controls layout.
 - Added a generated adaptive launcher icon, converted from the committed SVG source during Android builds.
 - Removed the generated dark teal launcher-icon background so the source artwork retains its transparent background.
 - Created the initial Android Kotlin project scaffold.
@@ -66,8 +67,13 @@
 - Added GitHub Actions support for test, debug APK, and secret-backed signed release APK/AAB builds.
 - Added playlist rename and duplication actions while preserving Queue playlist protections.
 - Added individual playlist M3U export from the Playlists screen.
-- Added playback of saved playlists using their locally available songs in playlist order.
+- Added playback of saved playlists in playlist order, including transient HTTP(S) radio and remote-M3U entries without adding them to the local library.
+- Persisted Media3 in-stream title and artist metadata for playing HTTP(S) playlist entries back to their local M3U playlist records.
 - Added playlist entry browsing, removal, and reordering from the Playlists screen.
+- Added playlist-entry favourite controls and a long-press Remove from Playlist action.
+- Added playlist-editor playback that replaces the persistent Queue with the selected playlist.
+- Added an Add Stream dialog for appending validated HTTP(S) radio or remote-M3U URLs to a playlist.
+- Made HTTP(S) radio stations first-class common-library songs, including M3U URL expansion, normal favourites, source-aware scan retention, and Media3 metadata updates through SongDao.
 - Added Now Playing elapsed/remaining time and favourite controls.
 - Added Never Played and Last 30 Days smart library filters.
 - Added a persisted, default-enabled Settings control for optional external artwork downloads.

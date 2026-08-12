@@ -21,5 +21,6 @@ data class Song(
     val sizeBytes: Long = 0,
     val playCount: Int = 0,
     val lastPlayedEpochMillis: Long? = null,
-    val isFavourite: Boolean = false
+    val isFavourite: Boolean = false,
+    val source: SongSource = SongSource.LOCAL
 )

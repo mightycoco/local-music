@@ -7,8 +7,11 @@ import com.localmusic.player.data.database.toEntity
 import com.localmusic.player.data.mediastore.MusicScanner
 import com.localmusic.player.data.saf.SafFolderSourceStore
 import com.localmusic.player.domain.model.Song
+import com.localmusic.player.domain.model.SongSource
+import com.localmusic.player.domain.model.StreamStation
 import com.localmusic.player.domain.repository.MusicRepository
 import java.util.concurrent.atomic.AtomicLong
+import java.security.MessageDigest
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -19,48 +22,92 @@ private val nextScanGeneration = AtomicLong(System.currentTimeMillis())
 
 /** Room-backed repository for merged, de-duplicated local music metadata. */
 class RoomMusicRepository(
-        private val songDao: SongDao,
-        private val musicScanner: MusicScanner,
-        private val safFolderSourceStore: SafFolderSourceStore? = null,
-        private val persistSafFolderPermission: suspend (String) -> Unit = {},
-        private val duplicateSongResolver: DuplicateSongResolver = DuplicateSongResolver(),
-        private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    private val songDao: SongDao,
+    private val musicScanner: MusicScanner,
+    private val safFolderSourceStore: SafFolderSourceStore? = null,
+    private val persistSafFolderPermission: suspend (String) -> Unit = {},
+    private val duplicateSongResolver: DuplicateSongResolver = DuplicateSongResolver(),
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : MusicRepository {
     override fun observeSongs(): Flow<List<Song>> =
-            songDao.observeNewestAdded().map { entities -> entities.map { it.toDomain() } }
+        songDao.observeNewestAdded().map { entities -> entities.map { it.toDomain() } }
 
     override suspend fun refreshLibrary() =
-            withContext(ioDispatcher) {
-                val scanResult = musicScanner.scan()
-                val scannedSongs = duplicateSongResolver.resolve(scanResult.songs)
-                val scannedEntities = scannedSongs.map { it.toEntity() }
-                songDao.replaceScannedLibrary(
-                        songs = scannedEntities,
-                        generation = nextScanGeneration.incrementAndGet(),
-                        deleteMissing = scanResult.isComplete
-                )
-            }
+        withContext(ioDispatcher) {
+            val scanResult = musicScanner.scan()
+            val scannedSongs = duplicateSongResolver.resolve(scanResult.songs)
+            val scannedEntities = scannedSongs.map { it.toEntity() }
+            songDao.replaceScannedLibrary(
+                songs = scannedEntities,
+                generation = nextScanGeneration.incrementAndGet(),
+                deleteMissing = scanResult.isComplete
+            )
+        }
 
     override suspend fun addFolderSource(folderUri: String) =
-            withContext(ioDispatcher) {
-                persistSafFolderPermission(folderUri)
-                safFolderSourceStore?.add(folderUri)
-                refreshLibrary()
-            }
+        withContext(ioDispatcher) {
+            persistSafFolderPermission(folderUri)
+            safFolderSourceStore?.add(folderUri)
+            refreshLibrary()
+        }
 
     override suspend fun removeFolderSource(folderUri: String) =
-            withContext(ioDispatcher) {
-                if (safFolderSourceStore?.remove(folderUri) == true) {
-                    refreshLibrary()
-                }
+        withContext(ioDispatcher) {
+            if (safFolderSourceStore?.remove(folderUri) == true) {
+                refreshLibrary()
             }
+        }
 
     override suspend fun setFavourite(songId: String, isFavourite: Boolean) =
-            withContext(ioDispatcher) { songDao.setFavourite(songId, isFavourite) }
+        withContext(ioDispatcher) { songDao.setFavourite(songId, isFavourite) }
+
+    override suspend fun upsertStreamStations(stations: List<StreamStation>): List<Song> =
+        withContext(ioDispatcher) {
+            if (stations.isEmpty()) return@withContext emptyList()
+            val existingByUri = songDao.songsByUris(stations.map(StreamStation::uri)).associateBy(SongEntity::uri)
+            val now = System.currentTimeMillis()
+            val entities = stations.distinctBy(StreamStation::uri).map { station ->
+                val existing = existingByUri[station.uri]
+                SongEntity(
+                    id = existing?.id ?: "stream:${station.uri.sha256()}",
+                    fileName = station.uri,
+                    title = station.title,
+                    artist = station.artist,
+                    album = "Online streams",
+                    genre = "",
+                    albumArtist = "",
+                    composer = "",
+                    year = null,
+                    comments = "",
+                    description = "",
+                    durationMillis = station.durationSeconds.coerceAtLeast(0) * 1_000,
+                    dateAddedEpochSeconds = now / 1_000,
+                    folderName = "Online streams",
+                    uri = station.uri,
+                    mimeType = "audio/*",
+                    sizeBytes = 0L,
+                    playCount = existing?.playCount ?: 0,
+                    lastPlayedEpochMillis = existing?.lastPlayedEpochMillis,
+                    isFavourite = existing?.isFavourite ?: false,
+                    scanGeneration = existing?.scanGeneration ?: 0L,
+                    sourceType = SongSource.STREAM.name
+                )
+            }
+            songDao.upsertAll(entities)
+            entities.map(SongEntity::toDomain)
+        }
+
+    override suspend fun updateStreamMetadata(songId: String, title: String, artist: String) =
+        withContext(ioDispatcher) { songDao.updateStreamMetadata(songId, title, artist) }
 }
 
+private fun String.sha256(): String =
+    MessageDigest.getInstance("SHA-256")
+        .digest(toByteArray(Charsets.UTF_8))
+        .joinToString(separator = "") { byte -> "%02x".format(byte) }
+
 internal fun List<SongEntity>.mergeRetainedState(
-        retainedEntities: List<SongEntity>
+    retainedEntities: List<SongEntity>
 ): List<SongEntity> {
     val retainedById = retainedEntities.associateBy { it.id }
     return map { scanned ->
@@ -69,9 +116,9 @@ internal fun List<SongEntity>.mergeRetainedState(
             scanned
         } else {
             scanned.copy(
-                    playCount = retained.playCount,
-                    lastPlayedEpochMillis = retained.lastPlayedEpochMillis,
-                    isFavourite = retained.isFavourite
+                playCount = retained.playCount,
+                lastPlayedEpochMillis = retained.lastPlayedEpochMillis,
+                isFavourite = retained.isFavourite
             )
         }
     }

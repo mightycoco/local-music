@@ -38,8 +38,8 @@ import kotlinx.coroutines.delay
 @Composable
 internal fun EmptyState(title: String, message: String, modifier: Modifier = Modifier) {
     Column(
-            modifier = modifier.padding(top = 48.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = modifier.padding(top = 48.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(text = title, style = MaterialTheme.typography.headlineSmall)
         Text(text = message, style = MaterialTheme.typography.bodyLarge)
@@ -50,76 +50,76 @@ internal fun EmptyState(title: String, message: String, modifier: Modifier = Mod
 internal fun CreatePlaylistDialog(onDismiss: () -> Unit, onCreate: (String) -> Unit) {
     var playlistName by remember { mutableStateOf("") }
     AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { Text("New playlist") },
-            text = {
-                OutlinedTextField(
-                        value = playlistName,
-                        onValueChange = { playlistName = it },
-                        singleLine = true,
-                        label = { Text("Playlist name") }
-                )
-            },
-            dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-            confirmButton = {
-                TextButton(
-                        onClick = { onCreate(playlistName) },
-                        enabled = playlistName.isNotBlank()
-                ) { Text("Create") }
-            }
+        onDismissRequest = onDismiss,
+        title = { Text("New playlist") },
+        text = {
+            OutlinedTextField(
+                value = playlistName,
+                onValueChange = { playlistName = it },
+                singleLine = true,
+                label = { Text("Playlist name") }
+            )
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = {
+            TextButton(
+                onClick = { onCreate(playlistName) },
+                enabled = playlistName.isNotBlank()
+            ) { Text("Create") }
+        }
     )
 }
 
 @Composable
 internal fun SongList(
-        songs: List<Song>,
-        artworkBySongId: Map<String, String>,
-        nowPlayingSongId: String?,
-        isPlaying: Boolean,
-        listState: LazyListState = rememberLazyListState(),
-        modifier: Modifier = Modifier.fillMaxSize(),
-        onSongSelected: (Song) -> Unit,
-        onFavouriteToggle: (Song) -> Unit,
-        playlists: List<M3uPlaylist>,
-        onCreatePlaylist: (String) -> Unit,
-        onAddSongToPlaylist: (Song, String) -> Unit,
-        onAddSongToQueue: (Song) -> Unit
+    songs: List<Song>,
+    artworkBySongId: Map<String, String>,
+    nowPlayingSongId: String?,
+    isPlaying: Boolean,
+    listState: LazyListState = rememberLazyListState(),
+    modifier: Modifier = Modifier.fillMaxSize(),
+    onSongSelected: (Song) -> Unit,
+    onFavouriteToggle: (Song) -> Unit,
+    playlists: List<M3uPlaylist>,
+    onCreatePlaylist: (String) -> Unit,
+    onAddSongToPlaylist: (Song, String) -> Unit,
+    onAddSongToQueue: (Song) -> Unit
 ) {
     SongList(
-            songs = songs,
-            artworkBySongId = artworkBySongId,
-            nowPlayingSongId = nowPlayingSongId,
-            isPlaying = isPlaying,
-            listState = listState,
-            emptyTitle = "No local songs indexed yet",
-            emptyMessage = "Allow audio access to scan MediaStore, or add a folder source.",
-            modifier = modifier,
-            onSongSelected = onSongSelected,
-            onFavouriteToggle = onFavouriteToggle,
-            playlists = playlists,
-            onCreatePlaylist = onCreatePlaylist,
-            onAddSongToPlaylist = onAddSongToPlaylist,
-            onAddSongToQueue = onAddSongToQueue
+        songs = songs,
+        artworkBySongId = artworkBySongId,
+        nowPlayingSongId = nowPlayingSongId,
+        isPlaying = isPlaying,
+        listState = listState,
+        emptyTitle = "No local songs indexed yet",
+        emptyMessage = "Allow audio access to scan MediaStore, or add a folder source.",
+        modifier = modifier,
+        onSongSelected = onSongSelected,
+        onFavouriteToggle = onFavouriteToggle,
+        playlists = playlists,
+        onCreatePlaylist = onCreatePlaylist,
+        onAddSongToPlaylist = onAddSongToPlaylist,
+        onAddSongToQueue = onAddSongToQueue
     )
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun SongList(
-        songs: List<Song>,
-        artworkBySongId: Map<String, String>,
-        nowPlayingSongId: String?,
-        isPlaying: Boolean,
-        listState: LazyListState = rememberLazyListState(),
-        emptyTitle: String,
-        emptyMessage: String,
-        modifier: Modifier = Modifier,
-        onSongSelected: (Song) -> Unit,
-        onFavouriteToggle: (Song) -> Unit,
-        playlists: List<M3uPlaylist>,
-        onCreatePlaylist: (String) -> Unit,
-        onAddSongToPlaylist: (Song, String) -> Unit,
-        onAddSongToQueue: (Song) -> Unit
+    songs: List<Song>,
+    artworkBySongId: Map<String, String>,
+    nowPlayingSongId: String?,
+    isPlaying: Boolean,
+    listState: LazyListState = rememberLazyListState(),
+    emptyTitle: String,
+    emptyMessage: String,
+    modifier: Modifier = Modifier,
+    onSongSelected: (Song) -> Unit,
+    onFavouriteToggle: (Song) -> Unit,
+    playlists: List<M3uPlaylist>,
+    onCreatePlaylist: (String) -> Unit,
+    onAddSongToPlaylist: (Song, String) -> Unit,
+    onAddSongToQueue: (Song) -> Unit
 ) {
     if (songs.isEmpty()) {
         EmptyState(title = emptyTitle, message = emptyMessage, modifier = modifier)
@@ -132,41 +132,41 @@ internal fun SongList(
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
-            state = listState,
-            modifier = modifier,
-            contentPadding = PaddingValues(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+        state = listState,
+        modifier = modifier,
+        contentPadding = PaddingValues(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         items(items = songs, key = { it.id }) { song ->
             ListItem(
-                    modifier =
-                            Modifier.combinedClickable(
-                                    onClick = { onSongSelected(song) },
-                                    onLongClick = {
-                                        selectedSong = song
-                                        showActionMenu = true
-                                    }
-                            ),
-                    leadingContent = { ArtworkThumbnail(artworkUri = artworkBySongId[song.id]) },
-                    headlineContent = {
-                        PlayingSongTitle(
-                                title = song.title,
-                                isCurrent = song.id == nowPlayingSongId,
-                                isPlaying = isPlaying
-                        )
-                    },
-                    supportingContent = { Text("${song.artist} - ${song.album}") },
-                    trailingContent = {
-                        IconButton(onClick = { onFavouriteToggle(song) }) {
-                            Text(
-                                    text =
-                                            if (song.isFavourite) Glyphs.FAVOURITE_FULL.glyph
-                                            else Glyphs.FAVOURITE.glyph,
-                                    modifier = Modifier.size(64.dp),
-                                    style = MaterialTheme.typography.headlineMedium
-                            )
+                modifier =
+                    Modifier.combinedClickable(
+                        onClick = { onSongSelected(song) },
+                        onLongClick = {
+                            selectedSong = song
+                            showActionMenu = true
                         }
+                    ),
+                leadingContent = { ArtworkThumbnail(artworkUri = artworkBySongId[song.id]) },
+                headlineContent = {
+                    PlayingSongTitle(
+                        title = song.title,
+                        isCurrent = song.id == nowPlayingSongId,
+                        isPlaying = isPlaying
+                    )
+                },
+                supportingContent = { Text("${song.artist} - ${song.album}") },
+                trailingContent = {
+                    IconButton(onClick = { onFavouriteToggle(song) }) {
+                        Text(
+                            text =
+                                if (song.isFavourite) Glyphs.FAVOURITE_FULL.glyph
+                                else Glyphs.FAVOURITE.glyph,
+                            modifier = Modifier.size(64.dp),
+                            style = MaterialTheme.typography.headlineMedium
+                        )
                     }
+                }
             )
         }
     }
@@ -174,103 +174,106 @@ internal fun SongList(
     if (showActionMenu) {
         selectedSong?.let { song ->
             AlertDialog(
-                    onDismissRequest = {
-                        selectedSong = null
-                        showActionMenu = false
-                    },
-                    title = { Text(song.title) },
-                    text = {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(
-                                    onClick = {
-                                        onAddSongToQueue(song)
-                                        selectedSong = null
-                                        showActionMenu = false
-                                    }
-                            ) { Text("Add to queue") }
-                            TextButton(
-                                    onClick = {
-                                        showActionMenu = false
-                                        showPlaylistChooser = true
-                                    }
-                            ) { Text("Add to playlist") }
-                        }
-                    },
-                    confirmButton = {
+                onDismissRequest = {
+                    selectedSong = null
+                    showActionMenu = false
+                },
+                title = { Text(song.title) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         TextButton(
-                                onClick = {
-                                    selectedSong = null
-                                    showActionMenu = false
-                                }
-                        ) { Text("Cancel") }
+                            onClick = {
+                                onAddSongToQueue(song)
+                                selectedSong = null
+                                showActionMenu = false
+                            }
+                        ) { Text("Add to queue") }
+                        TextButton(
+                            onClick = {
+                                showActionMenu = false
+                                showPlaylistChooser = true
+                            }
+                        ) { Text("Add to playlist") }
                     }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            selectedSong = null
+                            showActionMenu = false
+                        }
+                    ) { Text("Cancel") }
+                }
             )
         }
     }
 
     if (showPlaylistChooser) {
         AlertDialog(
-                onDismissRequest = {
-                    showPlaylistChooser = false
-                    selectedSong = null
-                },
-                title = { Text("Add to playlist") },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        playlists.filterNot { it.name == M3uPlaylist.QUEUE_NAME }.forEach { playlist
-                            ->
-                            TextButton(
-                                    onClick = {
-                                        selectedSong?.let { song ->
-                                            onAddSongToPlaylist(song, playlist.name)
-                                        }
-                                        selectedSong = null
-                                        showPlaylistChooser = false
-                                    }
-                            ) { Text(playlist.name) }
-                        }
-                        Button(
-                                onClick = {
-                                    showPlaylistChooser = false
-                                    showCreatePlaylistDialog = true
-                                }
-                        ) { Text("New playlist") }
-                    }
-                },
-                confirmButton = {
-                    TextButton(
+            onDismissRequest = {
+                showPlaylistChooser = false
+                selectedSong = null
+            },
+            title = { Text("Add to playlist") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    playlists.filterNot {
+                        it.name == M3uPlaylist.QUEUE_NAME ||
+                                it.name == M3uPlaylist.ONLINE_FAVOURITES_NAME
+                    }.forEach { playlist
+                        ->
+                        TextButton(
                             onClick = {
-                                showPlaylistChooser = false
+                                selectedSong?.let { song ->
+                                    onAddSongToPlaylist(song, playlist.name)
+                                }
                                 selectedSong = null
+                                showPlaylistChooser = false
                             }
-                    ) { Text("Cancel") }
+                        ) { Text(playlist.name) }
+                    }
+                    Button(
+                        onClick = {
+                            showPlaylistChooser = false
+                            showCreatePlaylistDialog = true
+                        }
+                    ) { Text("New playlist") }
                 }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showPlaylistChooser = false
+                        selectedSong = null
+                    }
+                ) { Text("Cancel") }
+            }
         )
     }
 
     if (showCreatePlaylistDialog) {
         CreatePlaylistDialog(
-                onDismiss = {
-                    selectedSong = null
-                    showCreatePlaylistDialog = false
-                },
-                onCreate = { name ->
-                    val normalizedName = name.trim()
-                    onCreatePlaylist(normalizedName)
-                    selectedSong?.let { song -> onAddSongToPlaylist(song, normalizedName) }
-                    selectedSong = null
-                    showCreatePlaylistDialog = false
-                }
+            onDismiss = {
+                selectedSong = null
+                showCreatePlaylistDialog = false
+            },
+            onCreate = { name ->
+                val normalizedName = name.trim()
+                onCreatePlaylist(normalizedName)
+                selectedSong?.let { song -> onAddSongToPlaylist(song, normalizedName) }
+                selectedSong = null
+                showCreatePlaylistDialog = false
+            }
         )
     }
 }
 
 @Composable
 internal fun PlayingSongTitle(
-        title: String,
-        isCurrent: Boolean,
-        isPlaying: Boolean,
-        modifier: Modifier = Modifier
+    title: String,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    modifier: Modifier = Modifier
 ) {
     val indicator = Glyphs.PLAYINGINDICATOR.glyph
     var offset by remember(indicator) { mutableIntStateOf(0) }
@@ -287,16 +290,16 @@ internal fun PlayingSongTitle(
 
     val rotatedIndicator = indicator.drop(offset) + indicator.take(offset)
     Text(
-            text = if (isCurrent) "$rotatedIndicator $title" else title,
-            modifier =
-                    if (isCurrent) {
-                        modifier.clearAndSetSemantics {
-                            contentDescription = if (isPlaying) "Playing $title" else "Paused $title"
-                        }
-                    } else {
-                        modifier
-                    },
-            maxLines = 1
+        text = if (isCurrent) "$rotatedIndicator $title" else title,
+        modifier =
+            if (isCurrent) {
+                modifier.clearAndSetSemantics {
+                    contentDescription = if (isPlaying) "Playing $title" else "Paused $title"
+                }
+            } else {
+                modifier
+            },
+        maxLines = 1
     )
 }
 

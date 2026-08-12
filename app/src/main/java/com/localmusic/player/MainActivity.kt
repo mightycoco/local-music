@@ -25,12 +25,15 @@ import com.localmusic.player.data.mediastore.MediaStoreMusicScanner
 import com.localmusic.player.data.repository.RoomMusicRepository
 import com.localmusic.player.data.saf.SafFolderMusicScanner
 import com.localmusic.player.data.saf.SharedPreferencesSafFolderSourceStore
+import com.localmusic.player.data.stream.HttpStreamSourceResolver
 import com.localmusic.player.domain.usecase.AddFolderSourceUseCase
+import com.localmusic.player.domain.usecase.ImportStreamSourceUseCase
 import com.localmusic.player.domain.usecase.ObserveSongsUseCase
 import com.localmusic.player.domain.usecase.RefreshMusicLibraryUseCase
 import com.localmusic.player.domain.usecase.RemoveFolderSourceUseCase
 import com.localmusic.player.domain.usecase.SetFavouriteUseCase
 import com.localmusic.player.domain.usecase.StartPlaybackUseCase
+import com.localmusic.player.domain.usecase.UpdateStreamMetadataUseCase
 import com.localmusic.player.playback.Media3PlaybackController
 import com.localmusic.player.playlist.RoomPlaylistStore
 import com.localmusic.player.playlist.SharedPreferencesPlaylistStore
@@ -56,7 +59,8 @@ class MainActivity : ComponentActivity() {
                     LocalMusicDatabase.MIGRATION_1_2,
                     LocalMusicDatabase.MIGRATION_2_3,
                     LocalMusicDatabase.MIGRATION_3_4,
-                    LocalMusicDatabase.MIGRATION_4_5
+                    LocalMusicDatabase.MIGRATION_4_5,
+                    LocalMusicDatabase.MIGRATION_5_6
                 )
                 .build()
         val safFolderSourceStore =
@@ -93,6 +97,9 @@ class MainActivity : ComponentActivity() {
                 removeFolderSource = RemoveFolderSourceUseCase(repository),
                 folderSourceUris = safFolderSourceStore::folders,
                 setFavourite = SetFavouriteUseCase(repository),
+                importStreamSource =
+                    ImportStreamSourceUseCase(HttpStreamSourceResolver(), repository),
+                updateStreamMetadata = UpdateStreamMetadataUseCase(repository),
                 startPlayback =
                     StartPlaybackUseCase(Media3PlaybackController(applicationContext)),
                 playlistStore =

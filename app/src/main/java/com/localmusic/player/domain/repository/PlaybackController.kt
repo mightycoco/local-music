@@ -27,20 +27,22 @@ enum class RepeatMode {
 }
 
 data class PlaybackSnapshot(
-        val songId: String? = null,
-        val queueSongIds: List<String> = emptyList(),
-        val isPlaying: Boolean = false,
-        val positionMillis: Long = 0L,
-        val durationMillis: Long = 0L,
-        val isShuffleEnabled: Boolean = false,
-        val repeatMode: RepeatMode = RepeatMode.Off,
-        val visualizerLevels: List<Float> = emptyList()
+    val songId: String? = null,
+    val queueSongIds: List<String> = emptyList(),
+    val title: String? = null,
+    val artist: String? = null,
+    val isPlaying: Boolean = false,
+    val positionMillis: Long = 0L,
+    val durationMillis: Long = 0L,
+    val isShuffleEnabled: Boolean = false,
+    val repeatMode: RepeatMode = RepeatMode.Off,
+    val visualizerLevels: List<Float> = emptyList()
 ) {
     val progress: Float
         get() =
-                if (durationMillis > 0L) {
-                    (positionMillis.toFloat() / durationMillis.toFloat()).coerceIn(0f, 1f)
-                } else {
-                    0f
-                }
+            if (durationMillis > 0L) {
+                (positionMillis.toFloat() / durationMillis.toFloat()).coerceIn(0f, 1f)
+            } else {
+                0f
+            }
 }

@@ -35,30 +35,31 @@ import com.localmusic.player.ui.theme.AppThemeMode
 
 @Composable
 internal fun SettingsContent(
-        uiState: HomeUiState,
-        onThemeSelected: (AppThemeMode) -> Unit,
-        onAddFolderSource: () -> Unit,
-        onRemoveFolderSource: (String) -> Unit,
-        onClearArtworkCache: () -> Unit,
-        onDefaultFilterSelected: (LibraryFilter) -> Unit,
-        onDefaultSortOrderSelected: (SortOrder) -> Unit,
-        onCarModeManuallyEnabledChange: (Boolean) -> Unit,
-        onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit,
-        onVisualizerPreferredChange: (Boolean) -> Unit
+    uiState: HomeUiState,
+    onThemeSelected: (AppThemeMode) -> Unit,
+    onAddFolderSource: () -> Unit,
+    onRemoveFolderSource: (String) -> Unit,
+    onClearArtworkCache: () -> Unit,
+    onDefaultFilterSelected: (LibraryFilter) -> Unit,
+    onDefaultSortOrderSelected: (SortOrder) -> Unit,
+    onCarModeManuallyEnabledChange: (Boolean) -> Unit,
+    onCarDeviceMarkedChange: (String, Boolean) -> Unit,
+    onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit,
+    onVisualizerPreferredChange: (Boolean) -> Unit
 ) {
     var selectedLicenseNotice by remember { mutableStateOf<OpenSourceLicenseNotice?>(null) }
     Column(
-            modifier = Modifier.padding(top = 24.dp).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = Modifier.padding(top = 24.dp).verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(text = "Settings", style = MaterialTheme.typography.headlineSmall)
         Text(text = "Theme", style = MaterialTheme.typography.bodyLarge)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AppThemeMode.entries.forEach { mode ->
                 AssistChip(
-                        onClick = { onThemeSelected(mode) },
-                        label = { Text(mode.label) },
-                        enabled = mode != uiState.themeMode
+                    onClick = { onThemeSelected(mode) },
+                    label = { Text(mode.label) },
+                    enabled = mode != uiState.themeMode
                 )
             }
         }
@@ -66,45 +67,45 @@ internal fun SettingsContent(
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = "Download missing artwork", style = MaterialTheme.typography.bodyLarge)
                 Text(
-                        text =
-                                "After embedded, folder, cover, and cached art fail, use MusicBrainz and Cover Art Archive. Artist and album metadata is sent to these services; artwork is cached locally.",
-                        style = MaterialTheme.typography.bodySmall
+                    text =
+                        "After embedded, folder, cover, and cached art fail, use MusicBrainz and Cover Art Archive. Artist and album metadata is sent to these services; artwork is cached locally.",
+                    style = MaterialTheme.typography.bodySmall
                 )
             }
             Switch(
-                    checked = uiState.isExternalArtworkDownloadEnabled,
-                    onCheckedChange = onExternalArtworkDownloadEnabledChange
+                checked = uiState.isExternalArtworkDownloadEnabled,
+                onCheckedChange = onExternalArtworkDownloadEnabledChange
             )
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = "Prefer visualizer", style = MaterialTheme.typography.bodyLarge)
                 Text(
-                        text =
-                                "Show the visualizer on Now Playing even when cover artwork is available.",
-                        style = MaterialTheme.typography.bodySmall
+                    text =
+                        "Show the visualizer on Now Playing even when cover artwork is available.",
+                    style = MaterialTheme.typography.bodySmall
                 )
             }
             Switch(
-                    checked = uiState.isVisualizerPreferred,
-                    onCheckedChange = onVisualizerPreferredChange
+                checked = uiState.isVisualizerPreferred,
+                onCheckedChange = onVisualizerPreferredChange
             )
         }
         Spacer(modifier = Modifier.height(16.dp))
         Text(text = "Library defaults", style = MaterialTheme.typography.bodyLarge)
         LibraryDefaultMenu(
-                label = "Filter",
-                selectedLabel = uiState.selectedFilter.label,
-                options = LibraryFilter.entries,
-                optionLabel = LibraryFilter::label,
-                onSelected = onDefaultFilterSelected
+            label = "Filter",
+            selectedLabel = uiState.selectedFilter.label,
+            options = LibraryFilter.entries,
+            optionLabel = LibraryFilter::label,
+            onSelected = onDefaultFilterSelected
         )
         LibraryDefaultMenu(
-                label = "Sort order",
-                selectedLabel = uiState.sortOrder.label,
-                options = SortOrder.entries,
-                optionLabel = SortOrder::label,
-                onSelected = onDefaultSortOrderSelected
+            label = "Sort order",
+            selectedLabel = uiState.sortOrder.label,
+            options = SortOrder.entries,
+            optionLabel = SortOrder::label,
+            onSelected = onDefaultSortOrderSelected
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(text = "Car Mode", style = MaterialTheme.typography.bodyLarge)
@@ -112,26 +113,55 @@ internal fun SettingsContent(
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = "Enable Car Mode", style = MaterialTheme.typography.bodyLarge)
                 Text(
-                        text =
-                                "Use simplified playback controls when driving. Bluetooth car detection can also enable this mode.",
-                        style = MaterialTheme.typography.bodySmall
+                    text =
+                        "Use simplified playback controls when driving. Bluetooth car detection can also enable this mode.",
+                    style = MaterialTheme.typography.bodySmall
                 )
             }
             Switch(
-                    checked = uiState.isCarModeManuallyEnabled,
-                    onCheckedChange = onCarModeManuallyEnabledChange
+                checked = uiState.isCarModeManuallyEnabled,
+                onCheckedChange = onCarModeManuallyEnabledChange
             )
+        }
+        if (uiState.connectedCarAudioDevices.isEmpty()) {
+            Text(
+                text = "Connect an A2DP device to mark it as car audio.",
+                style = MaterialTheme.typography.bodySmall
+            )
+        } else {
+            uiState.connectedCarAudioDevices.forEach { device ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(text = device.name, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            text =
+                                if (device.isLikelyCarDevice) "Detected as car audio"
+                                else "Mark this device to enable Car Mode when connected",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    Switch(
+                        checked = device.id in uiState.markedCarDeviceIds,
+                        onCheckedChange = { marked ->
+                            onCarDeviceMarkedChange(device.id, marked)
+                        }
+                    )
+                }
+            }
         }
         Spacer(modifier = Modifier.height(16.dp))
         Text(text = "Artwork cache", style = MaterialTheme.typography.bodyLarge)
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(
-                    text = formatCacheSize(uiState.artworkCacheSizeBytes),
-                    style = MaterialTheme.typography.bodySmall
+                text = formatCacheSize(uiState.artworkCacheSizeBytes),
+                style = MaterialTheme.typography.bodySmall
             )
             OutlinedButton(
-                    onClick = onClearArtworkCache,
-                    enabled = uiState.artworkCacheSizeBytes > 0L
+                onClick = onClearArtworkCache,
+                enabled = uiState.artworkCacheSizeBytes > 0L
             ) { Text("Clear") }
         }
         Spacer(modifier = Modifier.height(16.dp))
@@ -139,20 +169,20 @@ internal fun SettingsContent(
         OutlinedButton(onClick = onAddFolderSource) { Text("Add Folder") }
         if (uiState.folderSourceUris.isEmpty()) {
             Text(
-                    text = "No additional folders selected.",
-                    style = MaterialTheme.typography.bodySmall
+                text = "No additional folders selected.",
+                style = MaterialTheme.typography.bodySmall
             )
         } else {
             uiState.folderSourceUris.forEach { folderUri ->
                 Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                            text = folderUri,
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.bodySmall,
-                            maxLines = 2
+                        text = folderUri,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 2
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     OutlinedButton(onClick = { onRemoveFolderSource(folderUri) }) { Text("Remove") }
@@ -162,8 +192,8 @@ internal fun SettingsContent(
         Spacer(modifier = Modifier.height(16.dp))
         Text(text = "About", style = MaterialTheme.typography.bodyLarge)
         Text(
-                text = "Local Music ${BuildConfig.VERSION_NAME}",
-                style = MaterialTheme.typography.bodySmall
+            text = "Local Music ${BuildConfig.VERSION_NAME}",
+            style = MaterialTheme.typography.bodySmall
         )
         OutlinedButton(onClick = { selectedLicenseNotice = OpenSourceLicenses.notices.first() }) {
             Text("Open source licenses")
@@ -178,28 +208,28 @@ internal fun SettingsContent(
 @Composable
 private fun LicenseNoticeDialog(notice: OpenSourceLicenseNotice, onDismiss: () -> Unit) {
     AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { Text(notice.name) },
-            text = {
-                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    Text(notice.copyright, style = MaterialTheme.typography.bodySmall)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(notice.licenseName, style = MaterialTheme.typography.bodyMedium)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(notice.licenseText, style = MaterialTheme.typography.bodySmall)
-                }
-            },
-            confirmButton = { OutlinedButton(onClick = onDismiss) { Text("Close") } }
+        onDismissRequest = onDismiss,
+        title = { Text(notice.name) },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(notice.copyright, style = MaterialTheme.typography.bodySmall)
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(notice.licenseName, style = MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(notice.licenseText, style = MaterialTheme.typography.bodySmall)
+            }
+        },
+        confirmButton = { OutlinedButton(onClick = onDismiss) { Text("Close") } }
     )
 }
 
 @Composable
 private fun <T> LibraryDefaultMenu(
-        label: String,
-        selectedLabel: String,
-        options: List<T>,
-        optionLabel: (T) -> String,
-        onSelected: (T) -> Unit
+    label: String,
+    selectedLabel: String,
+    options: List<T>,
+    optionLabel: (T) -> String,
+    onSelected: (T) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -207,11 +237,11 @@ private fun <T> LibraryDefaultMenu(
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             options.forEach { option ->
                 DropdownMenuItem(
-                        text = { Text(optionLabel(option)) },
-                        onClick = {
-                            expanded = false
-                            onSelected(option)
-                        }
+                    text = { Text(optionLabel(option)) },
+                    onClick = {
+                        expanded = false
+                        onSelected(option)
+                    }
                 )
             }
         }
@@ -219,8 +249,8 @@ private fun <T> LibraryDefaultMenu(
 }
 
 private fun formatCacheSize(sizeBytes: Long): String =
-        when {
-            sizeBytes < 1024L -> "$sizeBytes B"
-            sizeBytes < 1024L * 1024L -> "${sizeBytes / 1024L} KB"
-            else -> "${sizeBytes / (1024L * 1024L)} MB"
-        }
+    when {
+        sizeBytes < 1024L -> "$sizeBytes B"
+        sizeBytes < 1024L * 1024L -> "${sizeBytes / 1024L} KB"
+        else -> "${sizeBytes / (1024L * 1024L)} MB"
+    }

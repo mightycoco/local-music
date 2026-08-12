@@ -1,6 +1,6 @@
 package com.localmusic.player.playlist
 
-/** Imports and exports extended M3U playlists using local content/file URIs. */
+/** Imports and exports extended M3U playlists using local content/file and HTTP(S) URIs. */
 class M3uPlaylistCodec {
     fun parse(name: String, content: String): M3uPlaylist {
         val entries = mutableListOf<M3uPlaylistEntry>()
@@ -13,16 +13,16 @@ class M3uPlaylistCodec {
                 else -> {
                     val info = pendingInfo
                     entries +=
-                            if (info == null) {
-                                M3uPlaylistEntry(
-                                        title = line.substringAfterLast('/'),
-                                        artist = "Unknown Artist",
-                                        durationSeconds = -1L,
-                                        uri = line
-                                )
-                            } else {
-                                info.copy(uri = line)
-                            }
+                        if (info == null) {
+                            M3uPlaylistEntry(
+                                title = line.substringAfterLast('/'),
+                                artist = "Unknown Artist",
+                                durationSeconds = -1L,
+                                uri = line
+                            )
+                        } else {
+                            info.copy(uri = line)
+                        }
                     pendingInfo = null
                 }
             }
@@ -48,10 +48,10 @@ class M3uPlaylistCodec {
         val artist = label.substringBefore(" - ", "Unknown Artist").ifBlank { "Unknown Artist" }
         val title = label.substringAfter(" - ", label).ifBlank { "Unknown Title" }
         return M3uPlaylistEntry(
-                title = title,
-                artist = artist,
-                durationSeconds = duration,
-                uri = ""
+            title = title,
+            artist = artist,
+            durationSeconds = duration,
+            uri = ""
         )
     }
 }

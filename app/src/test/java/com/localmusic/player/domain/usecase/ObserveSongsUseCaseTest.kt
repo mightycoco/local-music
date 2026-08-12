@@ -1,6 +1,7 @@
 package com.localmusic.player.domain.usecase
 
 import com.localmusic.player.domain.model.Song
+import com.localmusic.player.domain.model.StreamStation
 import com.localmusic.player.domain.repository.MusicRepository
 import com.localmusic.player.domain.repository.PlaybackController
 import com.localmusic.player.domain.repository.PlaybackSnapshot
@@ -15,18 +16,18 @@ class ObserveSongsUseCaseTest {
     @Test
     fun observeSongsDelegatesToRepository() = runTest {
         val expected =
-                listOf(
-                        Song(
-                                id = "song-1",
-                                title = "A Song",
-                                artist = "An Artist",
-                                album = "An Album",
-                                durationMillis = 180_000,
-                                dateAddedEpochSeconds = 1_700_000_000,
-                                folderName = "Music",
-                                uri = "content://media/song-1"
-                        )
+            listOf(
+                Song(
+                    id = "song-1",
+                    title = "A Song",
+                    artist = "An Artist",
+                    album = "An Album",
+                    durationMillis = 180_000,
+                    dateAddedEpochSeconds = 1_700_000_000,
+                    folderName = "Music",
+                    uri = "content://media/song-1"
                 )
+            )
         val useCase = ObserveSongsUseCase(FakeMusicRepository(expected))
 
         useCase().collect { songs -> assertEquals(expected, songs) }
@@ -122,6 +123,11 @@ class ObserveSongsUseCaseTest {
         override suspend fun setFavourite(songId: String, isFavourite: Boolean) {
             favouriteUpdate = songId to isFavourite
         }
+
+        override suspend fun upsertStreamStations(stations: List<StreamStation>): List<Song> =
+            emptyList()
+
+        override suspend fun updateStreamMetadata(songId: String, title: String, artist: String) = Unit
     }
 
     private class FakePlaybackController : PlaybackController {
@@ -175,14 +181,14 @@ class ObserveSongsUseCaseTest {
     }
 
     private fun testSong(id: String): Song =
-            Song(
-                    id = id,
-                    title = "A Song",
-                    artist = "An Artist",
-                    album = "An Album",
-                    durationMillis = 180_000,
-                    dateAddedEpochSeconds = 1_700_000_000,
-                    folderName = "Music",
-                    uri = "content://media/$id"
-            )
+        Song(
+            id = id,
+            title = "A Song",
+            artist = "An Artist",
+            album = "An Album",
+            durationMillis = 180_000,
+            dateAddedEpochSeconds = 1_700_000_000,
+            folderName = "Music",
+            uri = "content://media/$id"
+        )
 }

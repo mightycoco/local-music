@@ -1,9 +1,11 @@
 package com.localmusic.player.domain.usecase
 
 import com.localmusic.player.domain.model.Song
+import com.localmusic.player.domain.model.StreamStation
 import com.localmusic.player.domain.repository.MusicRepository
 import com.localmusic.player.domain.repository.PlaybackController
 import com.localmusic.player.domain.repository.RepeatMode
+import com.localmusic.player.domain.repository.StreamSourceResolver
 import kotlinx.coroutines.flow.Flow
 
 /** Observes the merged, de-duplicated local music library. */
@@ -26,13 +28,27 @@ class RemoveFolderSourceUseCase(private val repository: MusicRepository) {
 
 class SetFavouriteUseCase(private val repository: MusicRepository) {
     suspend operator fun invoke(songId: String, isFavourite: Boolean) =
-            repository.setFavourite(songId, isFavourite)
+        repository.setFavourite(songId, isFavourite)
+}
+
+class ImportStreamSourceUseCase(
+    private val resolver: StreamSourceResolver,
+    private val repository: MusicRepository
+) {
+    suspend operator fun invoke(sourceUrl: String): List<Song> =
+        repository.upsertStreamStations(resolver.resolve(sourceUrl))
+}
+
+class UpdateStreamMetadataUseCase(private val repository: MusicRepository) {
+    suspend operator fun invoke(songId: String, title: String, artist: String) =
+        repository.updateStreamMetadata(songId, title, artist)
 }
 
 class StartPlaybackUseCase(private val playbackController: PlaybackController) {
     fun observePlayback() = playbackController.observePlayback()
     operator fun invoke(songs: List<Song>, startSongId: String) =
-            playbackController.play(songs, startSongId)
+        playbackController.play(songs, startSongId)
+
     fun enqueue(song: Song) = playbackController.enqueue(song)
     fun clearQueue() = playbackController.clearQueue()
     fun resume() = playbackController.resume()

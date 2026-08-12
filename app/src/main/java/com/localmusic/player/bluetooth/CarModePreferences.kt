@@ -10,7 +10,17 @@ class CarModePreferences(private val sharedPreferences: SharedPreferences) {
         sharedPreferences.edit().putBoolean(KEY_MANUALLY_ENABLED, enabled).apply()
     }
 
+    fun markedCarDeviceIds(): Set<String> =
+        sharedPreferences.getStringSet(KEY_MARKED_CAR_DEVICE_IDS, emptySet()).orEmpty()
+
+    fun setCarDeviceMarked(deviceId: String, marked: Boolean) {
+        val updatedIds = markedCarDeviceIds().toMutableSet()
+        if (marked) updatedIds += deviceId else updatedIds -= deviceId
+        sharedPreferences.edit().putStringSet(KEY_MARKED_CAR_DEVICE_IDS, updatedIds).apply()
+    }
+
     private companion object {
         const val KEY_MANUALLY_ENABLED = "car_mode_manually_enabled"
+        const val KEY_MARKED_CAR_DEVICE_IDS = "car_mode_marked_car_device_ids"
     }
 }

@@ -16,4 +16,17 @@ class CarModePreferencesTest {
 
         assertTrue(preferences.isManuallyEnabled())
     }
+
+    @Test
+    fun markedCarDevicesPersistAndCanBeRemoved() {
+        val preferences = CarModePreferences(FakeSharedPreferences())
+
+        preferences.setCarDeviceMarked("car-stereo", true)
+
+        assertTrue("car-stereo" in preferences.markedCarDeviceIds())
+
+        preferences.setCarDeviceMarked("car-stereo", false)
+
+        assertFalse("car-stereo" in preferences.markedCarDeviceIds())
+    }
 }
