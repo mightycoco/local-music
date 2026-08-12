@@ -9,6 +9,7 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.localmusic.player.ui.home.VISUALIZER_FPS
@@ -27,22 +28,29 @@ class LocalMusicPlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         val renderersFactory =
-                object : DefaultRenderersFactory(this) {
-                    override fun buildAudioSink(
-                            context: android.content.Context,
-                            enableFloatOutput: Boolean,
-                            enableAudioTrackPlaybackParams: Boolean
-                    ): AudioSink =
-                            DefaultAudioSink.Builder(context)
-                                    .setAudioProcessors(arrayOf(PlaybackAudioProcessor))
-                                    .build()
-                }
-        val player = ExoPlayer.Builder(this, renderersFactory).build().also { this.player = it }
+            object : DefaultRenderersFactory(this) {
+                override fun buildAudioSink(
+                    context: android.content.Context,
+                    enableFloatOutput: Boolean,
+                    enableAudioTrackPlaybackParams: Boolean
+                ): AudioSink =
+                    DefaultAudioSink.Builder(context)
+                        .setAudioProcessors(arrayOf(PlaybackAudioProcessor))
+                        .build()
+            }
+        val player =
+            ExoPlayer.Builder(this, renderersFactory)
+                .setMediaSourceFactory(
+                    DefaultMediaSourceFactory(this)
+                        .setLoadErrorHandlingPolicy(HttpStreamRetryPolicy())
+                )
+                .build()
+                .also { this.player = it }
         mediaSession = MediaSession.Builder(this, player).build()
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
-            mediaSession
+        mediaSession
 
     override fun onDestroy() {
         PlaybackAudioProcessor.setEnabled(false)
@@ -65,8 +73,10 @@ internal object PlaybackAudioProcessor : BaseAudioProcessor() {
 
     private val _levels = MutableStateFlow<List<Float>>(emptyList())
     val levels = _levels.asStateFlow()
-    @Volatile private var isEnabled = false
-    @Volatile private var lastLevelsUpdateMillis = 0L
+    @Volatile
+    private var isEnabled = false
+    @Volatile
+    private var lastLevelsUpdateMillis = 0L
     private var inputEncoding = C.ENCODING_INVALID
 
     fun setEnabled(enabled: Boolean) {
@@ -78,7 +88,7 @@ internal object PlaybackAudioProcessor : BaseAudioProcessor() {
     }
 
     override fun onConfigure(
-            inputAudioFormat: AudioProcessor.AudioFormat
+        inputAudioFormat: AudioProcessor.AudioFormat
     ): AudioProcessor.AudioFormat {
         inputEncoding = inputAudioFormat.encoding
         return inputAudioFormat
@@ -87,7 +97,7 @@ internal object PlaybackAudioProcessor : BaseAudioProcessor() {
     override fun queueInput(inputBuffer: ByteBuffer) {
         val now = SystemClock.elapsedRealtime()
         if (inputBuffer.hasRemaining() &&
-                        now - lastLevelsUpdateMillis >= LEVELS_UPDATE_INTERVAL_MILLIS
+            now - lastLevelsUpdateMillis >= LEVELS_UPDATE_INTERVAL_MILLIS
         ) {
             _levels.value = inputBuffer.toVisualizerLevels(inputEncoding)
             lastLevelsUpdateMillis = now
@@ -111,7 +121,7 @@ internal object PlaybackAudioProcessor : BaseAudioProcessor() {
     }
 
     private fun ByteBuffer.toPcm8VisualizerLevels(barCount: Int): List<Float> =
-            toPeakLevels(barCount) { sample -> kotlin.math.abs(sample.toInt() - 128) / 127f }
+        toPeakLevels(barCount) { sample -> kotlin.math.abs(sample.toInt() - 128) / 127f }
 
     private fun ByteBuffer.toPcm16VisualizerLevels(barCount: Int): List<Float> {
         val samples = duplicate().order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
@@ -152,9 +162,9 @@ internal object PlaybackAudioProcessor : BaseAudioProcessor() {
             repeat(samplesPerBar) {
                 if (bytes.remaining() >= 3) {
                     val sample =
-                            (bytes.get().toInt() and 0xFF) or
-                                    ((bytes.get().toInt() and 0xFF) shl 8) or
-                                    (bytes.get().toInt() shl 16)
+                        (bytes.get().toInt() and 0xFF) or
+                                ((bytes.get().toInt() and 0xFF) shl 8) or
+                                (bytes.get().toInt() shl 16)
                     peak = maxOf(peak, kotlin.math.abs(sample) / 8_388_607f)
                 }
             }
@@ -178,9 +188,9 @@ internal object PlaybackAudioProcessor : BaseAudioProcessor() {
     }
 
     private fun ByteBuffer.toPeakLevels(
-            barCount: Int,
-            bytesPerSample: Int = 1,
-            sampleMagnitude: (Byte) -> Float
+        barCount: Int,
+        bytesPerSample: Int = 1,
+        sampleMagnitude: (Byte) -> Float
     ): List<Float> {
         if (remaining() < bytesPerSample) return emptyList()
         val samplesPerBar = (remaining() / bytesPerSample / barCount).coerceAtLeast(1)
@@ -200,10 +210,10 @@ internal object PlaybackAudioProcessor : BaseAudioProcessor() {
         val amplitude = coerceIn(MINIMUM_VISUALIZER_AMPLITUDE, 1f)
         val decibels = 20f * kotlin.math.log10(amplitude)
         val normalizedLevel =
-                ((decibels - MINIMUM_VISUALIZER_DECIBELS) / -MINIMUM_VISUALIZER_DECIBELS).coerceIn(
-                        0f,
-                        1f
-                )
+            ((decibels - MINIMUM_VISUALIZER_DECIBELS) / -MINIMUM_VISUALIZER_DECIBELS).coerceIn(
+                0f,
+                1f
+            )
         return normalizedLevel.pow(VISUALIZER_RESPONSE_EXPONENT)
     }
 }

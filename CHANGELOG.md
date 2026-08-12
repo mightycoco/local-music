@@ -5,6 +5,7 @@
 - Added Radio Browser station search from the playlist editor, with favicon-backed result rows, immediate queue playback, and reuse of the existing add-to-playlist/new-playlist chooser.
 - Persisted Radio Browser favicons with stream songs and display them in playlist rows, the compact player, and Now Playing.
 - Allowed supported HTTP radio streams and surfaced Media3 playback failures in the app UI.
+- Retried transient HTTP(S) radio stream read failures with bounded Media3 backoff before surfacing a playback error.
 - Expanded indexed song metadata and instant search to include album artist, genre, composer, year, comments, description, and playlist membership names.
 - Hardened library scans against partial-result deletion and replaced large ID reconciliation with indexed scan generations.
 - Moved playlists to per-playlist Room rows, added legacy SharedPreferences migration, and bounded M3U document I/O.
