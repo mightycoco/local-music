@@ -64,6 +64,7 @@ import androidx.core.content.ContextCompat
 import com.localmusic.player.bluetooth.CarAudioDevice
 import com.localmusic.player.bluetooth.CarModeDetector
 import com.localmusic.player.domain.model.LibraryFilter
+import com.localmusic.player.domain.model.RadioStation
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.SortOrder
 import com.localmusic.player.playlist.M3uPlaylist
@@ -97,6 +98,7 @@ enum class Glyphs(val glyph: String) {
     PLAYER_NOSHUFFLE("⇉"),
     PLAYER_QUEUE("≡"),
     MORE("⋮"),
+    ADD("+"),
     TRASH("🗑"),
     NO_ARTWORK("╭∩╮( •̀_•́ )╭∩╮"),
     NO_ARTWORK_THUMB(".°•"),
@@ -324,6 +326,11 @@ fun HomeRoute(viewModel: HomeViewModel, uiState: HomeUiState) {
         onClearQueue = viewModel::clearQueue,
         onClearPlaylist = viewModel::clearPlaylist,
         onAddStreamToPlaylist = viewModel::addStreamToPlaylist,
+        onOpenRadioBrowser = viewModel::openRadioBrowser,
+        onRadioSearchQueryChange = viewModel::updateRadioSearchQuery,
+        onSearchRadioStations = viewModel::searchRadioStations,
+        onPlayRadioStation = viewModel::playRadioStation,
+        onAddRadioStationToPlaylist = viewModel::addRadioStationToPlaylist,
         onAddSongToPlaylist = viewModel::addSongToPlaylist,
         onAddSongToQueue = viewModel::addSongToQueue,
         onPlayPause = viewModel::togglePlayback,
@@ -395,6 +402,11 @@ fun HomeScreen(
     onClearQueue: () -> Unit,
     onClearPlaylist: (M3uPlaylist) -> Unit,
     onAddStreamToPlaylist: (M3uPlaylist, String) -> Unit,
+    onOpenRadioBrowser: () -> Unit,
+    onRadioSearchQueryChange: (String) -> Unit,
+    onSearchRadioStations: () -> Unit,
+    onPlayRadioStation: (RadioStation) -> Unit,
+    onAddRadioStationToPlaylist: (RadioStation, String) -> Unit,
     onAddSongToPlaylist: (Song, String) -> Unit,
     onAddSongToQueue: (Song) -> Unit,
     onPlayPause: () -> Unit,
@@ -415,7 +427,9 @@ fun HomeScreen(
     onRequestPermission: () -> Unit
 ) {
     val libraryListState = rememberLazyListState()
-    val showTopBar = uiState.selectedScreen != HomeScreenDestination.NowPlaying
+    val showTopBar =
+        uiState.selectedScreen != HomeScreenDestination.NowPlaying &&
+                uiState.selectedScreen != HomeScreenDestination.RadioBrowser
     val screenSwipeThreshold = with(LocalDensity.current) { 72.dp.toPx() }
     var playlistEditorName by remember { mutableStateOf<String?>(null) }
     var playlistEditorReturnDestination by remember {
@@ -430,7 +444,9 @@ fun HomeScreen(
 
     BackHandler(enabled = uiState.selectedScreen != HomeScreenDestination.Home) {
         onScreenSelected(
-            if (uiState.selectedScreen == HomeScreenDestination.PlaylistEditor) {
+            if (uiState.selectedScreen == HomeScreenDestination.PlaylistEditor ||
+                uiState.selectedScreen == HomeScreenDestination.RadioBrowser
+            ) {
                 playlistEditorReturnDestination
             } else {
                 HomeScreenDestination.Home
@@ -473,7 +489,9 @@ fun HomeScreen(
             }
         },
         bottomBar = {
-            if (uiState.selectedScreen != HomeScreenDestination.PlaylistEditor) {
+            if (uiState.selectedScreen != HomeScreenDestination.PlaylistEditor &&
+                uiState.selectedScreen != HomeScreenDestination.RadioBrowser
+            ) {
                 NavigationBar {
                     navigationDestinations.forEach { destination ->
                         NavigationBarItem(
@@ -511,7 +529,9 @@ fun HomeScreen(
                         uiState.selectedScreen,
                         screenSwipeThreshold
                     ) {
-                        if (uiState.selectedScreen == HomeScreenDestination.PlaylistEditor) {
+                        if (uiState.selectedScreen == HomeScreenDestination.PlaylistEditor ||
+                            uiState.selectedScreen == HomeScreenDestination.RadioBrowser
+                        ) {
                             return@pointerInput
                         }
                         awaitEachGesture {
@@ -693,6 +713,10 @@ fun HomeScreen(
                                 PlaylistEditorContent(
                                     playlist = playlist,
                                     favouriteUris = uiState.favouriteSongs.mapTo(mutableSetOf()) { it.uri },
+                                    artworkByUri =
+                                        uiState.librarySongs.mapNotNull { song ->
+                                            uiState.artworkBySongId[song.id]?.let { song.uri to it }
+                                        }.toMap(),
                                     onBack = {
                                         onScreenSelected(playlistEditorReturnDestination)
                                     },
@@ -701,10 +725,24 @@ fun HomeScreen(
                                     onFavouriteToggle = onPlaylistEntryFavouriteToggle,
                                     onRemoveEntry = onRemovePlaylistEntry,
                                     onClearPlaylist = onClearPlaylist,
-                                    onAddStream = onAddStreamToPlaylist
+                                    onAddStream = onAddStreamToPlaylist,
+                                    onOpenRadioBrowser = onOpenRadioBrowser
                                 )
                             }
                         }
+
+                        HomeScreenDestination.RadioBrowser ->
+                            RadioStationScreen(
+                                uiState = uiState,
+                                onBack = {
+                                    onScreenSelected(HomeScreenDestination.PlaylistEditor)
+                                },
+                                onQueryChange = onRadioSearchQueryChange,
+                                onSearch = onSearchRadioStations,
+                                onPlay = onPlayRadioStation,
+                                onAddToPlaylist = onAddRadioStationToPlaylist,
+                                onCreatePlaylist = onCreatePlaylist
+                            )
                     }
                 }
             }
@@ -720,6 +758,7 @@ private fun HomeScreenDestination.iconLabel(): String =
         HomeScreenDestination.Favourites -> Glyphs.FAVOURITE.glyph
         HomeScreenDestination.Settings -> Glyphs.SETTINGS.glyph
         HomeScreenDestination.PlaylistEditor -> Glyphs.PLAYLISTS.glyph
+        HomeScreenDestination.RadioBrowser -> Glyphs.PLAYLISTS.glyph
     }
 
 private fun HomeScreenDestination.previous(): HomeScreenDestination {
@@ -736,7 +775,9 @@ private fun HomeScreenDestination.movesForwardTo(target: HomeScreenDestination):
     target == next() || (target != previous() && target.ordinal > ordinal)
 
 private val navigationDestinations =
-    HomeScreenDestination.entries.filterNot { it == HomeScreenDestination.PlaylistEditor }
+    HomeScreenDestination.entries.filterNot {
+        it == HomeScreenDestination.PlaylistEditor || it == HomeScreenDestination.RadioBrowser
+    }
 
 @Composable
 private fun PermissionBanner(onRequestPermission: () -> Unit) {

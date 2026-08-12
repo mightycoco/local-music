@@ -24,7 +24,8 @@ fun SongEntity.toDomain(): Song = Song(
     playCount = playCount,
     lastPlayedEpochMillis = lastPlayedEpochMillis,
     isFavourite = isFavourite,
-    source = SongSource.entries.firstOrNull { it.name == sourceType } ?: SongSource.LOCAL
+    source = SongSource.entries.firstOrNull { it.name == sourceType } ?: SongSource.LOCAL,
+    artworkUri = artworkUri
 )
 
 fun Song.toEntity(): SongEntity = SongEntity(
@@ -48,5 +49,6 @@ fun Song.toEntity(): SongEntity = SongEntity(
     playCount = playCount,
     lastPlayedEpochMillis = lastPlayedEpochMillis,
     isFavourite = isFavourite,
-    sourceType = source.name
+    sourceType = source.name,
+    artworkUri = artworkUri
 )

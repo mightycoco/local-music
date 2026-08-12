@@ -62,6 +62,10 @@ class Media3PlaybackController(
                             }
                             emitSnapshot()
                         }
+
+                        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                            emitSnapshot()
+                        }
                     }
                 mediaController.addListener(listener!!)
                 queueSongIds.set(mediaController.queueSongIds())
@@ -191,7 +195,8 @@ class Media3PlaybackController(
                     Player.REPEAT_MODE_ALL -> RepeatMode.All
                     else -> RepeatMode.Off
                 },
-            visualizerLevels = visualizerLevels
+            visualizerLevels = visualizerLevels,
+            errorMessage = playerError?.cause?.message ?: playerError?.message
         )
 
     private fun Player.queueSongIds(): List<String> =

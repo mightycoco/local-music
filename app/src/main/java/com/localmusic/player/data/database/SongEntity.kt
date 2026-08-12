@@ -31,5 +31,6 @@ data class SongEntity(
     val lastPlayedEpochMillis: Long?,
     val isFavourite: Boolean,
     val scanGeneration: Long = 0L,
-    val sourceType: String = "LOCAL"
+    val sourceType: String = "LOCAL",
+    val artworkUri: String? = null
 )

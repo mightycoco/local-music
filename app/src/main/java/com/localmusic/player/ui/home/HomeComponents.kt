@@ -71,6 +71,45 @@ internal fun CreatePlaylistDialog(onDismiss: () -> Unit, onCreate: (String) -> U
 }
 
 @Composable
+internal fun PlaylistChooserDialog(
+    playlists: List<M3uPlaylist>,
+    onDismiss: () -> Unit,
+    onPlaylistSelected: (String) -> Unit,
+    onCreatePlaylist: (String) -> Unit
+) {
+    var showCreatePlaylistDialog by remember { mutableStateOf(false) }
+    if (showCreatePlaylistDialog) {
+        CreatePlaylistDialog(
+            onDismiss = { showCreatePlaylistDialog = false },
+            onCreate = { name ->
+                onCreatePlaylist(name.trim())
+                showCreatePlaylistDialog = false
+            }
+        )
+        return
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add to playlist") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                playlists.filterNot {
+                    it.name == M3uPlaylist.QUEUE_NAME ||
+                            it.name == M3uPlaylist.ONLINE_FAVOURITES_NAME
+                }.forEach { playlist ->
+                    TextButton(onClick = { onPlaylistSelected(playlist.name) }) {
+                        Text(playlist.name)
+                    }
+                }
+                Button(onClick = { showCreatePlaylistDialog = true }) { Text("New playlist") }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+@Composable
 internal fun SongList(
     songs: List<Song>,
     artworkBySongId: Map<String, String>,
@@ -129,7 +168,6 @@ internal fun SongList(
     var selectedSong by remember { mutableStateOf<Song?>(null) }
     var showActionMenu by remember { mutableStateOf(false) }
     var showPlaylistChooser by remember { mutableStateOf(false) }
-    var showCreatePlaylistDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
         state = listState,
@@ -209,60 +247,22 @@ internal fun SongList(
     }
 
     if (showPlaylistChooser) {
-        AlertDialog(
-            onDismissRequest = {
+        PlaylistChooserDialog(
+            playlists = playlists,
+            onDismiss = {
                 showPlaylistChooser = false
                 selectedSong = null
             },
-            title = { Text("Add to playlist") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    playlists.filterNot {
-                        it.name == M3uPlaylist.QUEUE_NAME ||
-                                it.name == M3uPlaylist.ONLINE_FAVOURITES_NAME
-                    }.forEach { playlist
-                        ->
-                        TextButton(
-                            onClick = {
-                                selectedSong?.let { song ->
-                                    onAddSongToPlaylist(song, playlist.name)
-                                }
-                                selectedSong = null
-                                showPlaylistChooser = false
-                            }
-                        ) { Text(playlist.name) }
-                    }
-                    Button(
-                        onClick = {
-                            showPlaylistChooser = false
-                            showCreatePlaylistDialog = true
-                        }
-                    ) { Text("New playlist") }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showPlaylistChooser = false
-                        selectedSong = null
-                    }
-                ) { Text("Cancel") }
-            }
-        )
-    }
-
-    if (showCreatePlaylistDialog) {
-        CreatePlaylistDialog(
-            onDismiss = {
+            onPlaylistSelected = { playlistName ->
+                selectedSong?.let { song -> onAddSongToPlaylist(song, playlistName) }
                 selectedSong = null
-                showCreatePlaylistDialog = false
+                showPlaylistChooser = false
             },
-            onCreate = { name ->
-                val normalizedName = name.trim()
-                onCreatePlaylist(normalizedName)
-                selectedSong?.let { song -> onAddSongToPlaylist(song, normalizedName) }
+            onCreatePlaylist = { name ->
+                onCreatePlaylist(name)
+                selectedSong?.let { song -> onAddSongToPlaylist(song, name) }
                 selectedSong = null
-                showCreatePlaylistDialog = false
+                showPlaylistChooser = false
             }
         )
     }

@@ -22,5 +22,6 @@ data class Song(
     val playCount: Int = 0,
     val lastPlayedEpochMillis: Long? = null,
     val isFavourite: Boolean = false,
-    val source: SongSource = SongSource.LOCAL
+    val source: SongSource = SongSource.LOCAL,
+    val artworkUri: String? = null
 )

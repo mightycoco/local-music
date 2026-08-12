@@ -36,7 +36,8 @@ data class PlaybackSnapshot(
     val durationMillis: Long = 0L,
     val isShuffleEnabled: Boolean = false,
     val repeatMode: RepeatMode = RepeatMode.Off,
-    val visualizerLevels: List<Float> = emptyList()
+    val visualizerLevels: List<Float> = emptyList(),
+    val errorMessage: String? = null,
 ) {
     val progress: Float
         get() =

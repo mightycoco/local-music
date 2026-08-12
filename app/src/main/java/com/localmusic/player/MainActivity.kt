@@ -22,6 +22,7 @@ import com.localmusic.player.bluetooth.CarModePreferences
 import com.localmusic.player.data.database.LocalMusicDatabase
 import com.localmusic.player.data.mediastore.CompositeMusicScanner
 import com.localmusic.player.data.mediastore.MediaStoreMusicScanner
+import com.localmusic.player.data.radio.RadioBrowserStationDirectory
 import com.localmusic.player.data.repository.RoomMusicRepository
 import com.localmusic.player.data.saf.SafFolderMusicScanner
 import com.localmusic.player.data.saf.SharedPreferencesSafFolderSourceStore
@@ -31,6 +32,8 @@ import com.localmusic.player.domain.usecase.ImportStreamSourceUseCase
 import com.localmusic.player.domain.usecase.ObserveSongsUseCase
 import com.localmusic.player.domain.usecase.RefreshMusicLibraryUseCase
 import com.localmusic.player.domain.usecase.RemoveFolderSourceUseCase
+import com.localmusic.player.domain.usecase.SaveRadioStationUseCase
+import com.localmusic.player.domain.usecase.SearchRadioStationsUseCase
 import com.localmusic.player.domain.usecase.SetFavouriteUseCase
 import com.localmusic.player.domain.usecase.StartPlaybackUseCase
 import com.localmusic.player.domain.usecase.UpdateStreamMetadataUseCase
@@ -60,7 +63,8 @@ class MainActivity : ComponentActivity() {
                     LocalMusicDatabase.MIGRATION_2_3,
                     LocalMusicDatabase.MIGRATION_3_4,
                     LocalMusicDatabase.MIGRATION_4_5,
-                    LocalMusicDatabase.MIGRATION_5_6
+                    LocalMusicDatabase.MIGRATION_5_6,
+                    LocalMusicDatabase.MIGRATION_6_7
                 )
                 .build()
         val safFolderSourceStore =
@@ -99,6 +103,8 @@ class MainActivity : ComponentActivity() {
                 setFavourite = SetFavouriteUseCase(repository),
                 importStreamSource =
                     ImportStreamSourceUseCase(HttpStreamSourceResolver(), repository),
+                searchRadioStations = SearchRadioStationsUseCase(RadioBrowserStationDirectory()),
+                saveRadioStation = SaveRadioStationUseCase(repository),
                 updateStreamMetadata = UpdateStreamMetadataUseCase(repository),
                 startPlayback =
                     StartPlaybackUseCase(Media3PlaybackController(applicationContext)),

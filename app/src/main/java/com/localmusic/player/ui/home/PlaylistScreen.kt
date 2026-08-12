@@ -207,16 +207,19 @@ internal fun PlaylistContent(
 internal fun PlaylistEditorContent(
     playlist: M3uPlaylist,
     favouriteUris: Set<String>,
+    artworkByUri: Map<String, String>,
     onBack: () -> Unit,
     onPlay: (M3uPlaylist) -> Unit,
     onMoveEntry: (M3uPlaylist, Int, Int) -> Unit,
     onFavouriteToggle: (M3uPlaylistEntry) -> Unit,
     onRemoveEntry: (M3uPlaylist, Int) -> Unit,
     onClearPlaylist: (M3uPlaylist) -> Unit,
-    onAddStream: (M3uPlaylist, String) -> Unit
+    onAddStream: (M3uPlaylist, String) -> Unit,
+    onOpenRadioBrowser: () -> Unit
 ) {
     var showClearConfirmation by remember { mutableStateOf(false) }
     var showAddStreamDialog by remember { mutableStateOf(false) }
+    var showAddMenu by remember { mutableStateOf(false) }
     var entryToRemove by remember { mutableStateOf<Int?>(null) }
     var draggedEntryUri by remember { mutableStateOf<String?>(null) }
     var dragOffset by remember { mutableStateOf(0f) }
@@ -239,17 +242,36 @@ internal fun PlaylistEditorContent(
 
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Button(
+            IconButton(
                 onClick = { onPlay(playlist) },
                 enabled = playlist.entries.isNotEmpty()
-            ) { Text("Play") }
-            Button(
-                onClick = { showAddStreamDialog = true },
-                enabled = playlist.name != M3uPlaylist.QUEUE_NAME
-            ) { Text("Add Stream") }
+            ) { Text(Glyphs.PLAYER_PLAY.glyph, fontSize = 24.sp) }
+            Box {
+                IconButton(
+                    onClick = { showAddMenu = true },
+                    enabled = playlist.name != M3uPlaylist.QUEUE_NAME,
+                    modifier = Modifier.semantics { contentDescription = "Add to playlist" }
+                ) { Text("+", fontSize = 28.sp) }
+                DropdownMenu(expanded = showAddMenu, onDismissRequest = { showAddMenu = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Add Stream") },
+                        onClick = {
+                            showAddMenu = false
+                            showAddStreamDialog = true
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Add Radio Station") },
+                        onClick = {
+                            showAddMenu = false
+                            onOpenRadioBrowser()
+                        }
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.weight(1f))
             OutlinedButton(
                 onClick = { showClearConfirmation = true },
                 enabled = playlist.entries.isNotEmpty(),
@@ -304,6 +326,10 @@ internal fun PlaylistEditorContent(
                                 },
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        ArtworkThumbnail(
+                            artworkUri = artworkByUri[entry.uri],
+                            modifier = Modifier.size(48.dp)
+                        )
                         Column(modifier = Modifier.weight(1f)) {
                             Text(entry.title, maxLines = 1)
                             Text(

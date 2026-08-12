@@ -10,6 +10,7 @@ import com.localmusic.player.bluetooth.CarAudioDevice
 import com.localmusic.player.bluetooth.CarModePreferences
 import com.localmusic.player.domain.model.LibraryBrowser
 import com.localmusic.player.domain.model.LibraryFilter
+import com.localmusic.player.domain.model.RadioStation
 import com.localmusic.player.domain.model.SmartPlaylistRules
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.SortOrder
@@ -19,6 +20,8 @@ import com.localmusic.player.domain.usecase.ImportStreamSourceUseCase
 import com.localmusic.player.domain.usecase.ObserveSongsUseCase
 import com.localmusic.player.domain.usecase.RefreshMusicLibraryUseCase
 import com.localmusic.player.domain.usecase.RemoveFolderSourceUseCase
+import com.localmusic.player.domain.usecase.SaveRadioStationUseCase
+import com.localmusic.player.domain.usecase.SearchRadioStationsUseCase
 import com.localmusic.player.domain.usecase.SetFavouriteUseCase
 import com.localmusic.player.domain.usecase.StartPlaybackUseCase
 import com.localmusic.player.domain.usecase.UpdateStreamMetadataUseCase
@@ -49,6 +52,8 @@ class HomeViewModel(
     private val folderSourceUris: () -> List<String> = { emptyList() },
     private val setFavourite: SetFavouriteUseCase,
     private val importStreamSource: ImportStreamSourceUseCase,
+    private val searchRadioStations: SearchRadioStationsUseCase,
+    private val saveRadioStation: SaveRadioStationUseCase,
     private val updateStreamMetadata: UpdateStreamMetadataUseCase,
     private val startPlayback: StartPlaybackUseCase,
     private val playlistStore: PlaylistStore? = null,
@@ -64,6 +69,11 @@ class HomeViewModel(
     private val sortOrder =
         MutableStateFlow(libraryPreferences?.defaultSortOrder() ?: SortOrder.NewestAdded)
     private val searchQuery = MutableStateFlow("")
+    private val radioSearchQuery = MutableStateFlow("")
+    private val radioStations = MutableStateFlow<List<RadioStation>>(emptyList())
+    private val isRadioSearchLoading = MutableStateFlow(false)
+    private val radioSearchError = MutableStateFlow<String?>(null)
+    private val hasSearchedRadioStations = MutableStateFlow(false)
     private val selectedScreen = MutableStateFlow(HomeScreenDestination.Home)
     private val nowPlayingSongId = MutableStateFlow<String?>(null)
     private val playbackQueueSongIds = MutableStateFlow<List<String>>(emptyList())
@@ -114,6 +124,7 @@ class HomeViewModel(
                 visualizerLevels.value = playback.visualizerLevels
                 isShuffleEnabled.value = playback.isShuffleEnabled
                 repeatMode.value = playback.repeatMode
+                playback.errorMessage?.let { refreshError.value = "Playback failed: $it" }
             }
         }
     }
@@ -182,6 +193,24 @@ class HomeViewModel(
                 state.copy(artworkCacheSizeBytes = cacheSizeBytes)
             }
 
+    private val radioBrowserState =
+        combine(
+            radioSearchQuery, radioStations, isRadioSearchLoading, radioSearchError,
+            hasSearchedRadioStations
+        ) { query,
+            stations,
+            loading,
+            error,
+            hasSearched ->
+            HomeUiState(
+                radioSearchQuery = query,
+                radioStations = stations,
+                isRadioSearchLoading = loading,
+                radioSearchError = error,
+                hasSearchedRadioStations = hasSearched
+            )
+        }
+
     private val playbackModeState =
         combine(isShuffleEnabled, repeatMode) { shuffleEnabled, selectedRepeatMode ->
             PlaybackModeState(
@@ -217,7 +246,7 @@ class HomeViewModel(
             }
 
     private val controlsState =
-        combine(selectionState, statusState) { selection, status ->
+        combine(selectionState, statusState, radioBrowserState) { selection, status, radio ->
             selection.copy(
                 importedPlaylists = status.importedPlaylists,
                 isCarMode = status.isCarMode,
@@ -228,7 +257,12 @@ class HomeViewModel(
                 isExternalArtworkDownloadEnabled = status.isExternalArtworkDownloadEnabled,
                 isVisualizerPreferred = status.isVisualizerPreferred,
                 isRefreshing = status.isRefreshing,
-                refreshError = status.refreshError
+                refreshError = status.refreshError,
+                radioSearchQuery = radio.radioSearchQuery,
+                radioStations = radio.radioStations,
+                isRadioSearchLoading = radio.isRadioSearchLoading,
+                radioSearchError = radio.radioSearchError,
+                hasSearchedRadioStations = radio.hasSearchedRadioStations
             )
         }
 
@@ -322,6 +356,32 @@ class HomeViewModel(
 
     fun updateSearchQuery(query: String) {
         searchQuery.value = query
+    }
+
+    fun updateRadioSearchQuery(query: String) {
+        radioSearchQuery.value = query
+    }
+
+    fun openRadioBrowser() {
+        selectedScreen.value = HomeScreenDestination.RadioBrowser
+    }
+
+    fun searchRadioStations() {
+        val query = radioSearchQuery.value.trim()
+        if (query.isEmpty() || isRadioSearchLoading.value) return
+
+        viewModelScope.launch {
+            isRadioSearchLoading.value = true
+            radioSearchError.value = null
+            hasSearchedRadioStations.value = true
+            runCatching { searchRadioStations(query) }
+                .onSuccess { stations -> radioStations.value = stations }
+                .onFailure { error ->
+                    radioStations.value = emptyList()
+                    radioSearchError.value = error.message ?: "Radio search failed"
+                }
+            isRadioSearchLoading.value = false
+        }
     }
 
     fun selectScreen(destination: HomeScreenDestination) {
@@ -426,6 +486,7 @@ class HomeViewModel(
     }
 
     private fun playSongs(queue: List<Song>, startSong: Song) {
+        refreshError.value = null
         nowPlayingSongId.value = startSong.id
         playbackQueueSongIds.value = queue.map(Song::id)
         playbackSongsById.value = queue.associateBy(Song::id)
@@ -531,11 +592,20 @@ class HomeViewModel(
     }
 
     private fun refreshArtwork(songs: List<Song>) {
+        val persistedArtwork =
+            songs.mapNotNull { song -> song.artworkUri?.let { song.id to it } }
+        if (persistedArtwork.isNotEmpty()) {
+            artworkBySongId.value = artworkBySongId.value + persistedArtwork
+        }
+
         val extractor = artworkExtractor ?: return
         val cachedArtworkIds = artworkBySongId.value.keys
+        val persistedArtworkIds = persistedArtwork.mapTo(mutableSetOf()) { it.first }
         val missingSongs =
             songs.filter { song ->
-                song.id !in cachedArtworkIds && requestedArtworkSongIds.add(song.id)
+                song.id !in cachedArtworkIds &&
+                        song.id !in persistedArtworkIds &&
+                        requestedArtworkSongIds.add(song.id)
             }
         if (missingSongs.isEmpty()) return
 
@@ -651,6 +721,40 @@ class HomeViewModel(
                 }
                 .onFailure { error ->
                     refreshError.value = error.message ?: "Stream import failed"
+                }
+        }
+    }
+
+    fun playRadioStation(station: RadioStation) {
+        viewModelScope.launch {
+            runCatching { saveRadioStation(station) }
+                .onSuccess { song ->
+                    val existingQueue =
+                        importedPlaylists.value.firstOrNull {
+                            it.name == M3uPlaylist.QUEUE_NAME
+                        } ?: M3uPlaylist(name = M3uPlaylist.QUEUE_NAME, entries = emptyList())
+                    val updatedQueue =
+                        if (existingQueue.entries.any { it.uri == song.uri }) existingQueue
+                        else existingQueue.copy(entries = existingQueue.entries + song.toM3uEntry())
+                    savePlaylist(
+                        updatedQueue
+                    )
+                    val songsByUri = uiState.value.librarySongs.associateBy(Song::uri) + (song.uri to song)
+                    val queueSongs = updatedQueue.entries.mapNotNull { entry -> songsByUri[entry.uri] }
+                    playSongs(queue = queueSongs, startSong = song)
+                }
+                .onFailure { error ->
+                    refreshError.value = error.message ?: "Unable to save radio station"
+                }
+        }
+    }
+
+    fun addRadioStationToPlaylist(station: RadioStation, playlistName: String) {
+        viewModelScope.launch {
+            runCatching { saveRadioStation(station) }
+                .onSuccess { song -> addSongToPlaylistInternal(song, playlistName) }
+                .onFailure { error ->
+                    refreshError.value = error.message ?: "Unable to save radio station"
                 }
         }
     }
@@ -940,6 +1044,8 @@ class HomeViewModelFactory(
     private val folderSourceUris: () -> List<String> = { emptyList() },
     private val setFavourite: SetFavouriteUseCase,
     private val importStreamSource: ImportStreamSourceUseCase,
+    private val searchRadioStations: SearchRadioStationsUseCase,
+    private val saveRadioStation: SaveRadioStationUseCase,
     private val updateStreamMetadata: UpdateStreamMetadataUseCase,
     private val startPlayback: StartPlaybackUseCase,
     private val playlistStore: PlaylistStore? = null,
@@ -960,6 +1066,8 @@ class HomeViewModelFactory(
             folderSourceUris,
             setFavourite,
             importStreamSource,
+            searchRadioStations,
+            saveRadioStation,
             updateStreamMetadata,
             startPlayback,
             playlistStore,

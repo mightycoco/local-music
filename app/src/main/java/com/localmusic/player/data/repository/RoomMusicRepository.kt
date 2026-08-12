@@ -90,7 +90,8 @@ class RoomMusicRepository(
                     lastPlayedEpochMillis = existing?.lastPlayedEpochMillis,
                     isFavourite = existing?.isFavourite ?: false,
                     scanGeneration = existing?.scanGeneration ?: 0L,
-                    sourceType = SongSource.STREAM.name
+                    sourceType = SongSource.STREAM.name,
+                    artworkUri = station.artworkUri ?: existing?.artworkUri
                 )
             }
             songDao.upsertAll(entities)

@@ -2,6 +2,7 @@ package com.localmusic.player.ui.home
 
 import com.localmusic.player.bluetooth.CarAudioDevice
 import com.localmusic.player.domain.model.LibraryFilter
+import com.localmusic.player.domain.model.RadioStation
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.SortOrder
 import com.localmusic.player.domain.repository.RepeatMode
@@ -30,6 +31,11 @@ data class HomeUiState(
     val selectedBrowseValue: String? = null,
     val sortOrder: SortOrder = SortOrder.NewestAdded,
     val searchQuery: String = "",
+    val radioSearchQuery: String = "",
+    val radioStations: List<RadioStation> = emptyList(),
+    val isRadioSearchLoading: Boolean = false,
+    val radioSearchError: String? = null,
+    val hasSearchedRadioStations: Boolean = false,
     val folderSourceUris: List<String> = emptyList(),
     val artworkCacheSizeBytes: Long = 0L,
     val importedPlaylists: List<M3uPlaylist> = emptyList(),
@@ -47,5 +53,6 @@ enum class HomeScreenDestination(val label: String) {
     Playlists("Playlists"),
     Favourites("Favourites"),
     Settings("Settings"),
-    PlaylistEditor("Playlist Editor")
+    PlaylistEditor("Playlist Editor"),
+    RadioBrowser("Radio Browser")
 }

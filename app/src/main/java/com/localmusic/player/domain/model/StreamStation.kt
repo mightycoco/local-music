@@ -5,5 +5,6 @@ data class StreamStation(
     val title: String,
     val artist: String,
     val durationSeconds: Long,
-    val uri: String
+    val uri: String,
+    val artworkUri: String? = null
 )

@@ -46,21 +46,32 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.localmusic.player.ui.theme.UiAnimationTimings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Composable
 internal fun ArtworkThumbnail(
-        artworkUri: String?,
-        modifier: Modifier = Modifier.size(48.dp),
-        visualizerLevels: List<Float> = emptyList(),
-        isPlaying: Boolean = false,
-        preferVisualizer: Boolean = false,
-        placeholderGlyph: Glyphs = Glyphs.NO_ARTWORK_THUMB,
-        allowVisualizerToggle: Boolean = false,
-        onVisualizerEnabledChange: (Boolean) -> Unit = {}
+    artworkUri: String?,
+    modifier: Modifier = Modifier.size(48.dp),
+    visualizerLevels: List<Float> = emptyList(),
+    isPlaying: Boolean = false,
+    preferVisualizer: Boolean = false,
+    placeholderGlyph: Glyphs = Glyphs.NO_ARTWORK_THUMB,
+    allowVisualizerToggle: Boolean = false,
+    onVisualizerEnabledChange: (Boolean) -> Unit = {}
 ) {
+    if (artworkUri.isNetworkUri()) {
+        AsyncImage(
+            model = artworkUri,
+            contentDescription = null,
+            modifier = modifier,
+            contentScale = ContentScale.Crop
+        )
+        return
+    }
+
     val context = LocalContext.current
     var bitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     var isArtworkLoading by remember { mutableStateOf(artworkUri != null) }
@@ -69,13 +80,15 @@ internal fun ArtworkThumbnail(
     LaunchedEffect(artworkUri) {
         isArtworkLoading = artworkUri != null
         val decodedBitmap =
-                artworkUri?.let { uri ->
-                    withContext(Dispatchers.IO) {
+            artworkUri?.let { uri ->
+                withContext(Dispatchers.IO) {
+                    runCatching {
                         context.contentResolver.openInputStream(Uri.parse(uri))?.use { input ->
                             input.decodeSampledBitmap(MAX_ARTWORK_DIMENSION_PX)
                         }
-                    }
+                    }.getOrNull()
                 }
+            }
         bitmap = decodedBitmap
         showVisualizer = preferVisualizer || decodedBitmap == null
         isArtworkLoading = false
@@ -92,42 +105,42 @@ internal fun ArtworkThumbnail(
     val thumbnail = bitmap
     val canShowVisualizer = allowVisualizerToggle && showVisualizer
     val toggleModifier =
-            if (allowVisualizerToggle && !isArtworkLoading) {
-                Modifier.clickable { showVisualizer = !showVisualizer }
-            } else {
-                Modifier
-            }
+        if (allowVisualizerToggle && !isArtworkLoading) {
+            Modifier.clickable { showVisualizer = !showVisualizer }
+        } else {
+            Modifier
+        }
     AnimatedContent(
-            targetState = canShowVisualizer to thumbnail,
-            modifier = modifier.then(toggleModifier),
-            transitionSpec = {
-                (fadeIn(animationSpec = tween(UiAnimationTimings.ARTWORK_VISUALIZER_ENTER_MILLIS)) +
-                                scaleIn(initialScale = 0.96f))
-                        .togetherWith(
-                                fadeOut(
-                                        animationSpec =
-                                                tween(
-                                                        UiAnimationTimings
-                                                                .ARTWORK_VISUALIZER_EXIT_MILLIS
-                                                )
-                                ) + scaleOut(targetScale = 1.04f)
-                        )
-            },
-            label = "artworkVisualizerToggle"
+        targetState = canShowVisualizer to thumbnail,
+        modifier = modifier.then(toggleModifier),
+        transitionSpec = {
+            (fadeIn(animationSpec = tween(UiAnimationTimings.ARTWORK_VISUALIZER_ENTER_MILLIS)) +
+                    scaleIn(initialScale = 0.96f))
+                .togetherWith(
+                    fadeOut(
+                        animationSpec =
+                            tween(
+                                UiAnimationTimings
+                                    .ARTWORK_VISUALIZER_EXIT_MILLIS
+                            )
+                    ) + scaleOut(targetScale = 1.04f)
+                )
+        },
+        label = "artworkVisualizerToggle"
     ) { (showVisualizer, displayedBitmap) ->
         if (showVisualizer) {
             NoArtworkVisualizer(
-                    levels = visualizerLevels,
-                    isPlaying = isPlaying,
-                    placeholderGlyph = placeholderGlyph,
-                    modifier = Modifier.fillMaxSize()
+                levels = visualizerLevels,
+                isPlaying = isPlaying,
+                placeholderGlyph = placeholderGlyph,
+                modifier = Modifier.fillMaxSize()
             )
         } else if (displayedBitmap != null) {
             Image(
-                    bitmap = displayedBitmap.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+                bitmap = displayedBitmap.asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
             )
         } else {
             ArtworkPlaceholder(glyph = placeholderGlyph, modifier = Modifier.fillMaxSize())
@@ -135,67 +148,70 @@ internal fun ArtworkThumbnail(
     }
 }
 
+private fun String?.isNetworkUri(): Boolean =
+    this?.let { Uri.parse(it).scheme?.lowercase() in setOf("http", "https") } == true
+
 @Composable
 private fun ArtworkPlaceholder(glyph: Glyphs, modifier: Modifier) {
     Box(
-            modifier =
-                    modifier.background(
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.88f),
-                            shape = MaterialTheme.shapes.large
-                    ),
-            contentAlignment = Alignment.Center
+        modifier =
+            modifier.background(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.88f),
+                shape = MaterialTheme.shapes.large
+            ),
+        contentAlignment = Alignment.Center
     ) { Text(text = glyph.glyph, style = MaterialTheme.typography.displayMedium) }
 }
 
 @Composable
 private fun NoArtworkVisualizer(
-        levels: List<Float>,
-        isPlaying: Boolean,
-        placeholderGlyph: Glyphs,
-        modifier: Modifier
+    levels: List<Float>,
+    isPlaying: Boolean,
+    placeholderGlyph: Glyphs,
+    modifier: Modifier
 ) {
     val displayLevels = if (levels.isEmpty()) List(9) { 0f } else levels
     Box(
-            modifier =
-                    modifier.background(
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.88f),
-                            shape = MaterialTheme.shapes.large
-                    ),
-            contentAlignment = Alignment.Center
+        modifier =
+            modifier.background(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.88f),
+                shape = MaterialTheme.shapes.large
+            ),
+        contentAlignment = Alignment.Center
     ) {
         if (isPlaying) {
             val colorTransition = rememberInfiniteTransition(label = "visualizerColors")
             val colorProgress by
-                    colorTransition.animateFloat(
-                            initialValue = 0f,
-                            targetValue = 1f,
-                            animationSpec =
-                                    infiniteRepeatable(
-                                            animation =
-                                                    tween(
-                                                            durationMillis =
-                                                                    UiAnimationTimings
-                                                                            .VISUALIZER_COLOR_CYCLE_MILLIS,
-                                                            easing = LinearEasing
-                                                    )
-                                    ),
-                            label = "visualizerColorProgress"
-                    )
+            colorTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec =
+                    infiniteRepeatable(
+                        animation =
+                            tween(
+                                durationMillis =
+                                    UiAnimationTimings
+                                        .VISUALIZER_COLOR_CYCLE_MILLIS,
+                                easing = LinearEasing
+                            )
+                    ),
+                label = "visualizerColorProgress"
+            )
             val visualizerColor = visualizerColorAt(colorProgress)
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 val barHeights =
-                        displayLevels.map { level ->
-                            (maxHeight.value * (0.16f + 0.68f * level.coerceIn(0f, 1f))).dp
-                        }
+                    displayLevels.map { level ->
+                        (maxHeight.value * (0.16f + 0.68f * level.coerceIn(0f, 1f))).dp
+                    }
                 VisualizerBars(
-                        heights = barHeights,
-                        color = visualizerColor,
-                        modifier = Modifier.fillMaxSize().alpha(0.88f).blur(radius = 16.dp)
+                    heights = barHeights,
+                    color = visualizerColor,
+                    modifier = Modifier.fillMaxSize().alpha(0.88f).blur(radius = 16.dp)
                 )
                 VisualizerBars(
-                        heights = barHeights,
-                        color = visualizerColor,
-                        modifier = Modifier.fillMaxSize()
+                    heights = barHeights,
+                    color = visualizerColor,
+                    modifier = Modifier.fillMaxSize()
                 )
             }
         } else {
@@ -207,18 +223,18 @@ private fun NoArtworkVisualizer(
 @Composable
 private fun VisualizerBars(heights: List<Dp>, color: Color, modifier: Modifier) {
     Row(
-            modifier = modifier.fillMaxWidth(0.82f),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
+        modifier = modifier.fillMaxWidth(0.82f),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         heights.forEach { height ->
             Box(
-                    modifier =
-                            Modifier.weight(1f)
-                                    .padding(horizontal = 4.dp)
-                                    .height(height)
-                                    .clip(MaterialTheme.shapes.extraSmall)
-                                    .background(color)
+                modifier =
+                    Modifier.weight(1f)
+                        .padding(horizontal = 4.dp)
+                        .height(height)
+                        .clip(MaterialTheme.shapes.extraSmall)
+                        .background(color)
             )
         }
     }
@@ -233,26 +249,38 @@ private fun visualizerColorAt(progress: Float): Color {
 
 @Composable
 internal fun ArtworkBackdrop(artworkUri: String?) {
+    if (artworkUri.isNetworkUri()) {
+        AsyncImage(
+            model = artworkUri,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize().alpha(0.16f),
+            contentScale = ContentScale.Crop
+        )
+        return
+    }
+
     val context = LocalContext.current
     var bitmap by remember(artworkUri) { mutableStateOf<android.graphics.Bitmap?>(null) }
 
     LaunchedEffect(artworkUri) {
         bitmap =
-                artworkUri?.let { uri ->
-                    withContext(Dispatchers.IO) {
+            artworkUri?.let { uri ->
+                withContext(Dispatchers.IO) {
+                    runCatching {
                         context.contentResolver.openInputStream(Uri.parse(uri))?.use { input ->
                             input.decodeSampledBitmap(MAX_BACKDROP_DIMENSION_PX)
                         }
-                    }
+                    }.getOrNull()
                 }
+            }
     }
 
     bitmap?.let { artwork ->
         Image(
-                bitmap = artwork.asImageBitmap(),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize().alpha(0.16f),
-                contentScale = ContentScale.Crop
+            bitmap = artwork.asImageBitmap(),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize().alpha(0.16f),
+            contentScale = ContentScale.Crop
         )
     }
 }
@@ -265,14 +293,15 @@ private fun java.io.InputStream.decodeSampledBitmap(maxDimension: Int): Bitmap? 
 
     var sampleSize = 1
     while (bounds.outWidth / sampleSize > maxDimension * 2 ||
-            bounds.outHeight / sampleSize > maxDimension * 2) {
+        bounds.outHeight / sampleSize > maxDimension * 2
+    ) {
         sampleSize *= 2
     }
     return BitmapFactory.decodeByteArray(
-            bytes,
-            0,
-            bytes.size,
-            BitmapFactory.Options().apply { inSampleSize = sampleSize }
+        bytes,
+        0,
+        bytes.size,
+        BitmapFactory.Options().apply { inSampleSize = sampleSize }
     )
 }
 

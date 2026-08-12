@@ -1,9 +1,11 @@
 package com.localmusic.player.domain.usecase
 
 import com.localmusic.player.domain.model.Song
+import com.localmusic.player.domain.model.RadioStation
 import com.localmusic.player.domain.model.StreamStation
 import com.localmusic.player.domain.repository.MusicRepository
 import com.localmusic.player.domain.repository.PlaybackController
+import com.localmusic.player.domain.repository.RadioStationDirectory
 import com.localmusic.player.domain.repository.RepeatMode
 import com.localmusic.player.domain.repository.StreamSourceResolver
 import kotlinx.coroutines.flow.Flow
@@ -37,6 +39,15 @@ class ImportStreamSourceUseCase(
 ) {
     suspend operator fun invoke(sourceUrl: String): List<Song> =
         repository.upsertStreamStations(resolver.resolve(sourceUrl))
+}
+
+class SearchRadioStationsUseCase(private val directory: RadioStationDirectory) {
+    suspend operator fun invoke(query: String) = directory.search(query)
+}
+
+class SaveRadioStationUseCase(private val repository: MusicRepository) {
+    suspend operator fun invoke(station: RadioStation): Song =
+        repository.upsertStreamStations(listOf(station.toStreamStation())).first()
 }
 
 class UpdateStreamMetadataUseCase(private val repository: MusicRepository) {
