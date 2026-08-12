@@ -8,8 +8,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -42,7 +47,7 @@ internal fun RadioStationScreen(
     var stationToAdd by remember { mutableStateOf<RadioStation?>(null) }
     Column(modifier = Modifier.fillMaxSize()) {
         IconButton(onClick = onBack, modifier = Modifier.semantics { contentDescription = "Back" }) {
-            Text("‹", fontSize = 32.sp)
+            Icon(imageVector = Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = null)
         }
         Text(
             text = "Radio stations",
@@ -56,7 +61,7 @@ internal fun RadioStationScreen(
             singleLine = true,
             trailingIcon = {
                 IconButton(onClick = onSearch, enabled = !uiState.isRadioSearchLoading) {
-                    Text("⌕", fontSize = 26.sp)
+                    Icon(imageVector = Icons.Outlined.Search, contentDescription = "Search")
                 }
             },
             modifier = Modifier.fillMaxWidth().padding(16.dp)
@@ -135,7 +140,9 @@ private fun RadioStationRow(
                     modifier = Modifier.semantics {
                         contentDescription = "Station actions"
                     }
-                ) { Text(Glyphs.MORE.glyph, fontSize = 24.sp) }
+                ) {
+                    Icon(imageVector = Icons.Outlined.MoreVert, contentDescription = null)
+                }
                 DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                     DropdownMenuItem(
                         text = { Text("Play") },

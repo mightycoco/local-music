@@ -15,9 +15,24 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.PlaylistAdd
+import androidx.compose.material.icons.outlined.QueueMusic
+import androidx.compose.material.icons.outlined.Repeat
+import androidx.compose.material.icons.outlined.RepeatOne
+import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -221,10 +236,11 @@ internal fun NowPlayingContent(
                         )
                     },
                     leadingContent = {
-                        Text(
-                            if (song.isFavourite) Glyphs.FAVOURITE_FULL.glyph
-                            else Glyphs.FAVOURITE.glyph,
-                            fontSize = 24.sp
+                        Icon(
+                            imageVector =
+                                if (song.isFavourite) Icons.Filled.Favorite
+                                else Icons.Outlined.FavoriteBorder,
+                            contentDescription = null
                         )
                     }
                 )
@@ -233,10 +249,9 @@ internal fun NowPlayingContent(
                     headlineContent = { Text("Shuffle") },
                     supportingContent = { Text(if (uiState.isShuffleEnabled) "On" else "Off") },
                     leadingContent = {
-                        Text(
-                            if (uiState.isShuffleEnabled) Glyphs.PLAYER_SHUFFLE.glyph
-                            else Glyphs.PLAYER_NOSHUFFLE.glyph,
-                            fontSize = 24.sp
+                        Icon(
+                            imageVector = Icons.Outlined.Shuffle,
+                            contentDescription = null
                         )
                     }
                 )
@@ -244,7 +259,17 @@ internal fun NowPlayingContent(
                     modifier = Modifier.clickable { onRepeatCycle() },
                     headlineContent = { Text("Repeat") },
                     supportingContent = { Text(uiState.repeatMode.label) },
-                    leadingContent = { Text(uiState.repeatMode.label, fontSize = 24.sp) }
+                    leadingContent = {
+                        Icon(
+                            imageVector =
+                                if (uiState.repeatMode == RepeatMode.One) {
+                                    Icons.Outlined.RepeatOne
+                                } else {
+                                    Icons.Outlined.Repeat
+                                },
+                            contentDescription = null
+                        )
+                    }
                 )
                 ListItem(
                     modifier =
@@ -253,7 +278,9 @@ internal fun NowPlayingContent(
                             showPlaylistChooser = true
                         },
                     headlineContent = { Text("Add to playlist") },
-                    leadingContent = { Text("${Glyphs.PLAYLISTS.glyph}+", fontSize = 24.sp) }
+                    leadingContent = {
+                        Icon(imageVector = Icons.Outlined.PlaylistAdd, contentDescription = null)
+                    }
                 )
                 ListItem(
                     modifier =
@@ -262,7 +289,9 @@ internal fun NowPlayingContent(
                             showMoreActions = false
                         },
                     headlineContent = { Text("Add to queue") },
-                    leadingContent = { Text("+${Glyphs.PLAYER_QUEUE.glyph}", fontSize = 24.sp) }
+                    leadingContent = {
+                        Icon(imageVector = Icons.Outlined.QueueMusic, contentDescription = null)
+                    }
                 )
                 ListItem(
                     modifier =
@@ -271,7 +300,9 @@ internal fun NowPlayingContent(
                             onShowQueue()
                         },
                     headlineContent = { Text("Show queue") },
-                    leadingContent = { Text(Glyphs.PLAYER_QUEUE.glyph, fontSize = 24.sp) }
+                    leadingContent = {
+                        Icon(imageVector = Icons.Outlined.QueueMusic, contentDescription = null)
+                    }
                 )
             }
         }
@@ -328,13 +359,17 @@ internal fun NowPlayingContent(
 @Composable
 private fun NowPlayingHeader(onReturnHome: () -> Unit, onShowMoreActions: () -> Unit) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        IconButton(onClick = onReturnHome) { Text(Glyphs.HOME.glyph, fontSize = 26.sp) }
+        IconButton(onClick = onReturnHome) {
+            Icon(imageVector = Icons.Outlined.Home, contentDescription = "Home")
+        }
         Text(
             text = "NOW PLAYING",
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold
         )
-        IconButton(onClick = onShowMoreActions) { Text(Glyphs.MORE.glyph, fontSize = 28.sp) }
+        IconButton(onClick = onShowMoreActions) {
+            Icon(imageVector = Icons.Outlined.MoreVert, contentDescription = "More actions")
+        }
     }
 }
 
@@ -385,18 +420,17 @@ private fun NowPlayingDetailsAndControls(
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             IconButton(onClick = onPrevious, modifier = Modifier.size(64.dp)) {
-                Text(Glyphs.PLAYER_PREVIOUS.glyph, fontSize = 36.sp)
+                Icon(imageVector = Icons.Filled.SkipPrevious, contentDescription = "Previous")
             }
             Button(onClick = onPlayPause, modifier = Modifier.size(72.dp)) {
-                Text(
-                    text =
-                        if (uiState.isPlaying) Glyphs.PLAYER_PAUSE.glyph
-                        else Glyphs.PLAYER_PLAY.glyph,
-                    fontSize = 34.sp
+                Icon(
+                    imageVector =
+                        if (uiState.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    contentDescription = if (uiState.isPlaying) "Pause" else "Play"
                 )
             }
             IconButton(onClick = onNext, modifier = Modifier.size(64.dp)) {
-                Text(Glyphs.PLAYER_NEXT.glyph, fontSize = 36.sp)
+                Icon(imageVector = Icons.Filled.SkipNext, contentDescription = "Next")
             }
         }
     }
@@ -459,14 +493,11 @@ private fun CurrentPlaylist(
                         },
                         trailingContent = {
                             IconButton(onClick = { onFavouriteToggle(queueSong) }) {
-                                Text(
-                                    text =
-                                        if (queueSong.isFavourite) {
-                                            Glyphs.FAVOURITE_FULL.glyph
-                                        } else {
-                                            Glyphs.FAVOURITE.glyph
-                                        },
-                                    style = MaterialTheme.typography.titleLarge
+                                Icon(
+                                    imageVector =
+                                        if (queueSong.isFavourite) Icons.Filled.Favorite
+                                        else Icons.Outlined.FavoriteBorder,
+                                    contentDescription = null
                                 )
                             }
                         }
@@ -485,7 +516,7 @@ private fun formatPlaybackTime(durationMillis: Long): String {
 private val RepeatMode.label: String
     get() =
         when (this) {
-            RepeatMode.Off -> "⇾"
-            RepeatMode.One -> "⟲¹"
-            RepeatMode.All -> "⟲"
+            RepeatMode.Off -> "Off"
+            RepeatMode.One -> "One"
+            RepeatMode.All -> "All"
         }

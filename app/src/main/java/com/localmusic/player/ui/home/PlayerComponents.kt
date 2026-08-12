@@ -7,6 +7,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -20,7 +26,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.localmusic.player.domain.model.Song
 
 @Composable
@@ -124,16 +129,16 @@ private fun MiniPlayerControls(
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onPrevious, modifier = Modifier.size(controlSize)) {
-            Text(Glyphs.PLAYER_PREVIOUS.glyph, fontSize = 24.sp)
+            Icon(imageVector = Icons.Filled.SkipPrevious, contentDescription = "Previous")
         }
         IconButton(onClick = onPlayPause, modifier = Modifier.size(controlSize)) {
-            Text(
-                if (isPlaying) Glyphs.PLAYER_PAUSE.glyph else Glyphs.PLAYER_PLAY.glyph,
-                fontSize = 28.sp
+            Icon(
+                imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                contentDescription = if (isPlaying) "Pause" else "Play"
             )
         }
         IconButton(onClick = onNext, modifier = Modifier.size(controlSize)) {
-            Text(Glyphs.PLAYER_NEXT.glyph, fontSize = 24.sp)
+            Icon(imageVector = Icons.Filled.SkipNext, contentDescription = "Next")
         }
     }
 }

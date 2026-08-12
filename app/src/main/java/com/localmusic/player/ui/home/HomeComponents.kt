@@ -12,8 +12,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -196,12 +200,12 @@ internal fun SongList(
                 supportingContent = { Text("${song.artist} - ${song.album}") },
                 trailingContent = {
                     IconButton(onClick = { onFavouriteToggle(song) }) {
-                        Text(
-                            text =
-                                if (song.isFavourite) Glyphs.FAVOURITE_FULL.glyph
-                                else Glyphs.FAVOURITE.glyph,
+                        Icon(
+                            imageVector =
+                                if (song.isFavourite) Icons.Filled.Favorite
+                                else Icons.Outlined.FavoriteBorder,
+                            contentDescription = null,
                             modifier = Modifier.size(64.dp),
-                            style = MaterialTheme.typography.headlineMedium
                         )
                     }
                 }
@@ -275,7 +279,7 @@ internal fun PlayingSongTitle(
     isPlaying: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val indicator = Glyphs.PLAYINGINDICATOR.glyph
+    val indicator = PLAYING_INDICATOR
     var offset by remember(indicator) { mutableIntStateOf(0) }
 
     LaunchedEffect(isCurrent, isPlaying, indicator) {

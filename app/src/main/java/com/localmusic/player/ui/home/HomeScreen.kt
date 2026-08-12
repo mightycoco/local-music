@@ -34,8 +34,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.PlaylistPlay
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.PlayCircle
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -59,7 +66,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.core.content.ContextCompat
 import com.localmusic.player.bluetooth.CarAudioDevice
 import com.localmusic.player.bluetooth.CarModeDetector
@@ -82,28 +89,17 @@ import kotlin.math.abs
 
 internal const val VISUALIZER_FPS = 20
 
-enum class Glyphs(val glyph: String) {
-    HOME("⌂"),
-    NOW_PLAYING("▷"),
-    PLAYLISTS("⋮☰"),
-    FAVOURITE("☆"),
-    FAVOURITE_FULL("★"),
-    SETTINGS("⫶"),
-    PLAYINGINDICATOR("၊၊|၊|။|||။၊|။•"),
-    PLAYER_PREVIOUS("⏮"),
-    PLAYER_NEXT("⏭"),
-    PLAYER_PLAY("▶"),
-    PLAYER_PAUSE("☐"),
-    PLAYER_SHUFFLE("⇌"),
-    PLAYER_NOSHUFFLE("⇉"),
-    PLAYER_QUEUE("≡"),
-    MORE("⋮"),
-    ADD("+"),
-    TRASH("🗑"),
-    NO_ARTWORK("╭∩╮( •̀_•́ )╭∩╮"),
-    NO_ARTWORK_THUMB(".°•"),
-    REORDER("≡")
+internal object AppIcons {
+    val Home = Icons.Outlined.Home
+    val NowPlaying = Icons.Outlined.PlayCircle
+    val Playlists = Icons.AutoMirrored.Outlined.PlaylistPlay
+    val Favourite = Icons.Outlined.FavoriteBorder
+    val Settings = Icons.Outlined.Settings
 }
+
+internal const val PLAYING_INDICATOR = "၊၊|၊|။|||။၊|။•"
+internal const val NO_ARTWORK_GLYPH = "╭∩╮( •̀_•́ )╭∩╮"
+internal const val NO_ARTWORK_THUMB_GLYPH = ".°•"
 
 @Composable
 fun HomeRoute(viewModel: HomeViewModel, uiState: HomeUiState) {
@@ -498,7 +494,10 @@ fun HomeScreen(
                             selected = uiState.selectedScreen == destination,
                             onClick = { onScreenSelected(destination) },
                             icon = {
-                                Text(text = destination.iconLabel(), fontSize = 28.sp)
+                                Icon(
+                                    imageVector = destination.icon(),
+                                    contentDescription = destination.name
+                                )
                             },
                             label = null
                         )
@@ -750,15 +749,15 @@ fun HomeScreen(
     }
 }
 
-private fun HomeScreenDestination.iconLabel(): String =
+private fun HomeScreenDestination.icon(): ImageVector =
     when (this) {
-        HomeScreenDestination.Home -> Glyphs.HOME.glyph
-        HomeScreenDestination.NowPlaying -> Glyphs.NOW_PLAYING.glyph
-        HomeScreenDestination.Playlists -> Glyphs.PLAYLISTS.glyph
-        HomeScreenDestination.Favourites -> Glyphs.FAVOURITE.glyph
-        HomeScreenDestination.Settings -> Glyphs.SETTINGS.glyph
-        HomeScreenDestination.PlaylistEditor -> Glyphs.PLAYLISTS.glyph
-        HomeScreenDestination.RadioBrowser -> Glyphs.PLAYLISTS.glyph
+        HomeScreenDestination.Home -> AppIcons.Home
+        HomeScreenDestination.NowPlaying -> AppIcons.NowPlaying
+        HomeScreenDestination.Playlists -> AppIcons.Playlists
+        HomeScreenDestination.Favourites -> AppIcons.Favourite
+        HomeScreenDestination.Settings -> AppIcons.Settings
+        HomeScreenDestination.PlaylistEditor -> AppIcons.Playlists
+        HomeScreenDestination.RadioBrowser -> AppIcons.Playlists
     }
 
 private fun HomeScreenDestination.previous(): HomeScreenDestination {

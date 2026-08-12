@@ -58,7 +58,7 @@ internal fun ArtworkThumbnail(
     visualizerLevels: List<Float> = emptyList(),
     isPlaying: Boolean = false,
     preferVisualizer: Boolean = false,
-    placeholderGlyph: Glyphs = Glyphs.NO_ARTWORK_THUMB,
+    placeholderGlyph: String = NO_ARTWORK_THUMB_GLYPH,
     allowVisualizerToggle: Boolean = false,
     onVisualizerEnabledChange: (Boolean) -> Unit = {}
 ) {
@@ -152,7 +152,7 @@ private fun String?.isNetworkUri(): Boolean =
     this?.let { Uri.parse(it).scheme?.lowercase() in setOf("http", "https") } == true
 
 @Composable
-private fun ArtworkPlaceholder(glyph: Glyphs, modifier: Modifier) {
+private fun ArtworkPlaceholder(glyph: String, modifier: Modifier) {
     Box(
         modifier =
             modifier.background(
@@ -160,14 +160,14 @@ private fun ArtworkPlaceholder(glyph: Glyphs, modifier: Modifier) {
                 shape = MaterialTheme.shapes.large
             ),
         contentAlignment = Alignment.Center
-    ) { Text(text = glyph.glyph, style = MaterialTheme.typography.displayMedium) }
+    ) { Text(text = glyph, style = MaterialTheme.typography.displayMedium) }
 }
 
 @Composable
 private fun NoArtworkVisualizer(
     levels: List<Float>,
     isPlaying: Boolean,
-    placeholderGlyph: Glyphs,
+    placeholderGlyph: String,
     modifier: Modifier
 ) {
     val displayLevels = if (levels.isEmpty()) List(9) { 0f } else levels

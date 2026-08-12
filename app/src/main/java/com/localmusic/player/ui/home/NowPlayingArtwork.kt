@@ -6,9 +6,11 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,48 +37,48 @@ private enum class CoverTransitionDirection {
 }
 
 private data class NowPlayingCover(
-        val songId: String,
-        val artworkUri: String?,
-        val visualizerLevels: List<Float>,
-        val isPlaying: Boolean
+    val songId: String,
+    val artworkUri: String?,
+    val visualizerLevels: List<Float>,
+    val isPlaying: Boolean
 )
 
 @Composable
 internal fun AnimatedNowPlayingArtwork(
-        song: Song,
-        artworkUri: String?,
-        visualizerLevels: List<Float>,
-        isPlaying: Boolean,
-        preferVisualizer: Boolean,
-        isPreviousTransition: Boolean,
-        onPrevious: () -> Unit,
-        onNext: () -> Unit,
-        onFavouriteToggle: () -> Unit,
-        onVisualizerEnabledChange: (Boolean) -> Unit,
-        modifier: Modifier = Modifier
+    song: Song,
+    artworkUri: String?,
+    visualizerLevels: List<Float>,
+    isPlaying: Boolean,
+    preferVisualizer: Boolean,
+    isPreviousTransition: Boolean,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    onFavouriteToggle: () -> Unit,
+    onVisualizerEnabledChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val currentCover =
-            NowPlayingCover(
-                    songId = song.id,
-                    artworkUri = artworkUri,
-                    visualizerLevels = visualizerLevels,
-                    isPlaying = isPlaying
-            )
+        NowPlayingCover(
+            songId = song.id,
+            artworkUri = artworkUri,
+            visualizerLevels = visualizerLevels,
+            isPlaying = isPlaying
+        )
     var displayedCover by remember { mutableStateOf(currentCover) }
     var outgoingCover by remember { mutableStateOf<NowPlayingCover?>(null) }
     var activeDirection by remember {
         mutableStateOf(
-                if (isPreviousTransition) {
-                    CoverTransitionDirection.Previous
-                } else {
-                    CoverTransitionDirection.Next
-                }
+            if (isPreviousTransition) {
+                CoverTransitionDirection.Previous
+            } else {
+                CoverTransitionDirection.Next
+            }
         )
     }
     val transitionProgress = remember { Animatable(1f) }
     val swipeThreshold = with(LocalDensity.current) { 72.dp.toPx() }
     val renderedCover =
-            if (displayedCover.songId == currentCover.songId) currentCover else displayedCover
+        if (displayedCover.songId == currentCover.songId) currentCover else displayedCover
 
     LaunchedEffect(currentCover.songId) {
         if (displayedCover.songId == currentCover.songId) {
@@ -87,129 +89,130 @@ internal fun AnimatedNowPlayingArtwork(
         outgoingCover = displayedCover
         displayedCover = currentCover
         activeDirection =
-                if (isPreviousTransition) {
-                    CoverTransitionDirection.Previous
-                } else {
-                    CoverTransitionDirection.Next
-                }
+            if (isPreviousTransition) {
+                CoverTransitionDirection.Previous
+            } else {
+                CoverTransitionDirection.Next
+            }
         transitionProgress.snapTo(0f)
         transitionProgress.animateTo(
-                1f,
-                animationSpec = tween(durationMillis = UiAnimationTimings.COVER_TRANSITION_MILLIS)
+            1f,
+            animationSpec = tween(durationMillis = UiAnimationTimings.COVER_TRANSITION_MILLIS)
         )
         outgoingCover = null
     }
 
     BoxWithConstraints(
-            modifier =
-                    modifier.clipToBounds().pointerInput(song.id) {
-                        var totalDrag = 0f
-                        var actionTriggered = false
-                        detectHorizontalDragGestures(
-                                onDragStart = {
-                                    totalDrag = 0f
-                                    actionTriggered = false
-                                },
-                                onHorizontalDrag = { change, dragAmount ->
-                                    change.consume()
-                                    if (actionTriggered) {
-                                        return@detectHorizontalDragGestures
-                                    }
+        modifier =
+            modifier.clipToBounds().pointerInput(song.id) {
+                var totalDrag = 0f
+                var actionTriggered = false
+                detectHorizontalDragGestures(
+                    onDragStart = {
+                        totalDrag = 0f
+                        actionTriggered = false
+                    },
+                    onHorizontalDrag = { change, dragAmount ->
+                        change.consume()
+                        if (actionTriggered) {
+                            return@detectHorizontalDragGestures
+                        }
 
-                                    totalDrag += dragAmount
-                                    when {
-                                        totalDrag >= swipeThreshold -> {
-                                            onPrevious()
-                                            actionTriggered = true
-                                        }
-                                        totalDrag <= -swipeThreshold -> {
-                                            onNext()
-                                            actionTriggered = true
-                                        }
-                                    }
-                                }
-                        )
+                        totalDrag += dragAmount
+                        when {
+                            totalDrag >= swipeThreshold -> {
+                                onPrevious()
+                                actionTriggered = true
+                            }
+
+                            totalDrag <= -swipeThreshold -> {
+                                onNext()
+                                actionTriggered = true
+                            }
+                        }
                     }
+                )
+            }
     ) {
         val coverWidth = with(LocalDensity.current) { maxWidth.toPx() }
         val progress = transitionProgress.value
         val outgoingTranslation =
-                if (activeDirection == CoverTransitionDirection.Previous) coverWidth * progress
-                else -coverWidth * progress
+            if (activeDirection == CoverTransitionDirection.Previous) coverWidth * progress
+            else -coverWidth * progress
         val outgoingRotation =
-                if (activeDirection == CoverTransitionDirection.Previous) {
-                    COVER_TRANSITION_ROTATION_DEGREES * progress
-                } else {
-                    -COVER_TRANSITION_ROTATION_DEGREES * progress
-                }
+            if (activeDirection == CoverTransitionDirection.Previous) {
+                COVER_TRANSITION_ROTATION_DEGREES * progress
+            } else {
+                -COVER_TRANSITION_ROTATION_DEGREES * progress
+            }
         val incomingRotationStart =
-                if (activeDirection == CoverTransitionDirection.Previous) {
-                    -COVER_TRANSITION_ROTATION_DEGREES
-                } else {
-                    COVER_TRANSITION_ROTATION_DEGREES
-                }
+            if (activeDirection == CoverTransitionDirection.Previous) {
+                -COVER_TRANSITION_ROTATION_DEGREES
+            } else {
+                COVER_TRANSITION_ROTATION_DEGREES
+            }
         val incomingTranslationStart =
-                if (activeDirection == CoverTransitionDirection.Previous) -coverWidth
-                else coverWidth
+            if (activeDirection == CoverTransitionDirection.Previous) -coverWidth
+            else coverWidth
 
         outgoingCover?.let { cover ->
             NowPlayingCoverArtwork(
-                    cover = cover,
-                    modifier =
-                            Modifier.fillMaxSize().graphicsLayer {
-                                translationX = outgoingTranslation
-                                rotationZ = outgoingRotation
-                            }
+                cover = cover,
+                modifier =
+                    Modifier.fillMaxSize().graphicsLayer {
+                        translationX = outgoingTranslation
+                        rotationZ = outgoingRotation
+                    }
             )
         }
         NowPlayingCoverArtwork(
-                cover = renderedCover,
-                preferVisualizer = preferVisualizer,
-                allowVisualizerToggle = outgoingCover == null,
-                onVisualizerEnabledChange = onVisualizerEnabledChange,
-                modifier =
-                        Modifier.fillMaxSize().graphicsLayer {
-                            translationX = incomingTranslationStart * (1f - progress)
-                            rotationZ = incomingRotationStart * (1f - progress)
-                        }
+            cover = renderedCover,
+            preferVisualizer = preferVisualizer,
+            allowVisualizerToggle = outgoingCover == null,
+            onVisualizerEnabledChange = onVisualizerEnabledChange,
+            modifier =
+                Modifier.fillMaxSize().graphicsLayer {
+                    translationX = incomingTranslationStart * (1f - progress)
+                    rotationZ = incomingRotationStart * (1f - progress)
+                }
         )
-                    IconButton(
-                        onClick = onFavouriteToggle,
-                        modifier =
-                            Modifier.align(Alignment.BottomEnd)
-                                .padding(8.dp)
-                                .semantics {
-                                    contentDescription =
-                                        if (song.isFavourite) "Remove from favourites"
-                                        else "Add to favourites"
-                                }
-                    ) {
-                        Text(
-                            text =
-                                if (song.isFavourite) Glyphs.FAVOURITE_FULL.glyph
-                                else Glyphs.FAVOURITE.glyph,
-                            style = MaterialTheme.typography.headlineMedium
-                        )
+        IconButton(
+            onClick = onFavouriteToggle,
+            modifier =
+                Modifier.align(Alignment.BottomEnd)
+                    .padding(8.dp)
+                    .semantics {
+                        contentDescription =
+                            if (song.isFavourite) "Remove from favourites"
+                            else "Add to favourites"
                     }
+        ) {
+            Icon(
+                imageVector =
+                    if (song.isFavourite) Icons.Filled.Favorite
+                    else Icons.Outlined.FavoriteBorder,
+                contentDescription = null
+            )
+        }
     }
 }
 
 @Composable
 private fun NowPlayingCoverArtwork(
-        cover: NowPlayingCover,
-        modifier: Modifier,
-        preferVisualizer: Boolean = false,
-        allowVisualizerToggle: Boolean = false,
-        onVisualizerEnabledChange: (Boolean) -> Unit = {}
+    cover: NowPlayingCover,
+    modifier: Modifier,
+    preferVisualizer: Boolean = false,
+    allowVisualizerToggle: Boolean = false,
+    onVisualizerEnabledChange: (Boolean) -> Unit = {}
 ) {
     ArtworkThumbnail(
-            artworkUri = cover.artworkUri,
-            visualizerLevels = cover.visualizerLevels,
-            isPlaying = cover.isPlaying,
-            preferVisualizer = preferVisualizer,
-            placeholderGlyph = Glyphs.NO_ARTWORK,
-            allowVisualizerToggle = allowVisualizerToggle,
-            onVisualizerEnabledChange = onVisualizerEnabledChange,
-            modifier = modifier
+        artworkUri = cover.artworkUri,
+        visualizerLevels = cover.visualizerLevels,
+        isPlaying = cover.isPlaying,
+        preferVisualizer = preferVisualizer,
+        placeholderGlyph = NO_ARTWORK_GLYPH,
+        allowVisualizerToggle = allowVisualizerToggle,
+        onVisualizerEnabledChange = onVisualizerEnabledChange,
+        modifier = modifier
     )
 }

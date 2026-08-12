@@ -19,10 +19,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.DragHandle
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.FileUpload
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -75,15 +87,21 @@ internal fun PlaylistContent(
             IconButton(
                 onClick = { showCreatePlaylistDialog = true },
                 modifier = Modifier.semantics { contentDescription = "New playlist" }
-            ) { Text("➕", fontSize = 24.sp) }
+            ) {
+                Icon(imageVector = Icons.Outlined.Add, contentDescription = null)
+            }
             IconButton(
                 onClick = onImportPlaylist,
                 modifier = Modifier.semantics { contentDescription = "Import M3U" }
-            ) { Text("📥", fontSize = 24.sp) }
+            ) {
+                Icon(imageVector = Icons.Outlined.FileDownload, contentDescription = null)
+            }
             IconButton(
                 onClick = onExportLibrary,
                 modifier = Modifier.semantics { contentDescription = "Export M3U" }
-            ) { Text("📤", fontSize = 24.sp) }
+            ) {
+                Icon(imageVector = Icons.Outlined.FileUpload, contentDescription = null)
+            }
         }
 
         val visiblePlaylists =
@@ -104,7 +122,10 @@ internal fun PlaylistContent(
                         trailingContent = {
                             Box {
                                 IconButton(onClick = { showActions = true }) {
-                                    Text(Glyphs.MORE.glyph, fontSize = 24.sp)
+                                    Icon(
+                                        imageVector = Icons.Outlined.MoreVert,
+                                        contentDescription = "Playlist actions"
+                                    )
                                 }
                                 DropdownMenu(
                                     expanded = showActions,
@@ -235,7 +256,9 @@ internal fun PlaylistEditorContent(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack) { Text(Glyphs.HOME.glyph, fontSize = 26.sp) }
+            IconButton(onClick = onBack) {
+                Icon(imageVector = Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+            }
             Text(playlist.name, style = MaterialTheme.typography.headlineSmall, maxLines = 1)
             Spacer(modifier = Modifier.size(48.dp))
         }
@@ -247,7 +270,7 @@ internal fun PlaylistEditorContent(
             IconButton(
                 onClick = { onPlay(playlist) },
                 enabled = playlist.entries.isNotEmpty()
-            ) { Text(Glyphs.PLAYER_PLAY.glyph, fontSize = 24.sp) }
+            ) { Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = "Play") }
             Box {
                 IconButton(
                     onClick = { showAddMenu = true },
@@ -277,7 +300,9 @@ internal fun PlaylistEditorContent(
                 enabled = playlist.entries.isNotEmpty(),
                 modifier = Modifier.size(48.dp).semantics { contentDescription = "Clear playlist" },
                 contentPadding = PaddingValues(0.dp)
-            ) { Text(Glyphs.TRASH.glyph, fontSize = 22.sp) }
+            ) {
+                Icon(imageVector = Icons.Outlined.DeleteOutline, contentDescription = null)
+            }
         }
 
         if (playlist.entries.isEmpty()) {
@@ -349,13 +374,11 @@ internal fun PlaylistEditorContent(
                                     }
                             }
                         ) {
-                            Text(
-                                if (entry.uri in favouriteUris) {
-                                    Glyphs.FAVOURITE_FULL.glyph
-                                } else {
-                                    Glyphs.FAVOURITE.glyph
-                                },
-                                fontSize = 24.sp
+                            Icon(
+                                imageVector =
+                                    if (entry.uri in favouriteUris) Icons.Filled.Favorite
+                                    else Icons.Outlined.FavoriteBorder,
+                                contentDescription = null
                             )
                         }
                         Box(
@@ -419,7 +442,12 @@ internal fun PlaylistEditorContent(
                                     )
                                 },
                             contentAlignment = Alignment.Center
-                        ) { Text(text = Glyphs.REORDER.glyph, fontSize = 22.sp) }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.DragHandle,
+                                contentDescription = "Reorder"
+                            )
+                        }
                         DropdownMenu(
                             expanded = entryToRemove == index,
                             onDismissRequest = { entryToRemove = null }
