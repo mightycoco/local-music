@@ -495,6 +495,19 @@ class HomeViewModel(
         playSongs(queue = playlistSongs, startSong = firstSong)
     }
 
+    fun playPlaylistEntry(playlist: M3uPlaylist, entry: M3uPlaylistEntry) {
+        val songsByUri = uiState.value.librarySongs.associateBy(Song::uri)
+        val playlistSongs = playlist.entries.mapNotNull { playlistEntry -> songsByUri[playlistEntry.uri] }
+        val selectedSong = songsByUri[entry.uri]
+        if (selectedSong == null || playlistSongs.isEmpty()) {
+            refreshError.value = "No playable song found for ${entry.title}"
+            return
+        }
+
+        savePlaylist(M3uPlaylist(name = M3uPlaylist.QUEUE_NAME, entries = playlist.entries))
+        playSongs(queue = playlistSongs, startSong = selectedSong)
+    }
+
     private fun playSongs(queue: List<Song>, startSong: Song) {
         refreshError.value = null
         nowPlayingSongId.value = startSong.id

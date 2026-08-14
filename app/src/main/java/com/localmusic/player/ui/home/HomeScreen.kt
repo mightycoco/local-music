@@ -314,6 +314,7 @@ fun HomeRoute(viewModel: HomeViewModel, uiState: HomeUiState) {
         onRenamePlaylist = viewModel::renamePlaylist,
         onDuplicatePlaylist = viewModel::duplicatePlaylist,
         onPlayPlaylist = viewModel::playPlaylist,
+        onPlayPlaylistEntry = viewModel::playPlaylistEntry,
         onMovePlaylistEntry = viewModel::movePlaylistEntry,
         onPlaylistEntryFavouriteToggle = viewModel::togglePlaylistEntryFavourite,
         onRemovePlaylistEntry = viewModel::removePlaylistEntry,
@@ -391,6 +392,7 @@ fun HomeScreen(
     onRenamePlaylist: (M3uPlaylist, String) -> Unit,
     onDuplicatePlaylist: (M3uPlaylist, String) -> Unit,
     onPlayPlaylist: (M3uPlaylist) -> Unit,
+    onPlayPlaylistEntry: (M3uPlaylist, M3uPlaylistEntry) -> Unit,
     onMovePlaylistEntry: (M3uPlaylist, Int, Int) -> Unit,
     onPlaylistEntryFavouriteToggle: (M3uPlaylistEntry) -> Unit,
     onRemovePlaylistEntry: (M3uPlaylist, Int) -> Unit,
@@ -725,6 +727,7 @@ fun HomeScreen(
                                         onScreenSelected(playlistEditorReturnDestination)
                                     },
                                     onPlay = onPlayPlaylist,
+                                    onPlayEntry = onPlayPlaylistEntry,
                                     onMoveEntry = onMovePlaylistEntry,
                                     onFavouriteToggle = onPlaylistEntryFavouriteToggle,
                                     onRemoveEntry = onRemovePlaylistEntry,

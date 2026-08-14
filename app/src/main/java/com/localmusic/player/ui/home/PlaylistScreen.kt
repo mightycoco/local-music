@@ -231,6 +231,7 @@ internal fun PlaylistEditorContent(
     artworkByUri: Map<String, String>,
     onBack: () -> Unit,
     onPlay: (M3uPlaylist) -> Unit,
+    onPlayEntry: (M3uPlaylist, M3uPlaylistEntry) -> Unit,
     onMoveEntry: (M3uPlaylist, Int, Int) -> Unit,
     onFavouriteToggle: (M3uPlaylistEntry) -> Unit,
     onRemoveEntry: (M3uPlaylist, Int) -> Unit,
@@ -341,7 +342,7 @@ internal fun PlaylistEditorContent(
                                 .height(playlistRowHeight)
                                 .padding(horizontal = 16.dp)
                                 .combinedClickable(
-                                    onClick = {},
+                                    onClick = { onPlayEntry(playlist, entry) },
                                     onLongClick = { entryToRemove = index }
                                 )
                                 .graphicsLayer {
