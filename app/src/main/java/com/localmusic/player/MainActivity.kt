@@ -30,6 +30,7 @@ import com.localmusic.player.data.stream.HttpStreamSourceResolver
 import com.localmusic.player.domain.usecase.AddFolderSourceUseCase
 import com.localmusic.player.domain.usecase.ImportStreamSourceUseCase
 import com.localmusic.player.domain.usecase.ObserveSongsUseCase
+import com.localmusic.player.domain.usecase.PreviewRadioStationUseCase
 import com.localmusic.player.domain.usecase.RefreshMusicLibraryUseCase
 import com.localmusic.player.domain.usecase.RemoveFolderSourceUseCase
 import com.localmusic.player.domain.usecase.SaveRadioStationUseCase
@@ -38,6 +39,7 @@ import com.localmusic.player.domain.usecase.SetFavouriteUseCase
 import com.localmusic.player.domain.usecase.StartPlaybackUseCase
 import com.localmusic.player.domain.usecase.UpdateStreamMetadataUseCase
 import com.localmusic.player.playback.Media3PlaybackController
+import com.localmusic.player.playback.Media3RadioPreviewController
 import com.localmusic.player.playlist.RoomPlaylistStore
 import com.localmusic.player.playlist.SharedPreferencesPlaylistStore
 import com.localmusic.player.settings.LibraryPreferences
@@ -108,6 +110,10 @@ class MainActivity : ComponentActivity() {
                 updateStreamMetadata = UpdateStreamMetadataUseCase(repository),
                 startPlayback =
                     StartPlaybackUseCase(Media3PlaybackController(applicationContext)),
+                previewRadioStation =
+                    PreviewRadioStationUseCase(
+                        Media3RadioPreviewController(applicationContext)
+                    ),
                 playlistStore =
                     RoomPlaylistStore(
                         database.playlistDao(),

@@ -355,6 +355,7 @@ internal fun PlaylistEditorContent(
                             artworkUri = artworkByUri[entry.uri],
                             modifier = Modifier.size(48.dp)
                         )
+                        Spacer(modifier = Modifier.size(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(entry.title, maxLines = 1)
                             Text(

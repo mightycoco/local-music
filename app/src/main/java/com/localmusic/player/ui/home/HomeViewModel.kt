@@ -18,6 +18,7 @@ import com.localmusic.player.domain.repository.RepeatMode
 import com.localmusic.player.domain.usecase.AddFolderSourceUseCase
 import com.localmusic.player.domain.usecase.ImportStreamSourceUseCase
 import com.localmusic.player.domain.usecase.ObserveSongsUseCase
+import com.localmusic.player.domain.usecase.PreviewRadioStationUseCase
 import com.localmusic.player.domain.usecase.RefreshMusicLibraryUseCase
 import com.localmusic.player.domain.usecase.RemoveFolderSourceUseCase
 import com.localmusic.player.domain.usecase.SaveRadioStationUseCase
@@ -56,6 +57,7 @@ class HomeViewModel(
     private val saveRadioStation: SaveRadioStationUseCase,
     private val updateStreamMetadata: UpdateStreamMetadataUseCase,
     private val startPlayback: StartPlaybackUseCase,
+    private val previewRadioStationUseCase: PreviewRadioStationUseCase,
     private val playlistStore: PlaylistStore? = null,
     private val artworkExtractor: EmbeddedArtworkExtractor? = null,
     private val artworkCache: ArtworkDiskCache? = null,
@@ -210,6 +212,9 @@ class HomeViewModel(
                 hasSearchedRadioStations = hasSearched
             )
         }
+            .combine(previewRadioStationUseCase.previewStation) { state, previewStation ->
+                state.copy(previewRadioStation = previewStation)
+            }
 
     private val playbackModeState =
         combine(isShuffleEnabled, repeatMode) { shuffleEnabled, selectedRepeatMode ->
@@ -262,7 +267,8 @@ class HomeViewModel(
                 radioStations = radio.radioStations,
                 isRadioSearchLoading = radio.isRadioSearchLoading,
                 radioSearchError = radio.radioSearchError,
-                hasSearchedRadioStations = radio.hasSearchedRadioStations
+                hasSearchedRadioStations = radio.hasSearchedRadioStations,
+                previewRadioStation = radio.previewRadioStation
             )
         }
 
@@ -749,6 +755,15 @@ class HomeViewModel(
         }
     }
 
+    fun previewRadioStation(station: RadioStation) {
+        startPlayback.pause()
+        previewRadioStationUseCase.play(station)
+    }
+
+    fun stopRadioPreview() {
+        previewRadioStationUseCase.stop()
+    }
+
     fun addRadioStationToPlaylist(station: RadioStation, playlistName: String) {
         viewModelScope.launch {
             runCatching { saveRadioStation(station) }
@@ -757,6 +772,7 @@ class HomeViewModel(
                     refreshError.value = error.message ?: "Unable to save radio station"
                 }
         }
+        previewRadioStationUseCase.close()
     }
 
     fun movePlaylistEntry(playlist: M3uPlaylist, entryIndex: Int, offset: Int) {
@@ -1048,6 +1064,7 @@ class HomeViewModelFactory(
     private val saveRadioStation: SaveRadioStationUseCase,
     private val updateStreamMetadata: UpdateStreamMetadataUseCase,
     private val startPlayback: StartPlaybackUseCase,
+    private val previewRadioStation: PreviewRadioStationUseCase,
     private val playlistStore: PlaylistStore? = null,
     private val artworkExtractor: EmbeddedArtworkExtractor? = null,
     private val artworkCache: ArtworkDiskCache? = null,
@@ -1070,6 +1087,7 @@ class HomeViewModelFactory(
             saveRadioStation,
             updateStreamMetadata,
             startPlayback,
+            previewRadioStation,
             playlistStore,
             artworkExtractor,
             artworkCache,

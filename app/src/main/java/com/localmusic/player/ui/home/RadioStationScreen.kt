@@ -1,17 +1,24 @@
 package com.localmusic.player.ui.home
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -27,8 +34,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -40,11 +52,25 @@ internal fun RadioStationScreen(
     onBack: () -> Unit,
     onQueryChange: (String) -> Unit,
     onSearch: () -> Unit,
-    onPlay: (RadioStation) -> Unit,
-    onAddToPlaylist: (RadioStation, String) -> Unit,
+    previewStation: RadioStation?,
+    onPreview: (RadioStation) -> Unit,
+    onStopPreview: () -> Unit,
+    onAddToCurrentPlaylist: (RadioStation) -> Unit,
+    onAddToNewPlaylist: (RadioStation, String) -> Unit,
     onCreatePlaylist: (String) -> Unit
 ) {
-    var stationToAdd by remember { mutableStateOf<RadioStation?>(null) }
+    var stationToAddToNewPlaylist by remember { mutableStateOf<RadioStation?>(null) }
+    var searchFieldValue by remember { mutableStateOf(TextFieldValue(uiState.radioSearchQuery)) }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    fun submitSearch() {
+        keyboardController?.hide()
+        onSearch()
+    }
+
+    if (searchFieldValue.text != uiState.radioSearchQuery) {
+        searchFieldValue = searchFieldValue.copy(text = uiState.radioSearchQuery)
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
         IconButton(onClick = onBack, modifier = Modifier.semantics { contentDescription = "Back" }) {
             Icon(imageVector = Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = null)
@@ -55,17 +81,49 @@ internal fun RadioStationScreen(
             modifier = Modifier.padding(horizontal = 16.dp)
         )
         OutlinedTextField(
-            value = uiState.radioSearchQuery,
-            onValueChange = onQueryChange,
+            value = searchFieldValue,
+            onValueChange = { value ->
+                searchFieldValue = value
+                onQueryChange(value.text)
+            },
             label = { Text("Search Radio Browser") },
             singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { submitSearch() }),
             trailingIcon = {
-                IconButton(onClick = onSearch, enabled = !uiState.isRadioSearchLoading) {
+                IconButton(onClick = ::submitSearch, enabled = !uiState.isRadioSearchLoading) {
                     Icon(imageVector = Icons.Outlined.Search, contentDescription = "Search")
                 }
             },
-            modifier = Modifier.fillMaxWidth().padding(16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .onFocusChanged { focusState ->
+                    if (focusState.isFocused) {
+                        searchFieldValue = searchFieldValue.copy(
+                            selection = TextRange(0, searchFieldValue.text.length)
+                        )
+                    }
+                }
         )
+        previewStation?.let { station ->
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = onStopPreview,
+                    modifier = Modifier.semantics { contentDescription = "Stop preview" }
+                ) {
+                    Icon(imageVector = Icons.Filled.Stop, contentDescription = null)
+                }
+                Text(
+                    text = station.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1
+                )
+            }
+        }
         when {
             uiState.isRadioSearchLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Searching stations...")
@@ -93,38 +151,60 @@ internal fun RadioStationScreen(
                 items(uiState.radioStations, key = RadioStation::id) { station ->
                     RadioStationRow(
                         station = station,
-                        onPlay = onPlay,
-                        onAddToPlaylist = { stationToAdd = station }
+                        onPreview = onPreview,
+                        onAddToCurrentPlaylist = { onAddToCurrentPlaylist(station) },
+                        onAddToNewPlaylist = { stationToAddToNewPlaylist = station }
                     )
                 }
             }
         }
     }
-    stationToAdd?.let { station ->
-        PlaylistChooserDialog(
-            playlists = uiState.importedPlaylists,
-            onDismiss = { stationToAdd = null },
-            onPlaylistSelected = { playlistName ->
-                onAddToPlaylist(station, playlistName)
-                stationToAdd = null
-            },
-            onCreatePlaylist = { playlistName ->
+    stationToAddToNewPlaylist?.let { station ->
+        NewPlaylistNameDialog(
+            onDismiss = { stationToAddToNewPlaylist = null },
+            onConfirm = { playlistName ->
                 onCreatePlaylist(playlistName)
-                onAddToPlaylist(station, playlistName)
-                stationToAdd = null
+                onAddToNewPlaylist(station, playlistName)
+                stationToAddToNewPlaylist = null
             }
         )
     }
 }
 
 @Composable
+private fun NewPlaylistNameDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    var playlistName by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add to new Playlist") },
+        text = {
+            OutlinedTextField(
+                value = playlistName,
+                onValueChange = { playlistName = it },
+                singleLine = true,
+                label = { Text("Playlist name") }
+            )
+        },
+        dismissButton = { Button(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = {
+            Button(onClick = { onConfirm(playlistName) }, enabled = playlistName.isNotBlank()) {
+                Text("Add")
+            }
+        }
+    )
+}
+
+@Composable
 private fun RadioStationRow(
     station: RadioStation,
-    onPlay: (RadioStation) -> Unit,
-    onAddToPlaylist: () -> Unit
+    onPreview: (RadioStation) -> Unit,
+    onAddToCurrentPlaylist: () -> Unit,
+    onAddToNewPlaylist: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
     ListItem(
+        modifier = Modifier.clickable { onPreview(station) },
         leadingContent = {
             AsyncImage(
                 model = station.faviconUrl,
@@ -145,17 +225,17 @@ private fun RadioStationRow(
                 }
                 DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                     DropdownMenuItem(
-                        text = { Text("Play") },
-                        onClick = {
-                            showMenu = false
-                            onPlay(station)
-                        }
-                    )
-                    DropdownMenuItem(
                         text = { Text("Add to Playlist") },
                         onClick = {
                             showMenu = false
-                            onAddToPlaylist()
+                            onAddToCurrentPlaylist()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Add to new Playlist") },
+                        onClick = {
+                            showMenu = false
+                            onAddToNewPlaylist()
                         }
                     )
                 }

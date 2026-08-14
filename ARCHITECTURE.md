@@ -49,6 +49,8 @@ Radio Browser search follows the same boundary: `RadioStationDirectory` is imple
 
 Radio Browser favicons are persisted as optional stream-song artwork URIs. They are projected into the existing artwork state used by playlist rows, the compact player, and Now Playing, while local artwork extraction remains responsible for local-file songs.
 
+Radio Browser search is scoped to the playlist editor that opened it. A result can be appended directly to that playlist or used to create a new playlist. Tapping a result pauses the shared playback session and starts a separate one-item preview player; the preview state exposes its station title and explicit stop action without replacing the main Media3 queue.
+
 Media3 uses a bounded load-error policy for HTTP(S) stream reads, retrying transient connection failures after one, two, and four seconds. Local media retains Media3's default error handling. When the remote retry limit is exhausted, the normal terminal playback error remains available to the `PlaybackController` and UI.
 
 Library startup defaults are isolated in `LibraryPreferences`, another small SharedPreferences-backed boundary. It persists explicit Settings choices for the default library filter and sort order, restores them when `HomeViewModel` is created, and falls back to the built-in values when stored enum data is missing or invalid.

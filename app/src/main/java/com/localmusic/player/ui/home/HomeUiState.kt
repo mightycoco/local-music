@@ -36,6 +36,7 @@ data class HomeUiState(
     val isRadioSearchLoading: Boolean = false,
     val radioSearchError: String? = null,
     val hasSearchedRadioStations: Boolean = false,
+    val previewRadioStation: RadioStation? = null,
     val folderSourceUris: List<String> = emptyList(),
     val artworkCacheSizeBytes: Long = 0L,
     val importedPlaylists: List<M3uPlaylist> = emptyList(),

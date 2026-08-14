@@ -308,7 +308,7 @@ fun HomeRoute(viewModel: HomeViewModel, uiState: HomeUiState) {
         onSongSelected = viewModel::playSong,
         onFavouriteSongSelected = viewModel::playFavourites,
         onQueueSongSelected = viewModel::playQueuedSong,
-        onFavouriteToggle = viewModel::toggleFavourite,
+        onFavouriteToggle = viewModel::toggleFavouprite,
         onDeletePlaylist = viewModel::deletePlaylist,
         onCreatePlaylist = viewModel::createPlaylist,
         onRenamePlaylist = viewModel::renamePlaylist,
@@ -325,7 +325,8 @@ fun HomeRoute(viewModel: HomeViewModel, uiState: HomeUiState) {
         onOpenRadioBrowser = viewModel::openRadioBrowser,
         onRadioSearchQueryChange = viewModel::updateRadioSearchQuery,
         onSearchRadioStations = viewModel::searchRadioStations,
-        onPlayRadioStation = viewModel::playRadioStation,
+        onPreviewRadioStation = viewModel::previewRadioStation,
+        onStopRadioPreview = viewModel::stopRadioPreview,
         onAddRadioStationToPlaylist = viewModel::addRadioStationToPlaylist,
         onAddSongToPlaylist = viewModel::addSongToPlaylist,
         onAddSongToQueue = viewModel::addSongToQueue,
@@ -401,7 +402,8 @@ fun HomeScreen(
     onOpenRadioBrowser: () -> Unit,
     onRadioSearchQueryChange: (String) -> Unit,
     onSearchRadioStations: () -> Unit,
-    onPlayRadioStation: (RadioStation) -> Unit,
+    onPreviewRadioStation: (RadioStation) -> Unit,
+    onStopRadioPreview: () -> Unit,
     onAddRadioStationToPlaylist: (RadioStation, String) -> Unit,
     onAddSongToPlaylist: (Song, String) -> Unit,
     onAddSongToQueue: (Song) -> Unit,
@@ -439,6 +441,9 @@ fun HomeScreen(
     }
 
     BackHandler(enabled = uiState.selectedScreen != HomeScreenDestination.Home) {
+        if (uiState.selectedScreen == HomeScreenDestination.RadioBrowser) {
+            onStopRadioPreview()
+        }
         onScreenSelected(
             if (uiState.selectedScreen == HomeScreenDestination.PlaylistEditor ||
                 uiState.selectedScreen == HomeScreenDestination.RadioBrowser
@@ -734,12 +739,20 @@ fun HomeScreen(
                             RadioStationScreen(
                                 uiState = uiState,
                                 onBack = {
+                                    onStopRadioPreview()
                                     onScreenSelected(HomeScreenDestination.PlaylistEditor)
                                 },
                                 onQueryChange = onRadioSearchQueryChange,
                                 onSearch = onSearchRadioStations,
-                                onPlay = onPlayRadioStation,
-                                onAddToPlaylist = onAddRadioStationToPlaylist,
+                                previewStation = uiState.previewRadioStation,
+                                onPreview = onPreviewRadioStation,
+                                onStopPreview = onStopRadioPreview,
+                                onAddToCurrentPlaylist = { station ->
+                                    playlistEditorName?.let { playlistName ->
+                                        onAddRadioStationToPlaylist(station, playlistName)
+                                    }
+                                },
+                                onAddToNewPlaylist = onAddRadioStationToPlaylist,
                                 onCreatePlaylist = onCreatePlaylist
                             )
                     }

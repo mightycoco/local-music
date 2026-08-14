@@ -87,3 +87,4 @@
 - [ ] Continue the class/function-size, KDoc coverage, duplicate UI-flow, and Mermaid documentation review. The home shell now delegates library, playlist, settings, Now Playing, shared song-list, artwork/visualizer, and mini-player UI to focused Compose files.
 - [x] Select and integrate MusicBrainz and Cover Art Archive with rate-limit handling, attribution, privacy disclosure, error handling, and cache behavior. It must never supply audio playback or a cloud music library.
 - [x] Add bounded automatic reconnection for transient HTTP(S) live-stream read failures while preserving terminal playback errors after retries are exhausted.
+- [x] Add playlist-scoped Radio Browser actions and a replaceable station preview player that pauses main playback.
