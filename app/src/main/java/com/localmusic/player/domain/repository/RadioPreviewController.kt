@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 /** Controls the short-lived radio preview without changing the main playback queue. */
 interface RadioPreviewController {
     val previewStation: StateFlow<RadioStation?>
+    val previewError: StateFlow<String?>
 
     fun play(station: RadioStation)
     fun stop()

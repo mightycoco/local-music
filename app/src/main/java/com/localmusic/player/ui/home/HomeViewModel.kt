@@ -215,6 +215,9 @@ class HomeViewModel(
             .combine(previewRadioStationUseCase.previewStation) { state, previewStation ->
                 state.copy(previewRadioStation = previewStation)
             }
+            .combine(previewRadioStationUseCase.previewError) { state, previewError ->
+                state.copy(radioPreviewError = previewError)
+            }
 
     private val playbackModeState =
         combine(isShuffleEnabled, repeatMode) { shuffleEnabled, selectedRepeatMode ->
@@ -268,7 +271,8 @@ class HomeViewModel(
                 isRadioSearchLoading = radio.isRadioSearchLoading,
                 radioSearchError = radio.radioSearchError,
                 hasSearchedRadioStations = radio.hasSearchedRadioStations,
-                previewRadioStation = radio.previewRadioStation
+                previewRadioStation = radio.previewRadioStation,
+                radioPreviewError = radio.radioPreviewError
             )
         }
 

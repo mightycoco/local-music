@@ -124,6 +124,13 @@ internal fun RadioStationScreen(
                 )
             }
         }
+        uiState.radioPreviewError?.let { error ->
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+        }
         when {
             uiState.isRadioSearchLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Searching stations...")

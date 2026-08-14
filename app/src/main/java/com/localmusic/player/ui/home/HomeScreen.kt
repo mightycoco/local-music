@@ -308,7 +308,7 @@ fun HomeRoute(viewModel: HomeViewModel, uiState: HomeUiState) {
         onSongSelected = viewModel::playSong,
         onFavouriteSongSelected = viewModel::playFavourites,
         onQueueSongSelected = viewModel::playQueuedSong,
-        onFavouriteToggle = viewModel::toggleFavouprite,
+        onFavouriteToggle = viewModel::toggleFavourite,
         onDeletePlaylist = viewModel::deletePlaylist,
         onCreatePlaylist = viewModel::createPlaylist,
         onRenamePlaylist = viewModel::renamePlaylist,

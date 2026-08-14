@@ -5,6 +5,7 @@ import com.localmusic.player.domain.repository.RadioPreviewController
 
 class PreviewRadioStationUseCase(private val previewController: RadioPreviewController) {
     val previewStation = previewController.previewStation
+    val previewError = previewController.previewError
 
     fun play(station: RadioStation) = previewController.play(station)
 
