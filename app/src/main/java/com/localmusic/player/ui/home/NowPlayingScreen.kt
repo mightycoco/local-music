@@ -447,9 +447,9 @@ private fun CurrentPlaylist(
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
-    val currentSongIndex = songs.indexOfFirst { it.id == nowPlayingSongId }
 
     LaunchedEffect(nowPlayingSongId, songs) {
+        val currentSongIndex = songs.indexOfFirst { it.id == nowPlayingSongId }
         if (currentSongIndex >= 0) listState.scrollToItem(currentSongIndex)
     }
 

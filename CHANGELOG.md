@@ -16,7 +16,7 @@
 - Disabled app-data backup, isolated debug signing from release credentials, secured SVG XML parsing, and enabled R8 for release builds.
 - Gave Car Mode a dedicated compact-player layout with 80 dp full-width transport controls, larger artwork and metadata, and progress-bar clearance without showing a persistent heading.
 - Hid the system status bar while the compact player is visible and restored it when leaving the compact-player layout.
-- Normalized the Now Playing queue display so the current song is first and duplicate items are hidden.
+- Preserved the complete Now Playing playlist order, removed duplicate queue items, and scrolled the current song into view when entering the screen.
 - Made Now Playing queue items selectable and added favourite toggles to their rows.
 - Starting a song from Favourites now replaces the active and persisted Queue playlist with all starred songs.
 - Added an overlaid favourite toggle to the bottom-right of the Now Playing cover artwork.
