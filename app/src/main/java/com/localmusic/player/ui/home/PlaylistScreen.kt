@@ -322,7 +322,7 @@ internal fun PlaylistEditorContent(
                 contentPadding = PaddingValues(vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(playlistRowSpacing)
             ) {
-                items(playlist.entries.size, key = { it }) { index ->
+                items(playlist.entries.size, key = { index -> playlist.entries[index].uri }) { index ->
                     val entry = playlist.entries[index]
                     var previousIndex by remember { mutableIntStateOf(index) }
                     val isDragged = entry.uri == draggedEntryUri
