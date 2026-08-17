@@ -6,11 +6,15 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,6 +29,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.dp
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.ui.theme.UiAnimationTimings
@@ -54,6 +59,7 @@ internal fun AnimatedNowPlayingArtwork(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onFavouriteToggle: () -> Unit,
+    onShowMoreActions: () -> Unit,
     onVisualizerEnabledChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -176,23 +182,37 @@ internal fun AnimatedNowPlayingArtwork(
                     rotationZ = incomingRotationStart * (1f - progress)
                 }
         )
-        IconButton(
-            onClick = onFavouriteToggle,
+        Row(
             modifier =
-                Modifier.align(Alignment.BottomEnd)
+                Modifier.align(Alignment.TopEnd)
                     .padding(8.dp)
-                    .semantics {
-                        contentDescription =
-                            if (song.isFavourite) "Remove from favourites"
-                            else "Add to favourites"
-                    }
+                    .zIndex(1f)
+                    .background(
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
+                        shape = MaterialTheme.shapes.medium
+                    )
         ) {
-            Icon(
-                imageVector =
-                    if (song.isFavourite) Icons.Filled.Favorite
-                    else Icons.Outlined.FavoriteBorder,
-                contentDescription = null
-            )
+            IconButton(
+                onClick = onFavouriteToggle,
+                modifier = Modifier.semantics {
+                    contentDescription =
+                        if (song.isFavourite) "Remove from favourites"
+                        else "Add to favourites"
+                }
+            ) {
+                Icon(
+                    imageVector =
+                        if (song.isFavourite) Icons.Filled.Favorite
+                        else Icons.Outlined.FavoriteBorder,
+                    contentDescription = null
+                )
+            }
+            IconButton(
+                onClick = onShowMoreActions,
+                modifier = Modifier.semantics { contentDescription = "More actions" }
+            ) {
+                Icon(imageVector = Icons.Outlined.MoreVert, contentDescription = null)
+            }
         }
     }
 }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,7 +23,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.QueueMusic
@@ -72,8 +72,7 @@ internal fun NowPlayingContent(
     onCreatePlaylist: (String) -> Unit,
     onAddToPlaylist: (String) -> Unit,
     onAddToQueue: () -> Unit,
-    onShowQueue: () -> Unit,
-    onReturnHome: () -> Unit
+    onShowQueue: () -> Unit
 ) {
     val song = uiState.nowPlayingSong
     val durationMillis =
@@ -95,6 +94,7 @@ internal fun NowPlayingContent(
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         ArtworkBackdrop(artworkUri = uiState.artworkBySongId[song.id])
         val isWideLayout = maxWidth > maxHeight
+        val portraitArtworkMaxHeight = maxHeight * 0.42f
         if (isWideLayout) {
             Row(
                 modifier = Modifier.fillMaxSize().padding(vertical = 8.dp),
@@ -104,10 +104,6 @@ internal fun NowPlayingContent(
                     modifier = Modifier.weight(0.45f).fillMaxHeight(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    NowPlayingHeader(
-                        onReturnHome = onReturnHome,
-                        onShowMoreActions = { showMoreActions = true }
-                    )
                     AnimatedNowPlayingArtwork(
                         song = song,
                         artworkUri = uiState.artworkBySongId[song.id],
@@ -124,6 +120,7 @@ internal fun NowPlayingContent(
                             onNext()
                         },
                         onFavouriteToggle = { onFavouriteToggle(song) },
+                        onShowMoreActions = { showMoreActions = true },
                         onVisualizerEnabledChange = onVisualizerEnabledChange,
                         modifier =
                             Modifier.weight(1f)
@@ -168,10 +165,6 @@ internal fun NowPlayingContent(
                 modifier = Modifier.fillMaxSize().padding(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                NowPlayingHeader(
-                    onReturnHome = onReturnHome,
-                    onShowMoreActions = { showMoreActions = true }
-                )
                 AnimatedNowPlayingArtwork(
                     song = song,
                     artworkUri = uiState.artworkBySongId[song.id],
@@ -188,11 +181,12 @@ internal fun NowPlayingContent(
                         onNext()
                     },
                     onFavouriteToggle = { onFavouriteToggle(song) },
+                    onShowMoreActions = { showMoreActions = true },
                     onVisualizerEnabledChange = onVisualizerEnabledChange,
                     modifier =
                         Modifier.fillMaxWidth()
-                            .weight(1f, fill = false)
                             .aspectRatio(1f)
+                            .heightIn(max = portraitArtworkMaxHeight)
                             .clip(MaterialTheme.shapes.large)
                 )
                 NowPlayingDetailsAndControls(
@@ -353,23 +347,6 @@ internal fun NowPlayingContent(
                 showCreatePlaylistDialog = false
             }
         )
-    }
-}
-
-@Composable
-private fun NowPlayingHeader(onReturnHome: () -> Unit, onShowMoreActions: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        IconButton(onClick = onReturnHome) {
-            Icon(imageVector = Icons.Outlined.Home, contentDescription = "Home")
-        }
-        Text(
-            text = "NOW PLAYING",
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold
-        )
-        IconButton(onClick = onShowMoreActions) {
-            Icon(imageVector = Icons.Outlined.MoreVert, contentDescription = "More actions")
-        }
     }
 }
 

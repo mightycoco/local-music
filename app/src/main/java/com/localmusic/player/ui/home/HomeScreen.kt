@@ -648,9 +648,6 @@ fun HomeScreen(
                                         M3uPlaylist.QUEUE_NAME,
                                         HomeScreenDestination.NowPlaying
                                     )
-                                },
-                                onReturnHome = {
-                                    onScreenSelected(HomeScreenDestination.Home)
                                 }
                             )
 
