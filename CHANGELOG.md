@@ -3,6 +3,7 @@
 ## 0.1.0 - Unreleased
 
 - Added Radio Browser station search from the playlist editor with favicon-backed result rows.
+- Added a playlist-list play action that appends new playable entries to the active Queue.
 - Added playlist-scoped Radio Browser actions and a separate, replaceable station preview player with an in-search stop control.
 - Persisted Radio Browser favicons with stream songs and display them in playlist rows, the compact player, and Now Playing.
 - Allowed supported HTTP radio streams and surfaced Media3 playback failures in the app UI.

@@ -824,6 +824,28 @@ class HomeViewModel(
         }
     }
 
+    fun enqueuePlaylist(playlist: M3uPlaylist) {
+        val queue =
+            importedPlaylists.value.firstOrNull { it.name == M3uPlaylist.QUEUE_NAME } ?: return
+        val songsToEnqueue =
+            resolvePlaylistEntriesToEnqueue(
+                queueEntries = queue.entries,
+                playlistEntries = playlist.entries,
+                songsByUri = uiState.value.librarySongs.associateBy(Song::uri)
+            )
+        if (songsToEnqueue.isEmpty()) {
+            refreshError.value = "No new playable songs found in ${playlist.name}"
+            return
+        }
+
+        savePlaylist(
+            queue.copy(entries = queue.entries + songsToEnqueue.map(Song::toM3uEntry))
+        )
+        runCatching { songsToEnqueue.forEach(startPlayback::enqueue) }.onFailure { error ->
+            refreshError.value = error.message ?: "Queue update failed"
+        }
+    }
+
     fun clearQueue() {
         savePlaylist(M3uPlaylist(name = M3uPlaylist.QUEUE_NAME, entries = emptyList()))
         runCatching { startPlayback.clearQueue() }.onFailure { error ->
@@ -1054,6 +1076,17 @@ internal fun resolvePlaybackQueue(
     songsById: Map<String, Song>
 ): List<Song> {
     return queueSongIds.distinct().mapNotNull(songsById::get)
+}
+
+internal fun resolvePlaylistEntriesToEnqueue(
+    queueEntries: List<M3uPlaylistEntry>,
+    playlistEntries: List<M3uPlaylistEntry>,
+    songsByUri: Map<String, Song>
+): List<Song> {
+    val queuedUris = queueEntries.mapTo(mutableSetOf()) { it.uri }
+    return playlistEntries.mapNotNull { entry -> songsByUri[entry.uri] }.filter { song ->
+        queuedUris.add(song.uri)
+    }
 }
 
 private const val ARTWORK_PREFETCH_LIMIT = 64

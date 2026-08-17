@@ -72,6 +72,7 @@ internal fun PlaylistContent(
     onRenamePlaylist: (M3uPlaylist, String) -> Unit,
     onDuplicatePlaylist: (M3uPlaylist, String) -> Unit,
     onPlayPlaylist: (M3uPlaylist) -> Unit,
+    onEnqueuePlaylist: (M3uPlaylist) -> Unit,
     onImportPlaylist: () -> Unit,
     onExportLibrary: () -> Unit,
     onExportPlaylist: (M3uPlaylist) -> Unit,
@@ -120,62 +121,77 @@ internal fun PlaylistContent(
                         headlineContent = { Text(playlist.name) },
                         supportingContent = { Text("${playlist.entries.size} entries") },
                         trailingContent = {
-                            Box {
-                                IconButton(onClick = { showActions = true }) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(
+                                    onClick = { onEnqueuePlaylist(playlist) },
+                                    enabled = playlist.entries.isNotEmpty() &&
+                                            playlist.name != M3uPlaylist.QUEUE_NAME,
+                                    modifier = Modifier.semantics {
+                                        contentDescription = "Add playlist to queue"
+                                    }
+                                ) {
                                     Icon(
-                                        imageVector = Icons.Outlined.MoreVert,
-                                        contentDescription = "Playlist actions"
+                                        imageVector = Icons.Filled.PlayArrow,
+                                        contentDescription = null
                                     )
                                 }
-                                DropdownMenu(
-                                    expanded = showActions,
-                                    onDismissRequest = { showActions = false }
-                                ) {
-                                    if (playlist.name == M3uPlaylist.QUEUE_NAME) {
-                                        DropdownMenuItem(
-                                            text = { Text("Clear") },
-                                            onClick = {
-                                                onClearQueue()
-                                                showActions = false
-                                            }
+                                Box {
+                                    IconButton(onClick = { showActions = true }) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.MoreVert,
+                                            contentDescription = "Playlist actions"
                                         )
-                                    } else {
-                                        DropdownMenuItem(
-                                            text = { Text("Play") },
-                                            enabled = playlist.entries.isNotEmpty(),
-                                            onClick = {
-                                                onPlayPlaylist(playlist)
-                                                showActions = false
-                                            }
-                                        )
-                                        DropdownMenuItem(
-                                            text = { Text("Rename") },
-                                            onClick = {
-                                                playlistToRename = playlist
-                                                showActions = false
-                                            }
-                                        )
-                                        DropdownMenuItem(
-                                            text = { Text("Duplicate") },
-                                            onClick = {
-                                                playlistToDuplicate = playlist
-                                                showActions = false
-                                            }
-                                        )
-                                        DropdownMenuItem(
-                                            text = { Text("Export") },
-                                            onClick = {
-                                                onExportPlaylist(playlist)
-                                                showActions = false
-                                            }
-                                        )
-                                        DropdownMenuItem(
-                                            text = { Text("Delete") },
-                                            onClick = {
-                                                onDeletePlaylist(playlist)
-                                                showActions = false
-                                            }
-                                        )
+                                    }
+                                    DropdownMenu(
+                                        expanded = showActions,
+                                        onDismissRequest = { showActions = false }
+                                    ) {
+                                        if (playlist.name == M3uPlaylist.QUEUE_NAME) {
+                                            DropdownMenuItem(
+                                                text = { Text("Clear") },
+                                                onClick = {
+                                                    onClearQueue()
+                                                    showActions = false
+                                                }
+                                            )
+                                        } else {
+                                            DropdownMenuItem(
+                                                text = { Text("Play") },
+                                                enabled = playlist.entries.isNotEmpty(),
+                                                onClick = {
+                                                    onPlayPlaylist(playlist)
+                                                    showActions = false
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Rename") },
+                                                onClick = {
+                                                    playlistToRename = playlist
+                                                    showActions = false
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Duplicate") },
+                                                onClick = {
+                                                    playlistToDuplicate = playlist
+                                                    showActions = false
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Export") },
+                                                onClick = {
+                                                    onExportPlaylist(playlist)
+                                                    showActions = false
+                                                }
+                                            )
+                                            DropdownMenuItem(
+                                                text = { Text("Delete") },
+                                                onClick = {
+                                                    onDeletePlaylist(playlist)
+                                                    showActions = false
+                                                }
+                                            )
+                                        }
                                     }
                                 }
                             }
