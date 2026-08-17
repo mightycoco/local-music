@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,6 +31,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.dp
 import com.localmusic.player.domain.model.Song
@@ -182,6 +185,32 @@ internal fun AnimatedNowPlayingArtwork(
                     rotationZ = incomingRotationStart * (1f - progress)
                 }
         )
+        Column(
+            modifier =
+                Modifier.align(Alignment.BottomStart)
+                    .padding(12.dp)
+                    .zIndex(1f)
+                    .background(
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
+                        shape = MaterialTheme.shapes.medium
+                    )
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+        ) {
+            Text(
+                text = song.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1
+            )
+            Text(
+                text =
+                    listOf(song.artist, song.album)
+                        .filter { it.isNotBlank() }
+                        .joinToString(" • "),
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1
+            )
+        }
         Row(
             modifier =
                 Modifier.align(Alignment.TopEnd)

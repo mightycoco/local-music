@@ -53,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.localmusic.player.domain.model.Song
+import com.localmusic.player.domain.model.SongSource
 import com.localmusic.player.playlist.M3uPlaylist
 import com.localmusic.player.domain.repository.RepeatMode
 
@@ -123,19 +124,13 @@ internal fun NowPlayingContent(
                         onShowMoreActions = { showMoreActions = true },
                         onVisualizerEnabledChange = onVisualizerEnabledChange,
                         modifier =
-                            Modifier.weight(1f)
-                                .fillMaxWidth()
+                            Modifier.fillMaxWidth()
                                 .aspectRatio(1f)
                                 .clip(MaterialTheme.shapes.large)
                     )
-                }
-                Column(
-                    modifier = Modifier.weight(0.55f).fillMaxHeight(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    NowPlayingDetailsAndControls(
+                    PlaybackControls(
                         uiState = uiState,
-                        song = song,
+                        isSeekEnabled = song.source != SongSource.STREAM,
                         elapsedMillis = elapsedMillis,
                         remainingMillis = remainingMillis,
                         onProgressChange = onProgressChange,
@@ -149,6 +144,11 @@ internal fun NowPlayingContent(
                             onNext()
                         }
                     )
+                }
+                Column(
+                    modifier = Modifier.weight(0.55f).fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     CurrentPlaylist(
                         songs = uiState.playbackQueue,
                         artworkBySongId = uiState.artworkBySongId,
@@ -189,9 +189,9 @@ internal fun NowPlayingContent(
                             .heightIn(max = portraitArtworkMaxHeight)
                             .clip(MaterialTheme.shapes.large)
                 )
-                NowPlayingDetailsAndControls(
+                PlaybackControls(
                     uiState = uiState,
-                    song = song,
+                    isSeekEnabled = song.source != SongSource.STREAM,
                     elapsedMillis = elapsedMillis,
                     remainingMillis = remainingMillis,
                     onProgressChange = onProgressChange,
@@ -351,9 +351,9 @@ internal fun NowPlayingContent(
 }
 
 @Composable
-private fun NowPlayingDetailsAndControls(
+private fun PlaybackControls(
     uiState: HomeUiState,
-    song: Song,
+    isSeekEnabled: Boolean,
     elapsedMillis: Long,
     remainingMillis: Long,
     onProgressChange: (Float) -> Unit,
@@ -366,26 +366,11 @@ private fun NowPlayingDetailsAndControls(
     LaunchedEffect(uiState.playbackProgress) { pendingProgress = uiState.playbackProgress }
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = song.title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1
-            )
-            Text(
-                text =
-                    listOf(song.artist, song.album)
-                        .filter { it.isNotBlank() }
-                        .joinToString(" • "),
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1
-            )
-        }
         Slider(
             value = pendingProgress.coerceIn(0f, 1f),
             onValueChange = { pendingProgress = it },
             onValueChangeFinished = { onProgressChange(pendingProgress) },
+            enabled = isSeekEnabled,
             modifier = Modifier.fillMaxWidth()
         )
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -431,11 +416,6 @@ private fun CurrentPlaylist(
     }
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            text = "Current playlist",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
         if (songs.isEmpty()) {
             Text("The active playlist is empty.", style = MaterialTheme.typography.bodyMedium)
         } else {

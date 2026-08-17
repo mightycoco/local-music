@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.localmusic.player.domain.model.Song
+import com.localmusic.player.domain.model.SongSource
 
 @Composable
 internal fun MiniPlayer(
@@ -104,12 +105,14 @@ internal fun MiniPlayer(
                 onNext = onNext
             )
         }
-        Slider(
-            value = pendingProgress.coerceIn(0f, 1f),
-            onValueChange = { pendingProgress = it },
-            onValueChangeFinished = { onProgressChange(pendingProgress) },
-            modifier = Modifier.fillMaxWidth().padding(bottom = contentSpacing)
-        )
+        if (song.source != SongSource.STREAM) {
+            Slider(
+                value = pendingProgress.coerceIn(0f, 1f),
+                onValueChange = { pendingProgress = it },
+                onValueChangeFinished = { onProgressChange(pendingProgress) },
+                modifier = Modifier.fillMaxWidth().padding(bottom = contentSpacing)
+            )
+        }
     }
 }
 
