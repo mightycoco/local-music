@@ -62,25 +62,16 @@ internal fun ArtworkThumbnail(
     allowVisualizerToggle: Boolean = false,
     onVisualizerEnabledChange: (Boolean) -> Unit = {}
 ) {
-    if (artworkUri.isNetworkUri()) {
-        AsyncImage(
-            model = artworkUri,
-            contentDescription = null,
-            modifier = modifier,
-            contentScale = ContentScale.Crop
-        )
-        return
-    }
-
     val context = LocalContext.current
+    val isNetworkArtwork = artworkUri.isNetworkUri()
     var bitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
-    var isArtworkLoading by remember { mutableStateOf(artworkUri != null) }
+    var isArtworkLoading by remember { mutableStateOf(artworkUri != null && !isNetworkArtwork) }
     var showVisualizer by remember { mutableStateOf(preferVisualizer || artworkUri == null) }
 
-    LaunchedEffect(artworkUri) {
-        isArtworkLoading = artworkUri != null
+    LaunchedEffect(artworkUri, isNetworkArtwork) {
+        isArtworkLoading = artworkUri != null && !isNetworkArtwork
         val decodedBitmap =
-            artworkUri?.let { uri ->
+            artworkUri?.takeUnless { isNetworkArtwork }?.let { uri ->
                 withContext(Dispatchers.IO) {
                     runCatching {
                         context.contentResolver.openInputStream(Uri.parse(uri))?.use { input ->
@@ -90,7 +81,7 @@ internal fun ArtworkThumbnail(
                 }
             }
         bitmap = decodedBitmap
-        showVisualizer = preferVisualizer || decodedBitmap == null
+        showVisualizer = preferVisualizer || artworkUri == null || (!isNetworkArtwork && decodedBitmap == null)
         isArtworkLoading = false
     }
 
@@ -111,7 +102,7 @@ internal fun ArtworkThumbnail(
             Modifier
         }
     AnimatedContent(
-        targetState = canShowVisualizer to thumbnail,
+        targetState = Triple(canShowVisualizer, isNetworkArtwork, thumbnail),
         modifier = modifier.then(toggleModifier),
         transitionSpec = {
             (fadeIn(animationSpec = tween(UiAnimationTimings.ARTWORK_VISUALIZER_ENTER_MILLIS)) +
@@ -127,13 +118,20 @@ internal fun ArtworkThumbnail(
                 )
         },
         label = "artworkVisualizerToggle"
-    ) { (showVisualizer, displayedBitmap) ->
+    ) { (showVisualizer, showNetworkArtwork, displayedBitmap) ->
         if (showVisualizer) {
             NoArtworkVisualizer(
                 levels = visualizerLevels,
                 isPlaying = isPlaying,
                 placeholderGlyph = placeholderGlyph,
                 modifier = Modifier.fillMaxSize()
+            )
+        } else if (showNetworkArtwork) {
+            AsyncImage(
+                model = artworkUri,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
             )
         } else if (displayedBitmap != null) {
             Image(

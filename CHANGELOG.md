@@ -2,6 +2,7 @@
 
 ## 0.1.0 - Unreleased
 
+- Fixed Now Playing so HTTP(S) radio artwork can be switched to and from the visualizer like local cover artwork.
 - Added a persisted, default-enabled Settings option that keeps the display awake while charging or connected to detected Bluetooth car audio.
 - Added Radio Browser station search from the playlist editor with favicon-backed result rows.
 - Added a playlist-list play action that appends new playable entries to the active Queue.
