@@ -1,6 +1,8 @@
 package com.localmusic.player.ui.home
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -10,7 +12,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -42,6 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -84,6 +87,22 @@ internal fun NowPlayingContent(
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
     var showMoreActions by remember { mutableStateOf(false) }
     var isPreviousCoverTransition by remember { mutableStateOf(false) }
+    val playlistState = rememberLazyListState()
+    val isPlaylistDragged by playlistState.interactionSource.collectIsDraggedAsState()
+    val isPlaylistAtTop by remember {
+        derivedStateOf {
+            playlistState.firstVisibleItemIndex == 0 &&
+                    playlistState.firstVisibleItemScrollOffset == 0
+        }
+    }
+    var hasUserScrolledPlaylist by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isPlaylistAtTop, isPlaylistDragged) {
+        when {
+            isPlaylistAtTop -> hasUserScrolledPlaylist = false
+            isPlaylistDragged -> hasUserScrolledPlaylist = true
+        }
+    }
     if (song == null) {
         EmptyState(
             title = "Nothing playing",
@@ -96,6 +115,11 @@ internal fun NowPlayingContent(
         ArtworkBackdrop(artworkUri = uiState.artworkBySongId[song.id])
         val isWideLayout = maxWidth > maxHeight
         val portraitArtworkMaxHeight = maxHeight * 0.42f
+        val portraitArtworkHeight by animateDpAsState(
+            targetValue =
+                if (hasUserScrolledPlaylist) portraitArtworkMaxHeight / 2 else portraitArtworkMaxHeight,
+            label = "portraitArtworkHeight"
+        )
         if (isWideLayout) {
             Row(
                 modifier = Modifier.fillMaxSize().padding(vertical = 8.dp),
@@ -156,6 +180,7 @@ internal fun NowPlayingContent(
                         isPlaying = uiState.isPlaying,
                         onSongSelected = onQueueSongSelected,
                         onFavouriteToggle = onFavouriteToggle,
+                        listState = playlistState,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -185,8 +210,7 @@ internal fun NowPlayingContent(
                     onVisualizerEnabledChange = onVisualizerEnabledChange,
                     modifier =
                         Modifier.fillMaxWidth()
-                            .aspectRatio(1f)
-                            .heightIn(max = portraitArtworkMaxHeight)
+                            .height(portraitArtworkHeight)
                             .clip(MaterialTheme.shapes.large)
                 )
                 PlaybackControls(
@@ -212,6 +236,7 @@ internal fun NowPlayingContent(
                     isPlaying = uiState.isPlaying,
                     onSongSelected = onQueueSongSelected,
                     onFavouriteToggle = onFavouriteToggle,
+                    listState = playlistState,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -406,10 +431,9 @@ private fun CurrentPlaylist(
     isPlaying: Boolean,
     onSongSelected: (Song) -> Unit,
     onFavouriteToggle: (Song) -> Unit,
+    listState: androidx.compose.foundation.lazy.LazyListState,
     modifier: Modifier = Modifier
 ) {
-    val listState = rememberLazyListState()
-
     LaunchedEffect(nowPlayingSongId, songs) {
         val currentSongIndex = songs.indexOfFirst { it.id == nowPlayingSongId }
         if (currentSongIndex >= 0) listState.scrollToItem(currentSongIndex)
