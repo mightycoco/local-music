@@ -29,6 +29,7 @@
 - [x] Bluetooth car device detection foundation.
 - [x] Adaptive layouts for tablets and foldables.
 - [x] Settings import/export and licenses foundation.
+- [x] Keep display on, when charging or connected to car via bluetooth. Make this always-on configurable and persist the setting
 
 ## Follow-up Backlog
 
@@ -77,15 +78,13 @@
 	- [x] Show the application version and open-source license notices in Settings.
 	- [x] Persist a manual Car Mode override alongside Bluetooth detection.
 	- [x] Update Car Mode when A2DP device connections change.
-- [ ] Add accessibility coverage: meaningful semantics, large-font testing, high-contrast behavior, keyboard navigation, and Compose UI tests.
-- [ ] Review the adaptive layouts on tablet, foldable, landscape, and square display configurations.
 	- [x] Keep Now Playing transport and seek controls accessible in short phone-landscape content using a two-pane layout and scrollable controls pane.
-- [ ] Prepare integration boundaries for notification controls, lock-screen controls, home-screen widgets, and Android Auto without implementing the surfaces yet.
+- [x] Prepare integration boundaries for notification controls, lock-screen controls, home-screen widgets, and Android Auto without implementing the surfaces yet.
 - [ ] Validate performance with a 50,000+ song library: pagination or bounded loading, indexed filtering/sorting, bounded artwork work, and measurable UI responsiveness.
 	- [x] Add indexed scan-generation reconciliation, one-pass facet counts, bounded artwork/document I/O, and release-only slider seeking.
-- [ ] Group the Home ViewModel and factory dependencies into typed feature-owned bundles once their ownership boundaries are stable; keep explicit composition and directional dependencies without a service locator.
-- [ ] Split `HomeUiState` into feature-owned immutable substates so destination screens receive narrower projections without duplicating derived state.
-- [ ] Continue the class/function-size, KDoc coverage, duplicate UI-flow, and Mermaid documentation review. The home shell now delegates library, playlist, settings, Now Playing, shared song-list, artwork/visualizer, and mini-player UI to focused Compose files.
+- [x] Group the Home ViewModel and factory dependencies into typed feature-owned bundles once their ownership boundaries are stable; keep explicit composition and directional dependencies without a service locator.
+- [x] Split `HomeUiState` into feature-owned immutable substates so destination screens receive narrower projections without duplicating derived state.
+- [x] Continue the class/function-size, KDoc coverage, duplicate UI-flow, and Mermaid documentation review. The home shell now delegates library, playlist, settings, Now Playing, shared song-list, artwork/visualizer, and mini-player UI to focused Compose files.
 - [x] Select and integrate MusicBrainz and Cover Art Archive with rate-limit handling, attribution, privacy disclosure, error handling, and cache behavior. It must never supply audio playback or a cloud music library.
 - [x] Add bounded automatic reconnection for transient HTTP(S) live-stream read failures while preserving terminal playback errors after retries are exhausted.
 - [x] Add playlist-scoped Radio Browser actions and a replaceable station preview player that pauses main playback.

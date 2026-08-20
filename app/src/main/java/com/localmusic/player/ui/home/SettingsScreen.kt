@@ -114,6 +114,20 @@ internal fun SettingsContent(
                 onCheckedChange = actions.preferences.setCarModeManuallyEnabled
             )
         }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = "Keep display on", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text =
+                        "Prevent sleep while charging or connected to detected car audio.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            Switch(
+                checked = uiState.isKeepDisplayOnEnabled,
+                onCheckedChange = actions.preferences.setKeepDisplayOnEnabled
+            )
+        }
         if (uiState.connectedCarAudioDevices.isEmpty()) {
             Text(
                 text = "Connect an A2DP device to mark it as car audio.",

@@ -11,6 +11,7 @@ import android.content.BroadcastReceiver
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.os.BatteryManager
 import android.os.Build
 import android.provider.OpenableColumns
 import androidx.activity.compose.BackHandler
@@ -64,6 +65,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -104,7 +106,9 @@ internal const val NO_ARTWORK_THUMB_GLYPH = ".°•"
 @Composable
 fun HomeRoute(viewModel: HomeViewModel, uiState: HomeUiState) {
     val context = LocalContext.current
+    val rootView = LocalView.current
     val coroutineScope = rememberCoroutineScope()
+    var isCharging by remember { mutableStateOf(false) }
     val audioPermission =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             Manifest.permission.READ_MEDIA_AUDIO
@@ -199,6 +203,36 @@ fun HomeRoute(viewModel: HomeViewModel, uiState: HomeUiState) {
         if (!hasBluetoothPermission) {
             bluetoothPermissionLauncher.launch(bluetoothPermission)
         }
+    }
+
+    DisposableEffect(context) {
+        fun updateChargingState(intent: Intent?) {
+            val status = intent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+            isCharging =
+                status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                        status == BatteryManager.BATTERY_STATUS_FULL
+        }
+
+        val receiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(receiverContext: android.content.Context, intent: Intent) {
+                    updateChargingState(intent)
+                }
+            }
+        val batteryFilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+        updateChargingState(context.registerReceiver(receiver, batteryFilter))
+        onDispose { context.unregisterReceiver(receiver) }
+    }
+
+    DisposableEffect(
+        rootView,
+        uiState.isKeepDisplayOnEnabled,
+        isCharging,
+        uiState.isCarAudioConnected
+    ) {
+        rootView.keepScreenOn =
+            uiState.isKeepDisplayOnEnabled && (isCharging || uiState.isCarAudioConnected)
+        onDispose { rootView.keepScreenOn = false }
     }
 
     DisposableEffect(context, hasBluetoothPermission) {
@@ -396,6 +430,7 @@ fun HomeRoute(viewModel: HomeViewModel, uiState: HomeUiState) {
                             setDefaultFilter = viewModel::setDefaultFilter,
                             setDefaultSortOrder = viewModel::setDefaultSortOrder,
                             setCarModeManuallyEnabled = viewModel::setCarModeManuallyEnabled,
+                            setKeepDisplayOnEnabled = viewModel::setKeepDisplayOnEnabled,
                             setCarDeviceMarked = viewModel::setCarDeviceMarked
                         )
                 )

@@ -2,6 +2,7 @@
 
 ## 0.1.0 - Unreleased
 
+- Added a persisted, default-enabled Settings option that keeps the display awake while charging or connected to detected Bluetooth car audio.
 - Added Radio Browser station search from the playlist editor with favicon-backed result rows.
 - Added a playlist-list play action that appends new playable entries to the active Queue.
 - Added playlist-scoped Radio Browser actions and a separate, replaceable station preview player with an in-search stop control.

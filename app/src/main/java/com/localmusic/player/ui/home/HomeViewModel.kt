@@ -98,6 +98,8 @@ class HomeViewModel(
     private val isCarAudioDetected = MutableStateFlow(false)
     private val isCarModeManuallyEnabled =
         MutableStateFlow(carModePreferences?.isManuallyEnabled() ?: false)
+    private val isKeepDisplayOnEnabled =
+        MutableStateFlow(carModePreferences?.isKeepDisplayOnEnabled() ?: true)
     private val connectedCarAudioDevices = MutableStateFlow<List<CarAudioDevice>>(emptyList())
     private val markedCarDeviceIds =
         MutableStateFlow(carModePreferences?.markedCarDeviceIds().orEmpty())
@@ -160,12 +162,15 @@ class HomeViewModel(
         combine(
             isCarAudioDetected,
             isCarModeManuallyEnabled,
+            isKeepDisplayOnEnabled,
             connectedCarAudioDevices,
             markedCarDeviceIds
-        ) { carAudioDetected, manuallyEnabled, connectedDevices, markedDeviceIds ->
+        ) { carAudioDetected, manuallyEnabled, keepDisplayOnEnabled, connectedDevices, markedDeviceIds ->
             CarModeState(
                 isEnabled = carAudioDetected || manuallyEnabled,
+                isCarAudioConnected = carAudioDetected,
                 isManuallyEnabled = manuallyEnabled,
+                isKeepDisplayOnEnabled = keepDisplayOnEnabled,
                 connectedDevices = connectedDevices,
                 markedDeviceIds = markedDeviceIds
             )
@@ -180,7 +185,9 @@ class HomeViewModel(
             HomeUiState(
                 importedPlaylists = playlists,
                 isCarMode = carMode.isEnabled,
+                isCarAudioConnected = carMode.isCarAudioConnected,
                 isCarModeManuallyEnabled = carMode.isManuallyEnabled,
+                isKeepDisplayOnEnabled = carMode.isKeepDisplayOnEnabled,
                 connectedCarAudioDevices = carMode.connectedDevices,
                 markedCarDeviceIds = carMode.markedDeviceIds,
                 themeMode = appearance.themeMode,
@@ -943,6 +950,11 @@ class HomeViewModel(
         isCarModeManuallyEnabled.value = enabled
     }
 
+    fun setKeepDisplayOnEnabled(enabled: Boolean) {
+        carModePreferences?.setKeepDisplayOnEnabled(enabled)
+        isKeepDisplayOnEnabled.value = enabled
+    }
+
     private fun List<Song>.applyLibraryProjection(
         state: HomeUiState,
         playlists: List<M3uPlaylist>
@@ -1056,7 +1068,9 @@ private data class AppearanceState(
 
 private data class CarModeState(
     val isEnabled: Boolean,
+    val isCarAudioConnected: Boolean,
     val isManuallyEnabled: Boolean,
+    val isKeepDisplayOnEnabled: Boolean,
     val connectedDevices: List<CarAudioDevice>,
     val markedDeviceIds: Set<String>
 )

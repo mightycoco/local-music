@@ -18,6 +18,17 @@ class CarModePreferencesTest {
     }
 
     @Test
+    fun keepDisplayOnDefaultsToEnabledAndPersists() {
+        val preferences = CarModePreferences(FakeSharedPreferences())
+
+        assertTrue(preferences.isKeepDisplayOnEnabled())
+
+        preferences.setKeepDisplayOnEnabled(false)
+
+        assertFalse(preferences.isKeepDisplayOnEnabled())
+    }
+
+    @Test
     fun markedCarDevicesPersistAndCanBeRemoved() {
         val preferences = CarModePreferences(FakeSharedPreferences())
 

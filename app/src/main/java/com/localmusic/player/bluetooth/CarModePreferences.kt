@@ -10,6 +10,13 @@ class CarModePreferences(private val sharedPreferences: SharedPreferences) {
         sharedPreferences.edit().putBoolean(KEY_MANUALLY_ENABLED, enabled).apply()
     }
 
+    fun isKeepDisplayOnEnabled(): Boolean =
+        sharedPreferences.getBoolean(KEY_KEEP_DISPLAY_ON_ENABLED, true)
+
+    fun setKeepDisplayOnEnabled(enabled: Boolean) {
+        sharedPreferences.edit().putBoolean(KEY_KEEP_DISPLAY_ON_ENABLED, enabled).apply()
+    }
+
     fun markedCarDeviceIds(): Set<String> =
         sharedPreferences.getStringSet(KEY_MARKED_CAR_DEVICE_IDS, emptySet()).orEmpty()
 
@@ -21,6 +28,7 @@ class CarModePreferences(private val sharedPreferences: SharedPreferences) {
 
     private companion object {
         const val KEY_MANUALLY_ENABLED = "car_mode_manually_enabled"
+        const val KEY_KEEP_DISPLAY_ON_ENABLED = "car_mode_keep_display_on_enabled"
         const val KEY_MARKED_CAR_DEVICE_IDS = "car_mode_marked_car_device_ids"
     }
 }

@@ -143,5 +143,6 @@ internal data class PreferenceActions(
     val setDefaultFilter: (LibraryFilter) -> Unit,
     val setDefaultSortOrder: (SortOrder) -> Unit,
     val setCarModeManuallyEnabled: (Boolean) -> Unit,
+    val setKeepDisplayOnEnabled: (Boolean) -> Unit,
     val setCarDeviceMarked: (String, Boolean) -> Unit
 )
