@@ -37,10 +37,7 @@ internal fun MiniPlayer(
     progress: Float,
     isCarMode: Boolean,
     onOpenNowPlaying: () -> Unit,
-    onPrevious: () -> Unit,
-    onPlayPause: () -> Unit,
-    onNext: () -> Unit,
-    onProgressChange: (Float) -> Unit
+    playbackActions: PlaybackActions
 ) {
     var pendingProgress by remember { mutableFloatStateOf(progress) }
     LaunchedEffect(progress) { pendingProgress = progress }
@@ -88,9 +85,7 @@ internal fun MiniPlayer(
                     isPlaying = isPlaying,
                     controlSize = controlSize,
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
-                    onPrevious = onPrevious,
-                    onPlayPause = onPlayPause,
-                    onNext = onNext
+                    playbackActions = playbackActions
                 )
             }
         }
@@ -100,16 +95,14 @@ internal fun MiniPlayer(
                 controlSize = controlSize,
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
-                onPrevious = onPrevious,
-                onPlayPause = onPlayPause,
-                onNext = onNext
+                playbackActions = playbackActions
             )
         }
         if (song.source != SongSource.STREAM) {
             Slider(
                 value = pendingProgress.coerceIn(0f, 1f),
                 onValueChange = { pendingProgress = it },
-                onValueChangeFinished = { onProgressChange(pendingProgress) },
+                onValueChangeFinished = { playbackActions.seekTo(pendingProgress) },
                 modifier = Modifier.fillMaxWidth().padding(bottom = contentSpacing)
             )
         }
@@ -122,25 +115,23 @@ private fun MiniPlayerControls(
     controlSize: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier,
     horizontalArrangement: Arrangement.Horizontal,
-    onPrevious: () -> Unit,
-    onPlayPause: () -> Unit,
-    onNext: () -> Unit
+    playbackActions: PlaybackActions
 ) {
     Row(
         modifier = modifier,
         horizontalArrangement = horizontalArrangement,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onPrevious, modifier = Modifier.size(controlSize)) {
+        IconButton(onClick = playbackActions.previous, modifier = Modifier.size(controlSize)) {
             Icon(imageVector = Icons.Filled.SkipPrevious, contentDescription = "Previous")
         }
-        IconButton(onClick = onPlayPause, modifier = Modifier.size(controlSize)) {
+        IconButton(onClick = playbackActions.playPause, modifier = Modifier.size(controlSize)) {
             Icon(
                 imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                 contentDescription = if (isPlaying) "Pause" else "Play"
             )
         }
-        IconButton(onClick = onNext, modifier = Modifier.size(controlSize)) {
+        IconButton(onClick = playbackActions.next, modifier = Modifier.size(controlSize)) {
             Icon(imageVector = Icons.Filled.SkipNext, contentDescription = "Next")
         }
     }

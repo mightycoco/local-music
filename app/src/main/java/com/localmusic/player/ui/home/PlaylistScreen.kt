@@ -67,16 +67,8 @@ import kotlin.math.roundToInt
 @Composable
 internal fun PlaylistContent(
     uiState: HomeUiState,
-    onDeletePlaylist: (M3uPlaylist) -> Unit,
-    onCreatePlaylist: (String) -> Unit,
-    onRenamePlaylist: (M3uPlaylist, String) -> Unit,
-    onDuplicatePlaylist: (M3uPlaylist, String) -> Unit,
-    onPlayPlaylist: (M3uPlaylist) -> Unit,
-    onEnqueuePlaylist: (M3uPlaylist) -> Unit,
-    onImportPlaylist: () -> Unit,
-    onExportLibrary: () -> Unit,
-    onExportPlaylist: (M3uPlaylist) -> Unit,
-    onClearQueue: () -> Unit,
+    catalogActions: PlaylistCatalogActions,
+    documentActions: PlaylistDocumentActions,
     onOpenPlaylistEditor: (M3uPlaylist) -> Unit
 ) {
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
@@ -92,13 +84,13 @@ internal fun PlaylistContent(
                 Icon(imageVector = Icons.Outlined.Add, contentDescription = null)
             }
             IconButton(
-                onClick = onImportPlaylist,
+                onClick = documentActions.import,
                 modifier = Modifier.semantics { contentDescription = "Import M3U" }
             ) {
                 Icon(imageVector = Icons.Outlined.FileDownload, contentDescription = null)
             }
             IconButton(
-                onClick = onExportLibrary,
+                onClick = documentActions.exportLibrary,
                 modifier = Modifier.semantics { contentDescription = "Export M3U" }
             ) {
                 Icon(imageVector = Icons.Outlined.FileUpload, contentDescription = null)
@@ -123,7 +115,7 @@ internal fun PlaylistContent(
                         trailingContent = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 IconButton(
-                                    onClick = { onEnqueuePlaylist(playlist) },
+                                    onClick = { catalogActions.enqueue(playlist) },
                                     enabled = playlist.entries.isNotEmpty() &&
                                             playlist.name != M3uPlaylist.QUEUE_NAME,
                                     modifier = Modifier.semantics {
@@ -150,7 +142,7 @@ internal fun PlaylistContent(
                                             DropdownMenuItem(
                                                 text = { Text("Clear") },
                                                 onClick = {
-                                                    onClearQueue()
+                                                    catalogActions.clearQueue()
                                                     showActions = false
                                                 }
                                             )
@@ -159,7 +151,7 @@ internal fun PlaylistContent(
                                                 text = { Text("Play") },
                                                 enabled = playlist.entries.isNotEmpty(),
                                                 onClick = {
-                                                    onPlayPlaylist(playlist)
+                                                    catalogActions.play(playlist)
                                                     showActions = false
                                                 }
                                             )
@@ -180,14 +172,14 @@ internal fun PlaylistContent(
                                             DropdownMenuItem(
                                                 text = { Text("Export") },
                                                 onClick = {
-                                                    onExportPlaylist(playlist)
+                                                    documentActions.exportPlaylist(playlist)
                                                     showActions = false
                                                 }
                                             )
                                             DropdownMenuItem(
                                                 text = { Text("Delete") },
                                                 onClick = {
-                                                    onDeletePlaylist(playlist)
+                                                    catalogActions.delete(playlist)
                                                     showActions = false
                                                 }
                                             )
@@ -206,7 +198,7 @@ internal fun PlaylistContent(
         CreatePlaylistDialog(
             onDismiss = { showCreatePlaylistDialog = false },
             onCreate = { name ->
-                onCreatePlaylist(name)
+                catalogActions.create(name)
                 showCreatePlaylistDialog = false
             }
         )
@@ -219,7 +211,7 @@ internal fun PlaylistContent(
             confirmLabel = "Rename",
             onDismiss = { playlistToRename = null },
             onConfirm = { name ->
-                onRenamePlaylist(playlist, name)
+                catalogActions.rename(playlist, name)
                 playlistToRename = null
             }
         )
@@ -232,7 +224,7 @@ internal fun PlaylistContent(
             confirmLabel = "Duplicate",
             onDismiss = { playlistToDuplicate = null },
             onConfirm = { name ->
-                onDuplicatePlaylist(playlist, name)
+                catalogActions.duplicate(playlist, name)
                 playlistToDuplicate = null
             }
         )
@@ -246,14 +238,8 @@ internal fun PlaylistEditorContent(
     favouriteUris: Set<String>,
     artworkByUri: Map<String, String>,
     onBack: () -> Unit,
-    onPlay: (M3uPlaylist) -> Unit,
-    onPlayEntry: (M3uPlaylist, M3uPlaylistEntry) -> Unit,
-    onMoveEntry: (M3uPlaylist, Int, Int) -> Unit,
-    onFavouriteToggle: (M3uPlaylistEntry) -> Unit,
-    onRemoveEntry: (M3uPlaylist, Int) -> Unit,
-    onClearPlaylist: (M3uPlaylist) -> Unit,
-    onAddStream: (M3uPlaylist, String) -> Unit,
-    onOpenRadioBrowser: () -> Unit
+    catalogActions: PlaylistCatalogActions,
+    editorActions: PlaylistEditorActions
 ) {
     var showClearConfirmation by remember { mutableStateOf(false) }
     var showAddStreamDialog by remember { mutableStateOf(false) }
@@ -265,7 +251,7 @@ internal fun PlaylistEditorContent(
     val playlistRowSpacing = 4.dp
     val rowPitchPx = with(LocalDensity.current) { (playlistRowHeight + playlistRowSpacing).toPx() }
     val currentPlaylist by rememberUpdatedState(playlist)
-    val currentOnMoveEntry by rememberUpdatedState(onMoveEntry)
+    val currentOnMoveEntry by rememberUpdatedState(editorActions.moveEntry)
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -285,7 +271,7 @@ internal fun PlaylistEditorContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(
-                onClick = { onPlay(playlist) },
+                onClick = { catalogActions.play(playlist) },
                 enabled = playlist.entries.isNotEmpty()
             ) { Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = "Play") }
             Box {
@@ -306,7 +292,7 @@ internal fun PlaylistEditorContent(
                         text = { Text("Add Radio Station") },
                         onClick = {
                             showAddMenu = false
-                            onOpenRadioBrowser()
+                            editorActions.openRadioBrowser()
                         }
                     )
                 }
@@ -358,7 +344,7 @@ internal fun PlaylistEditorContent(
                                 .height(playlistRowHeight)
                                 .padding(horizontal = 16.dp)
                                 .combinedClickable(
-                                    onClick = { onPlayEntry(playlist, entry) },
+                                    onClick = { editorActions.playEntry(playlist, entry) },
                                     onLongClick = { entryToRemove = index }
                                 )
                                 .graphicsLayer {
@@ -382,7 +368,7 @@ internal fun PlaylistEditorContent(
                             )
                         }
                         IconButton(
-                            onClick = { onFavouriteToggle(entry) },
+                            onClick = { editorActions.toggleEntryFavourite(entry) },
                             modifier = Modifier.semantics {
                                 contentDescription =
                                     if (entry.uri in favouriteUris) {
@@ -473,7 +459,7 @@ internal fun PlaylistEditorContent(
                             DropdownMenuItem(
                                 text = { Text("Remove from Playlist") },
                                 onClick = {
-                                    onRemoveEntry(playlist, index)
+                                    editorActions.removeEntry(playlist, index)
                                     entryToRemove = null
                                 }
                             )
@@ -495,7 +481,7 @@ internal fun PlaylistEditorContent(
             confirmLabel = "Clear",
             onDismiss = { showClearConfirmation = false },
             onConfirm = {
-                onClearPlaylist(playlist)
+                editorActions.clear(playlist)
                 showClearConfirmation = false
             }
         )
@@ -504,7 +490,7 @@ internal fun PlaylistEditorContent(
         AddStreamDialog(
             onDismiss = { showAddStreamDialog = false },
             onConfirm = { streamUrl ->
-                onAddStream(playlist, streamUrl)
+                editorActions.addStream(playlist, streamUrl)
                 showAddStreamDialog = false
             }
         )

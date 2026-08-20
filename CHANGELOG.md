@@ -98,3 +98,6 @@
 - Kept Now Playing seek and transport controls accessible in short landscape windows with a two-pane layout and scrollable controls pane.
 - Added the active Media3 playlist below Now Playing controls and automatically position it at the current song when the screen appears or playback advances.
 - Animated the current-song indicator while playback is running, rotating it left every 200 milliseconds and resetting it when paused.
+- Collapsed Now Playing artwork to half height during direct portrait playlist scrolling while preserving full artwork for automatic positioning and landscape layouts.
+- Kept landscape playback controls visible in a bottom-aligned artwork overlay and grouped player commands behind an explicitly injected immutable `PlaybackActions` capability.
+- Replaced high-arity Home destination and shared song-list callback APIs with immutable feature capabilities, and unified portrait and landscape Now Playing inputs behind a focused render model.

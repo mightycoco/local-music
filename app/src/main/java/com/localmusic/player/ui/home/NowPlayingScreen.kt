@@ -44,6 +44,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -54,9 +55,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.SongSource
 import com.localmusic.player.playlist.M3uPlaylist
@@ -66,18 +65,9 @@ import com.localmusic.player.domain.repository.RepeatMode
 @Composable
 internal fun NowPlayingContent(
     uiState: HomeUiState,
-    onPlayPause: () -> Unit,
-    onNext: () -> Unit,
-    onPrevious: () -> Unit,
-    onProgressChange: (Float) -> Unit,
-    onShuffleToggle: () -> Unit,
-    onRepeatCycle: () -> Unit,
-    onVisualizerEnabledChange: (Boolean) -> Unit,
-    onQueueSongSelected: (Song) -> Unit,
-    onFavouriteToggle: (Song) -> Unit,
-    onCreatePlaylist: (String) -> Unit,
-    onAddToPlaylist: (String) -> Unit,
-    onAddToQueue: () -> Unit,
+    playbackActions: PlaybackActions,
+    songActions: SongActions,
+    playlistActions: PlaylistFeatureActions,
     onShowQueue: () -> Unit
 ) {
     val song = uiState.nowPlayingSong
@@ -122,42 +112,40 @@ internal fun NowPlayingContent(
                 if (hasUserScrolledPlaylist) portraitArtworkMaxHeight / 2 else portraitArtworkMaxHeight,
             label = "portraitArtworkHeight"
         )
-        if (isWideLayout) {
-            LandscapeNowPlayingLayout(
-                uiState = uiState,
+        val layoutState =
+            NowPlayingLayoutState(
                 song = song,
+                artworkUri = uiState.artworkBySongId[song.id],
+                artworkBySongId = uiState.artworkBySongId,
+                visualizerLevels = uiState.visualizerLevels,
+                playbackQueue = uiState.playbackQueue,
+                isPlaying = uiState.isPlaying,
+                playbackProgress = uiState.playbackProgress,
+                isVisualizerPreferred = uiState.isVisualizerPreferred,
                 elapsedMillis = elapsedMillis,
                 remainingMillis = remainingMillis,
-                isPreviousCoverTransition = isPreviousCoverTransition,
+                isPreviousCoverTransition = isPreviousCoverTransition
+            )
+        val layoutActions =
+            NowPlayingLayoutActions(
+                playback = playbackActions,
+                selectQueueSong = songActions.playQueued,
+                toggleFavourite = songActions.toggleFavourite,
+                showMoreActions = { showMoreActions = true },
+                setPreviousCoverTransition = { isPreviousCoverTransition = it }
+            )
+        if (isWideLayout) {
+            LandscapeNowPlayingLayout(
+                state = layoutState,
                 playlistState = playlistState,
-                onPlayPause = onPlayPause,
-                onNext = onNext,
-                onPrevious = onPrevious,
-                onProgressChange = onProgressChange,
-                onVisualizerEnabledChange = onVisualizerEnabledChange,
-                onQueueSongSelected = onQueueSongSelected,
-                onFavouriteToggle = onFavouriteToggle,
-                onShowMoreActions = { showMoreActions = true },
-                onPreviousCoverTransitionChange = { isPreviousCoverTransition = it }
+                actions = layoutActions
             )
         } else {
             PortraitNowPlayingLayout(
-                uiState = uiState,
-                song = song,
+                state = layoutState,
                 artworkHeight = portraitArtworkHeight,
-                elapsedMillis = elapsedMillis,
-                remainingMillis = remainingMillis,
-                isPreviousCoverTransition = isPreviousCoverTransition,
                 playlistState = playlistState,
-                onPlayPause = onPlayPause,
-                onNext = onNext,
-                onPrevious = onPrevious,
-                onProgressChange = onProgressChange,
-                onVisualizerEnabledChange = onVisualizerEnabledChange,
-                onQueueSongSelected = onQueueSongSelected,
-                onFavouriteToggle = onFavouriteToggle,
-                onShowMoreActions = { showMoreActions = true },
-                onPreviousCoverTransitionChange = { isPreviousCoverTransition = it }
+                actions = layoutActions
             )
         }
     }
@@ -166,7 +154,7 @@ internal fun NowPlayingContent(
         ModalBottomSheet(onDismissRequest = { showMoreActions = false }) {
             Column(modifier = Modifier.padding(bottom = 24.dp)) {
                 ListItem(
-                    modifier = Modifier.clickable { onFavouriteToggle(song) },
+                    modifier = Modifier.clickable { songActions.toggleFavourite(song) },
                     headlineContent = {
                         Text(
                             if (song.isFavourite) "Remove from favourites"
@@ -183,7 +171,7 @@ internal fun NowPlayingContent(
                     }
                 )
                 ListItem(
-                    modifier = Modifier.clickable { onShuffleToggle() },
+                    modifier = Modifier.clickable(onClick = playbackActions.toggleShuffle),
                     headlineContent = { Text("Shuffle") },
                     supportingContent = { Text(if (uiState.isShuffleEnabled) "On" else "Off") },
                     leadingContent = {
@@ -194,7 +182,7 @@ internal fun NowPlayingContent(
                     }
                 )
                 ListItem(
-                    modifier = Modifier.clickable { onRepeatCycle() },
+                    modifier = Modifier.clickable(onClick = playbackActions.cycleRepeatMode),
                     headlineContent = { Text("Repeat") },
                     supportingContent = { Text(uiState.repeatMode.label) },
                     leadingContent = {
@@ -223,7 +211,7 @@ internal fun NowPlayingContent(
                 ListItem(
                     modifier =
                         Modifier.clickable {
-                            onAddToQueue()
+                            playlistActions.nowPlaying.addToQueue()
                             showMoreActions = false
                         },
                     headlineContent = { Text("Add to queue") },
@@ -262,7 +250,7 @@ internal fun NowPlayingContent(
                             .forEach { playlist ->
                                 TextButton(
                                     onClick = {
-                                        onAddToPlaylist(playlist.name)
+                                        playlistActions.nowPlaying.addToPlaylist(playlist.name)
                                         showPlaylistChooser = false
                                     }
                                 ) { Text(playlist.name) }
@@ -286,31 +274,43 @@ internal fun NowPlayingContent(
         CreatePlaylistDialog(
             onDismiss = { showCreatePlaylistDialog = false },
             onCreate = { name ->
-                onCreatePlaylist(name)
-                onAddToPlaylist(name.trim())
+                playlistActions.catalog.create(name)
+                playlistActions.nowPlaying.addToPlaylist(name.trim())
                 showCreatePlaylistDialog = false
             }
         )
     }
 }
 
+@Immutable
+private data class NowPlayingLayoutState(
+    val song: Song,
+    val artworkUri: String?,
+    val artworkBySongId: Map<String, String>,
+    val visualizerLevels: List<Float>,
+    val playbackQueue: List<Song>,
+    val isPlaying: Boolean,
+    val playbackProgress: Float,
+    val isVisualizerPreferred: Boolean,
+    val elapsedMillis: Long,
+    val remainingMillis: Long,
+    val isPreviousCoverTransition: Boolean
+)
+
+@Immutable
+private data class NowPlayingLayoutActions(
+    val playback: PlaybackActions,
+    val selectQueueSong: (Song) -> Unit,
+    val toggleFavourite: (Song) -> Unit,
+    val showMoreActions: () -> Unit,
+    val setPreviousCoverTransition: (Boolean) -> Unit
+)
+
 @Composable
 private fun LandscapeNowPlayingLayout(
-    uiState: HomeUiState,
-    song: Song,
-    elapsedMillis: Long,
-    remainingMillis: Long,
-    isPreviousCoverTransition: Boolean,
+    state: NowPlayingLayoutState,
     playlistState: androidx.compose.foundation.lazy.LazyListState,
-    onPlayPause: () -> Unit,
-    onNext: () -> Unit,
-    onPrevious: () -> Unit,
-    onProgressChange: (Float) -> Unit,
-    onVisualizerEnabledChange: (Boolean) -> Unit,
-    onQueueSongSelected: (Song) -> Unit,
-    onFavouriteToggle: (Song) -> Unit,
-    onShowMoreActions: () -> Unit,
-    onPreviousCoverTransitionChange: (Boolean) -> Unit
+    actions: NowPlayingLayoutActions
 ) {
     Row(
         modifier = Modifier.fillMaxSize().padding(vertical = 8.dp),
@@ -323,39 +323,25 @@ private fun LandscapeNowPlayingLayout(
                     .clip(MaterialTheme.shapes.large)
         ) {
             NowPlayingArtwork(
-                uiState = uiState,
-                song = song,
-                isPreviousCoverTransition = isPreviousCoverTransition,
-                onPrevious = onPrevious,
-                onNext = onNext,
-                onFavouriteToggle = onFavouriteToggle,
-                onShowMoreActions = onShowMoreActions,
-                onVisualizerEnabledChange = onVisualizerEnabledChange,
-                onPreviousCoverTransitionChange = onPreviousCoverTransitionChange,
+                state = state,
+                actions = actions,
                 modifier = Modifier.fillMaxSize()
             )
             NowPlayingPlaybackControls(
-                uiState = uiState,
-                song = song,
-                elapsedMillis = elapsedMillis,
-                remainingMillis = remainingMillis,
-                onPlayPause = onPlayPause,
-                onNext = onNext,
-                onPrevious = onPrevious,
-                onProgressChange = onProgressChange,
-                onPreviousCoverTransitionChange = onPreviousCoverTransitionChange,
+                state = state,
+                actions = actions,
                 modifier =
                     Modifier.align(Alignment.BottomCenter)
                         .padding(horizontal = 12.dp, vertical = 8.dp)
             )
         }
         CurrentPlaylist(
-            songs = uiState.playbackQueue,
-            artworkBySongId = uiState.artworkBySongId,
-            nowPlayingSongId = song.id,
-            isPlaying = uiState.isPlaying,
-            onSongSelected = onQueueSongSelected,
-            onFavouriteToggle = onFavouriteToggle,
+            songs = state.playbackQueue,
+            artworkBySongId = state.artworkBySongId,
+            nowPlayingSongId = state.song.id,
+            isPlaying = state.isPlaying,
+            onSongSelected = actions.selectQueueSong,
+            onFavouriteToggle = actions.toggleFavourite,
             listState = playlistState,
             modifier = Modifier.weight(0.55f).fillMaxHeight()
         )
@@ -364,60 +350,34 @@ private fun LandscapeNowPlayingLayout(
 
 @Composable
 private fun PortraitNowPlayingLayout(
-    uiState: HomeUiState,
-    song: Song,
+    state: NowPlayingLayoutState,
     artworkHeight: androidx.compose.ui.unit.Dp,
-    elapsedMillis: Long,
-    remainingMillis: Long,
-    isPreviousCoverTransition: Boolean,
     playlistState: androidx.compose.foundation.lazy.LazyListState,
-    onPlayPause: () -> Unit,
-    onNext: () -> Unit,
-    onPrevious: () -> Unit,
-    onProgressChange: (Float) -> Unit,
-    onVisualizerEnabledChange: (Boolean) -> Unit,
-    onQueueSongSelected: (Song) -> Unit,
-    onFavouriteToggle: (Song) -> Unit,
-    onShowMoreActions: () -> Unit,
-    onPreviousCoverTransitionChange: (Boolean) -> Unit
+    actions: NowPlayingLayoutActions
 ) {
     Column(
         modifier = Modifier.fillMaxSize().padding(vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         NowPlayingArtwork(
-            uiState = uiState,
-            song = song,
-            isPreviousCoverTransition = isPreviousCoverTransition,
-            onPrevious = onPrevious,
-            onNext = onNext,
-            onFavouriteToggle = onFavouriteToggle,
-            onShowMoreActions = onShowMoreActions,
-            onVisualizerEnabledChange = onVisualizerEnabledChange,
-            onPreviousCoverTransitionChange = onPreviousCoverTransitionChange,
+            state = state,
+            actions = actions,
             modifier =
                 Modifier.fillMaxWidth()
                     .height(artworkHeight)
                     .clip(MaterialTheme.shapes.large)
         )
         NowPlayingPlaybackControls(
-            uiState = uiState,
-            song = song,
-            elapsedMillis = elapsedMillis,
-            remainingMillis = remainingMillis,
-            onPlayPause = onPlayPause,
-            onNext = onNext,
-            onPrevious = onPrevious,
-            onProgressChange = onProgressChange,
-            onPreviousCoverTransitionChange = onPreviousCoverTransitionChange
+            state = state,
+            actions = actions
         )
         CurrentPlaylist(
-            songs = uiState.playbackQueue,
-            artworkBySongId = uiState.artworkBySongId,
-            nowPlayingSongId = song.id,
-            isPlaying = uiState.isPlaying,
-            onSongSelected = onQueueSongSelected,
-            onFavouriteToggle = onFavouriteToggle,
+            songs = state.playbackQueue,
+            artworkBySongId = state.artworkBySongId,
+            nowPlayingSongId = state.song.id,
+            isPlaying = state.isPlaying,
+            onSongSelected = actions.selectQueueSong,
+            onFavouriteToggle = actions.toggleFavourite,
             listState = playlistState,
             modifier = Modifier.weight(1f)
         )
@@ -426,66 +386,53 @@ private fun PortraitNowPlayingLayout(
 
 @Composable
 private fun NowPlayingArtwork(
-    uiState: HomeUiState,
-    song: Song,
-    isPreviousCoverTransition: Boolean,
-    onPrevious: () -> Unit,
-    onNext: () -> Unit,
-    onFavouriteToggle: (Song) -> Unit,
-    onShowMoreActions: () -> Unit,
-    onVisualizerEnabledChange: (Boolean) -> Unit,
-    onPreviousCoverTransitionChange: (Boolean) -> Unit,
+    state: NowPlayingLayoutState,
+    actions: NowPlayingLayoutActions,
     modifier: Modifier = Modifier
 ) {
     AnimatedNowPlayingArtwork(
-        song = song,
-        artworkUri = uiState.artworkBySongId[song.id],
-        visualizerLevels = uiState.visualizerLevels,
-        isPlaying = uiState.isPlaying,
-        preferVisualizer = uiState.isVisualizerPreferred,
-        isPreviousTransition = isPreviousCoverTransition,
+        song = state.song,
+        artworkUri = state.artworkUri,
+        visualizerLevels = state.visualizerLevels,
+        isPlaying = state.isPlaying,
+        preferVisualizer = state.isVisualizerPreferred,
+        isPreviousTransition = state.isPreviousCoverTransition,
         onPrevious = {
-            onPreviousCoverTransitionChange(true)
-            onPrevious()
+            actions.setPreviousCoverTransition(true)
+            actions.playback.previous()
         },
         onNext = {
-            onPreviousCoverTransitionChange(false)
-            onNext()
+            actions.setPreviousCoverTransition(false)
+            actions.playback.next()
         },
-        onFavouriteToggle = { onFavouriteToggle(song) },
-        onShowMoreActions = onShowMoreActions,
-        onVisualizerEnabledChange = onVisualizerEnabledChange,
+        onFavouriteToggle = { actions.toggleFavourite(state.song) },
+        onShowMoreActions = actions.showMoreActions,
+        onVisualizerEnabledChange = actions.playback.setVisualizerEnabled,
         modifier = modifier
     )
 }
 
 @Composable
 private fun NowPlayingPlaybackControls(
-    uiState: HomeUiState,
-    song: Song,
-    elapsedMillis: Long,
-    remainingMillis: Long,
-    onPlayPause: () -> Unit,
-    onNext: () -> Unit,
-    onPrevious: () -> Unit,
-    onProgressChange: (Float) -> Unit,
-    onPreviousCoverTransitionChange: (Boolean) -> Unit,
+    state: NowPlayingLayoutState,
+    actions: NowPlayingLayoutActions,
     modifier: Modifier = Modifier
 ) {
     PlaybackControls(
-        uiState = uiState,
-        isSeekEnabled = song.source != SongSource.STREAM,
-        elapsedMillis = elapsedMillis,
-        remainingMillis = remainingMillis,
-        onProgressChange = onProgressChange,
+        playbackProgress = state.playbackProgress,
+        isPlaying = state.isPlaying,
+        isSeekEnabled = state.song.source != SongSource.STREAM,
+        elapsedMillis = state.elapsedMillis,
+        remainingMillis = state.remainingMillis,
+        onProgressChange = actions.playback.seekTo,
         onPrevious = {
-            onPreviousCoverTransitionChange(true)
-            onPrevious()
+            actions.setPreviousCoverTransition(true)
+            actions.playback.previous()
         },
-        onPlayPause = onPlayPause,
+        onPlayPause = actions.playback.playPause,
         onNext = {
-            onPreviousCoverTransitionChange(false)
-            onNext()
+            actions.setPreviousCoverTransition(false)
+            actions.playback.next()
         },
         modifier = modifier
     )
@@ -493,7 +440,8 @@ private fun NowPlayingPlaybackControls(
 
 @Composable
 private fun PlaybackControls(
-    uiState: HomeUiState,
+    playbackProgress: Float,
+    isPlaying: Boolean,
     isSeekEnabled: Boolean,
     elapsedMillis: Long,
     remainingMillis: Long,
@@ -503,8 +451,8 @@ private fun PlaybackControls(
     onNext: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var pendingProgress by remember { mutableFloatStateOf(uiState.playbackProgress) }
-    LaunchedEffect(uiState.playbackProgress) { pendingProgress = uiState.playbackProgress }
+    var pendingProgress by remember { mutableFloatStateOf(playbackProgress) }
+    LaunchedEffect(playbackProgress) { pendingProgress = playbackProgress }
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Slider(
@@ -528,8 +476,8 @@ private fun PlaybackControls(
             Button(onClick = onPlayPause, modifier = Modifier.size(72.dp)) {
                 Icon(
                     imageVector =
-                        if (uiState.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    contentDescription = if (uiState.isPlaying) "Pause" else "Play"
+                        if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    contentDescription = if (isPlaying) "Pause" else "Play"
                 )
             }
             IconButton(onClick = onNext, modifier = Modifier.size(64.dp)) {

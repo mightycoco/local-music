@@ -265,93 +265,147 @@ fun HomeRoute(viewModel: HomeViewModel, uiState: HomeUiState) {
         }
     }
 
+    val playbackActions =
+        remember(viewModel) {
+            PlaybackActions(
+                playPause = viewModel::togglePlayback,
+                next = viewModel::skipToNext,
+                previous = viewModel::skipToPrevious,
+                seekTo = viewModel::updatePlaybackProgress,
+                toggleShuffle = viewModel::toggleShuffle,
+                cycleRepeatMode = viewModel::cycleRepeatMode,
+                setVisualizerEnabled = viewModel::setVisualizerEnabled
+            )
+        }
+
+    val addFolderSource = { folderLauncher.launch(null) }
+    val appActions =
+        AppActions(
+            navigation =
+                NavigationActions(
+                    selectScreen = viewModel::selectScreen,
+                    requestAudioPermission = {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            permissionLauncher.launch(audioPermission)
+                        }
+                    }
+                ),
+            library =
+                LibraryActions(
+                    updateSearch = viewModel::updateSearchQuery,
+                    selectFilter = viewModel::selectFilter,
+                    selectBrowseValue = viewModel::selectBrowseValue,
+                    selectSortOrder = viewModel::selectSortOrder,
+                    addFolderSource = addFolderSource
+                ),
+            songs =
+                SongActions(
+                    play = viewModel::playSong,
+                    playFavourites = viewModel::playFavourites,
+                    playQueued = viewModel::playQueuedSong,
+                    toggleFavourite = viewModel::toggleFavourite,
+                    addToPlaylist = viewModel::addSongToPlaylist,
+                    addToQueue = viewModel::addSongToQueue
+                ),
+            playlists =
+                PlaylistFeatureActions(
+                    catalog =
+                        PlaylistCatalogActions(
+                            delete = viewModel::deletePlaylist,
+                            create = viewModel::createPlaylist,
+                            rename = viewModel::renamePlaylist,
+                            duplicate = viewModel::duplicatePlaylist,
+                            play = viewModel::playPlaylist,
+                            enqueue = viewModel::enqueuePlaylist,
+                            clearQueue = viewModel::clearQueue
+                        ),
+                    documents =
+                        PlaylistDocumentActions(
+                            import = {
+                                playlistImportLauncher.launch(
+                                    arrayOf(
+                                        "audio/x-mpegurl",
+                                        "audio/mpegurl",
+                                        "text/plain",
+                                        "application/octet-stream"
+                                    )
+                                )
+                            },
+                            exportLibrary = {
+                                playlistToExport =
+                                    M3uPlaylist(
+                                        name = "Local Music Library",
+                                        entries = uiState.songs.map { it.toM3uEntry() }
+                                    )
+                                playlistExportLauncher.launch("local-music-library.m3u")
+                            },
+                            exportPlaylist = { playlist ->
+                                playlistToExport = playlist
+                                playlistExportLauncher.launch("${playlist.name}.m3u")
+                            }
+                        ),
+                    editor =
+                        PlaylistEditorActions(
+                            playEntry = viewModel::playPlaylistEntry,
+                            moveEntry = viewModel::movePlaylistEntry,
+                            toggleEntryFavourite = viewModel::togglePlaylistEntryFavourite,
+                            removeEntry = viewModel::removePlaylistEntry,
+                            clear = viewModel::clearPlaylist,
+                            addStream = viewModel::addStreamToPlaylist,
+                            openRadioBrowser = viewModel::openRadioBrowser
+                        ),
+                    nowPlaying =
+                        NowPlayingPlaylistActions(
+                            addToPlaylist = viewModel::addNowPlayingToPlaylist,
+                            addToQueue = viewModel::addNowPlayingToQueue
+                        )
+                ),
+            radio =
+                RadioActions(
+                    updateQuery = viewModel::updateRadioSearchQuery,
+                    search = viewModel::searchRadioStations,
+                    preview = viewModel::previewRadioStation,
+                    stopPreview = viewModel::stopRadioPreview,
+                    addToPlaylist = viewModel::addRadioStationToPlaylist
+                ),
+            settings =
+                SettingsFeatureActions(
+                    folders =
+                        FolderActions(
+                            add = addFolderSource,
+                            remove = { folderUri ->
+                                runCatching {
+                                    context.contentResolver.releasePersistableUriPermission(
+                                        android.net.Uri.parse(folderUri),
+                                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                    )
+                                }
+                                viewModel.removeFolderSource(folderUri)
+                            }
+                        ),
+                    appearance =
+                        AppearanceActions(
+                            selectTheme = viewModel::selectThemeMode,
+                            clearArtworkCache = viewModel::clearArtworkCache,
+                            setExternalArtworkDownloadEnabled =
+                                viewModel::setExternalArtworkDownloadEnabled,
+                            setVisualizerPreferred = viewModel::setVisualizerPreferred
+                        ),
+                    preferences =
+                        PreferenceActions(
+                            setDefaultFilter = viewModel::setDefaultFilter,
+                            setDefaultSortOrder = viewModel::setDefaultSortOrder,
+                            setCarModeManuallyEnabled = viewModel::setCarModeManuallyEnabled,
+                            setCarDeviceMarked = viewModel::setCarDeviceMarked
+                        )
+                )
+        )
+
     HomeScreen(
         uiState = uiState,
         hasAudioPermission = hasAudioPermission,
-        onSearchChange = viewModel::updateSearchQuery,
-        onScreenSelected = viewModel::selectScreen,
-        onFilterSelected = viewModel::selectFilter,
-        onBrowseValueSelected = viewModel::selectBrowseValue,
-        onSortSelected = viewModel::selectSortOrder,
-        onAddFolderSource = { folderLauncher.launch(null) },
-        onRemoveFolderSource = { folderUri ->
-            runCatching {
-                context.contentResolver.releasePersistableUriPermission(
-                    android.net.Uri.parse(folderUri),
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-            }
-            viewModel.removeFolderSource(folderUri)
-        },
-        onImportPlaylist = {
-            playlistImportLauncher.launch(
-                arrayOf(
-                    "audio/x-mpegurl",
-                    "audio/mpegurl",
-                    "text/plain",
-                    "application/octet-stream"
-                )
-            )
-        },
-        onExportPlaylist = {
-            playlistToExport =
-                M3uPlaylist(
-                    name = "Local Music Library",
-                    entries = uiState.songs.map { it.toM3uEntry() }
-                )
-            playlistExportLauncher.launch("local-music-library.m3u")
-        },
-        onExportIndividualPlaylist = { playlist ->
-            playlistToExport = playlist
-            playlistExportLauncher.launch("${playlist.name}.m3u")
-        },
-        onSongSelected = viewModel::playSong,
-        onFavouriteSongSelected = viewModel::playFavourites,
-        onQueueSongSelected = viewModel::playQueuedSong,
-        onFavouriteToggle = viewModel::toggleFavourite,
-        onDeletePlaylist = viewModel::deletePlaylist,
-        onCreatePlaylist = viewModel::createPlaylist,
-        onRenamePlaylist = viewModel::renamePlaylist,
-        onDuplicatePlaylist = viewModel::duplicatePlaylist,
-        onPlayPlaylist = viewModel::playPlaylist,
-        onEnqueuePlaylist = viewModel::enqueuePlaylist,
-        onPlayPlaylistEntry = viewModel::playPlaylistEntry,
-        onMovePlaylistEntry = viewModel::movePlaylistEntry,
-        onPlaylistEntryFavouriteToggle = viewModel::togglePlaylistEntryFavourite,
-        onRemovePlaylistEntry = viewModel::removePlaylistEntry,
-        onAddNowPlayingToPlaylist = viewModel::addNowPlayingToPlaylist,
-        onAddNowPlayingToQueue = viewModel::addNowPlayingToQueue,
-        onClearQueue = viewModel::clearQueue,
-        onClearPlaylist = viewModel::clearPlaylist,
-        onAddStreamToPlaylist = viewModel::addStreamToPlaylist,
-        onOpenRadioBrowser = viewModel::openRadioBrowser,
-        onRadioSearchQueryChange = viewModel::updateRadioSearchQuery,
-        onSearchRadioStations = viewModel::searchRadioStations,
-        onPreviewRadioStation = viewModel::previewRadioStation,
-        onStopRadioPreview = viewModel::stopRadioPreview,
-        onAddRadioStationToPlaylist = viewModel::addRadioStationToPlaylist,
-        onAddSongToPlaylist = viewModel::addSongToPlaylist,
-        onAddSongToQueue = viewModel::addSongToQueue,
-        onPlayPause = viewModel::togglePlayback,
-        onNext = viewModel::skipToNext,
-        onPrevious = viewModel::skipToPrevious,
-        onProgressChange = viewModel::updatePlaybackProgress,
-        onShuffleToggle = viewModel::toggleShuffle,
-        onRepeatCycle = viewModel::cycleRepeatMode,
-        onVisualizerEnabledChange = viewModel::setVisualizerEnabled,
-        onThemeSelected = viewModel::selectThemeMode,
-        onClearArtworkCache = viewModel::clearArtworkCache,
-        onDefaultFilterSelected = viewModel::setDefaultFilter,
-        onDefaultSortOrderSelected = viewModel::setDefaultSortOrder,
-        onCarModeManuallyEnabledChange = viewModel::setCarModeManuallyEnabled,
-        onCarDeviceMarkedChange = viewModel::setCarDeviceMarked,
-        onExternalArtworkDownloadEnabledChange = viewModel::setExternalArtworkDownloadEnabled,
-        onVisualizerPreferredChange = viewModel::setVisualizerPreferred,
-        onRequestPermission = {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                permissionLauncher.launch(audioPermission)
-            }
-        }
+        playbackActions = playbackActions,
+        appActions = appActions
     )
 }
 
@@ -371,62 +425,11 @@ private const val DEFAULT_PLAYLIST_BUFFER_CHARS = 8 * 1024
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(
+internal fun HomeScreen(
     uiState: HomeUiState,
     hasAudioPermission: Boolean,
-    onSearchChange: (String) -> Unit,
-    onScreenSelected: (HomeScreenDestination) -> Unit,
-    onFilterSelected: (LibraryFilter) -> Unit,
-    onBrowseValueSelected: (String?) -> Unit,
-    onSortSelected: (SortOrder) -> Unit,
-    onAddFolderSource: () -> Unit,
-    onRemoveFolderSource: (String) -> Unit,
-    onImportPlaylist: () -> Unit,
-    onExportPlaylist: () -> Unit,
-    onExportIndividualPlaylist: (M3uPlaylist) -> Unit,
-    onSongSelected: (Song) -> Unit,
-    onFavouriteSongSelected: (Song) -> Unit,
-    onQueueSongSelected: (Song) -> Unit,
-    onFavouriteToggle: (Song) -> Unit,
-    onDeletePlaylist: (M3uPlaylist) -> Unit,
-    onCreatePlaylist: (String) -> Unit,
-    onRenamePlaylist: (M3uPlaylist, String) -> Unit,
-    onDuplicatePlaylist: (M3uPlaylist, String) -> Unit,
-    onPlayPlaylist: (M3uPlaylist) -> Unit,
-    onEnqueuePlaylist: (M3uPlaylist) -> Unit,
-    onPlayPlaylistEntry: (M3uPlaylist, M3uPlaylistEntry) -> Unit,
-    onMovePlaylistEntry: (M3uPlaylist, Int, Int) -> Unit,
-    onPlaylistEntryFavouriteToggle: (M3uPlaylistEntry) -> Unit,
-    onRemovePlaylistEntry: (M3uPlaylist, Int) -> Unit,
-    onAddNowPlayingToPlaylist: (String) -> Unit,
-    onAddNowPlayingToQueue: () -> Unit,
-    onClearQueue: () -> Unit,
-    onClearPlaylist: (M3uPlaylist) -> Unit,
-    onAddStreamToPlaylist: (M3uPlaylist, String) -> Unit,
-    onOpenRadioBrowser: () -> Unit,
-    onRadioSearchQueryChange: (String) -> Unit,
-    onSearchRadioStations: () -> Unit,
-    onPreviewRadioStation: (RadioStation) -> Unit,
-    onStopRadioPreview: () -> Unit,
-    onAddRadioStationToPlaylist: (RadioStation, String) -> Unit,
-    onAddSongToPlaylist: (Song, String) -> Unit,
-    onAddSongToQueue: (Song) -> Unit,
-    onPlayPause: () -> Unit,
-    onNext: () -> Unit,
-    onPrevious: () -> Unit,
-    onProgressChange: (Float) -> Unit,
-    onShuffleToggle: () -> Unit,
-    onRepeatCycle: () -> Unit,
-    onVisualizerEnabledChange: (Boolean) -> Unit,
-    onThemeSelected: (AppThemeMode) -> Unit,
-    onClearArtworkCache: () -> Unit,
-    onDefaultFilterSelected: (LibraryFilter) -> Unit,
-    onDefaultSortOrderSelected: (SortOrder) -> Unit,
-    onCarModeManuallyEnabledChange: (Boolean) -> Unit,
-    onCarDeviceMarkedChange: (String, Boolean) -> Unit,
-    onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit,
-    onVisualizerPreferredChange: (Boolean) -> Unit,
-    onRequestPermission: () -> Unit
+    playbackActions: PlaybackActions,
+    appActions: AppActions
 ) {
     val libraryListState = rememberLazyListState()
     val showTopBar =
@@ -441,14 +444,14 @@ fun HomeScreen(
     fun openPlaylistEditor(name: String, returnDestination: HomeScreenDestination) {
         playlistEditorName = name
         playlistEditorReturnDestination = returnDestination
-        onScreenSelected(HomeScreenDestination.PlaylistEditor)
+        appActions.navigation.selectScreen(HomeScreenDestination.PlaylistEditor)
     }
 
     BackHandler(enabled = uiState.selectedScreen != HomeScreenDestination.Home) {
         if (uiState.selectedScreen == HomeScreenDestination.RadioBrowser) {
-            onStopRadioPreview()
+            appActions.radio.stopPreview()
         }
-        onScreenSelected(
+        appActions.navigation.selectScreen(
             if (uiState.selectedScreen == HomeScreenDestination.PlaylistEditor ||
                 uiState.selectedScreen == HomeScreenDestination.RadioBrowser
             ) {
@@ -482,12 +485,11 @@ fun HomeScreen(
                             progress = uiState.playbackProgress,
                             isCarMode = uiState.isCarMode,
                             onOpenNowPlaying = {
-                                onScreenSelected(HomeScreenDestination.NowPlaying)
+                                appActions.navigation.selectScreen(
+                                    HomeScreenDestination.NowPlaying
+                                )
                             },
-                            onPrevious = onPrevious,
-                            onPlayPause = onPlayPause,
-                            onNext = onNext,
-                            onProgressChange = onProgressChange
+                            playbackActions = playbackActions
                         )
                     }
                 }
@@ -501,7 +503,7 @@ fun HomeScreen(
                     navigationDestinations.forEach { destination ->
                         NavigationBarItem(
                             selected = uiState.selectedScreen == destination,
-                            onClick = { onScreenSelected(destination) },
+                            onClick = { appActions.navigation.selectScreen(destination) },
                             icon = {
                                 Icon(
                                     imageVector = destination.icon(),
@@ -517,7 +519,9 @@ fun HomeScreen(
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
             if (!hasAudioPermission) {
-                PermissionBanner(onRequestPermission = onRequestPermission)
+                PermissionBanner(
+                    onRequestPermission = appActions.navigation.requestAudioPermission
+                )
                 Spacer(modifier = Modifier.height(12.dp))
             }
             uiState.refreshError?.let { error ->
@@ -563,7 +567,7 @@ fun HomeScreen(
                                 abs(drag.x) >= screenSwipeThreshold &&
                                 abs(drag.x) > abs(drag.y) * 1.5f
                             ) {
-                                onScreenSelected(
+                                appActions.navigation.selectScreen(
                                     if (drag.x > 0f) {
                                         uiState.selectedScreen.previous()
                                     } else {
@@ -616,33 +620,17 @@ fun HomeScreen(
                             LibraryContent(
                                 uiState = uiState,
                                 listState = libraryListState,
-                                onSearchChange = onSearchChange,
-                                onFilterSelected = onFilterSelected,
-                                onBrowseValueSelected = onBrowseValueSelected,
-                                onSortSelected = onSortSelected,
-                                onAddFolderSource = onAddFolderSource,
-                                onSongSelected = onSongSelected,
-                                onFavouriteToggle = onFavouriteToggle,
-                                onCreatePlaylist = onCreatePlaylist,
-                                onAddSongToPlaylist = onAddSongToPlaylist,
-                                onAddSongToQueue = onAddSongToQueue
+                                libraryActions = appActions.library,
+                                songActions = appActions.songs,
+                                createPlaylist = appActions.playlists.catalog.create
                             )
 
                         HomeScreenDestination.NowPlaying ->
                             NowPlayingContent(
                                 uiState = uiState,
-                                onPlayPause = onPlayPause,
-                                onNext = onNext,
-                                onPrevious = onPrevious,
-                                onProgressChange = onProgressChange,
-                                onShuffleToggle = onShuffleToggle,
-                                onRepeatCycle = onRepeatCycle,
-                                onVisualizerEnabledChange = onVisualizerEnabledChange,
-                                onQueueSongSelected = onQueueSongSelected,
-                                onFavouriteToggle = onFavouriteToggle,
-                                onCreatePlaylist = onCreatePlaylist,
-                                onAddToPlaylist = onAddNowPlayingToPlaylist,
-                                onAddToQueue = onAddNowPlayingToQueue,
+                                playbackActions = playbackActions,
+                                songActions = appActions.songs,
+                                playlistActions = appActions.playlists,
                                 onShowQueue = {
                                     openPlaylistEditor(
                                         M3uPlaylist.QUEUE_NAME,
@@ -654,16 +642,8 @@ fun HomeScreen(
                         HomeScreenDestination.Playlists ->
                             PlaylistContent(
                                 uiState = uiState,
-                                onDeletePlaylist = onDeletePlaylist,
-                                onCreatePlaylist = onCreatePlaylist,
-                                onRenamePlaylist = onRenamePlaylist,
-                                onDuplicatePlaylist = onDuplicatePlaylist,
-                                onPlayPlaylist = onPlayPlaylist,
-                                onEnqueuePlaylist = onEnqueuePlaylist,
-                                onImportPlaylist = onImportPlaylist,
-                                onExportLibrary = onExportPlaylist,
-                                onExportPlaylist = onExportIndividualPlaylist,
-                                onClearQueue = onClearQueue,
+                                catalogActions = appActions.playlists.catalog,
+                                documentActions = appActions.playlists.documents,
                                 onOpenPlaylistEditor = { playlist ->
                                     openPlaylistEditor(
                                         playlist.name,
@@ -681,29 +661,18 @@ fun HomeScreen(
                                 emptyTitle = "No favourites yet",
                                 emptyMessage =
                                     "Mark songs or online streams as favourites to pin them here.",
-                                onSongSelected = onFavouriteSongSelected,
-                                onFavouriteToggle = onFavouriteToggle,
                                 playlists = uiState.importedPlaylists,
-                                onCreatePlaylist = onCreatePlaylist,
-                                onAddSongToPlaylist = onAddSongToPlaylist,
-                                onAddSongToQueue = onAddSongToQueue
+                                actions =
+                                    appActions.songs.forList(
+                                        select = appActions.songs.playFavourites,
+                                        createPlaylist = appActions.playlists.catalog.create
+                                    )
                             )
 
                         HomeScreenDestination.Settings ->
                             SettingsContent(
                                 uiState = uiState,
-                                onThemeSelected = onThemeSelected,
-                                onAddFolderSource = onAddFolderSource,
-                                onRemoveFolderSource = onRemoveFolderSource,
-                                onClearArtworkCache = onClearArtworkCache,
-                                onDefaultFilterSelected = onDefaultFilterSelected,
-                                onDefaultSortOrderSelected = onDefaultSortOrderSelected,
-                                onCarModeManuallyEnabledChange =
-                                    onCarModeManuallyEnabledChange,
-                                onCarDeviceMarkedChange = onCarDeviceMarkedChange,
-                                onExternalArtworkDownloadEnabledChange =
-                                    onExternalArtworkDownloadEnabledChange,
-                                onVisualizerPreferredChange = onVisualizerPreferredChange
+                                actions = appActions.settings
                             )
 
                         HomeScreenDestination.PlaylistEditor -> {
@@ -713,7 +682,9 @@ fun HomeScreen(
                                 }
                             if (playlist == null) {
                                 LaunchedEffect(playlistEditorName) {
-                                    onScreenSelected(playlistEditorReturnDestination)
+                                    appActions.navigation.selectScreen(
+                                        playlistEditorReturnDestination
+                                    )
                                 }
                             } else {
                                 PlaylistEditorContent(
@@ -724,16 +695,12 @@ fun HomeScreen(
                                             uiState.artworkBySongId[song.id]?.let { song.uri to it }
                                         }.toMap(),
                                     onBack = {
-                                        onScreenSelected(playlistEditorReturnDestination)
+                                        appActions.navigation.selectScreen(
+                                            playlistEditorReturnDestination
+                                        )
                                     },
-                                    onPlay = onPlayPlaylist,
-                                    onPlayEntry = onPlayPlaylistEntry,
-                                    onMoveEntry = onMovePlaylistEntry,
-                                    onFavouriteToggle = onPlaylistEntryFavouriteToggle,
-                                    onRemoveEntry = onRemovePlaylistEntry,
-                                    onClearPlaylist = onClearPlaylist,
-                                    onAddStream = onAddStreamToPlaylist,
-                                    onOpenRadioBrowser = onOpenRadioBrowser
+                                    catalogActions = appActions.playlists.catalog,
+                                    editorActions = appActions.playlists.editor
                                 )
                             }
                         }
@@ -742,21 +709,18 @@ fun HomeScreen(
                             RadioStationScreen(
                                 uiState = uiState,
                                 onBack = {
-                                    onStopRadioPreview()
-                                    onScreenSelected(HomeScreenDestination.PlaylistEditor)
+                                    appActions.radio.stopPreview()
+                                    appActions.navigation.selectScreen(
+                                        HomeScreenDestination.PlaylistEditor
+                                    )
                                 },
-                                onQueryChange = onRadioSearchQueryChange,
-                                onSearch = onSearchRadioStations,
-                                previewStation = uiState.previewRadioStation,
-                                onPreview = onPreviewRadioStation,
-                                onStopPreview = onStopRadioPreview,
+                                actions = appActions.radio,
                                 onAddToCurrentPlaylist = { station ->
                                     playlistEditorName?.let { playlistName ->
-                                        onAddRadioStationToPlaylist(station, playlistName)
+                                        appActions.radio.addToPlaylist(station, playlistName)
                                     }
                                 },
-                                onAddToNewPlaylist = onAddRadioStationToPlaylist,
-                                onCreatePlaylist = onCreatePlaylist
+                                createPlaylist = appActions.playlists.catalog.create
                             )
                     }
                 }

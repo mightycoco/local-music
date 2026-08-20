@@ -83,7 +83,8 @@
 - [ ] Prepare integration boundaries for notification controls, lock-screen controls, home-screen widgets, and Android Auto without implementing the surfaces yet.
 - [ ] Validate performance with a 50,000+ song library: pagination or bounded loading, indexed filtering/sorting, bounded artwork work, and measurable UI responsiveness.
 	- [x] Add indexed scan-generation reconciliation, one-pass facet counts, bounded artwork/document I/O, and release-only slider seeking.
-- [ ] Add explicit dependency-injection composition guidance or a lightweight DI solution once manual wiring no longer scales; keep UI, domain, and data dependencies directional.
+- [ ] Group the Home ViewModel and factory dependencies into typed feature-owned bundles once their ownership boundaries are stable; keep explicit composition and directional dependencies without a service locator.
+- [ ] Split `HomeUiState` into feature-owned immutable substates so destination screens receive narrower projections without duplicating derived state.
 - [ ] Continue the class/function-size, KDoc coverage, duplicate UI-flow, and Mermaid documentation review. The home shell now delegates library, playlist, settings, Now Playing, shared song-list, artwork/visualizer, and mini-player UI to focused Compose files.
 - [x] Select and integrate MusicBrainz and Cover Art Archive with rate-limit handling, attribution, privacy disclosure, error handling, and cache behavior. It must never supply audio playback or a cloud music library.
 - [x] Add bounded automatic reconnection for transient HTTP(S) live-stream read failures while preserving terminal playback errors after retries are exhausted.

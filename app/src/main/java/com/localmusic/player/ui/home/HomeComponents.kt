@@ -121,12 +121,8 @@ internal fun SongList(
     isPlaying: Boolean,
     listState: LazyListState = rememberLazyListState(),
     modifier: Modifier = Modifier.fillMaxSize(),
-    onSongSelected: (Song) -> Unit,
-    onFavouriteToggle: (Song) -> Unit,
     playlists: List<M3uPlaylist>,
-    onCreatePlaylist: (String) -> Unit,
-    onAddSongToPlaylist: (Song, String) -> Unit,
-    onAddSongToQueue: (Song) -> Unit
+    actions: SongListActions
 ) {
     SongList(
         songs = songs,
@@ -137,12 +133,8 @@ internal fun SongList(
         emptyTitle = "No local songs indexed yet",
         emptyMessage = "Allow audio access to scan MediaStore, or add a folder source.",
         modifier = modifier,
-        onSongSelected = onSongSelected,
-        onFavouriteToggle = onFavouriteToggle,
         playlists = playlists,
-        onCreatePlaylist = onCreatePlaylist,
-        onAddSongToPlaylist = onAddSongToPlaylist,
-        onAddSongToQueue = onAddSongToQueue
+        actions = actions
     )
 }
 
@@ -157,12 +149,8 @@ internal fun SongList(
     emptyTitle: String,
     emptyMessage: String,
     modifier: Modifier = Modifier,
-    onSongSelected: (Song) -> Unit,
-    onFavouriteToggle: (Song) -> Unit,
     playlists: List<M3uPlaylist>,
-    onCreatePlaylist: (String) -> Unit,
-    onAddSongToPlaylist: (Song, String) -> Unit,
-    onAddSongToQueue: (Song) -> Unit
+    actions: SongListActions
 ) {
     if (songs.isEmpty()) {
         EmptyState(title = emptyTitle, message = emptyMessage, modifier = modifier)
@@ -183,7 +171,7 @@ internal fun SongList(
             ListItem(
                 modifier =
                     Modifier.combinedClickable(
-                        onClick = { onSongSelected(song) },
+                        onClick = { actions.select(song) },
                         onLongClick = {
                             selectedSong = song
                             showActionMenu = true
@@ -199,7 +187,7 @@ internal fun SongList(
                 },
                 supportingContent = { Text("${song.artist} - ${song.album}") },
                 trailingContent = {
-                    IconButton(onClick = { onFavouriteToggle(song) }) {
+                    IconButton(onClick = { actions.toggleFavourite(song) }) {
                         Icon(
                             imageVector =
                                 if (song.isFavourite) Icons.Filled.Favorite
@@ -225,7 +213,7 @@ internal fun SongList(
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         TextButton(
                             onClick = {
-                                onAddSongToQueue(song)
+                                actions.addToQueue(song)
                                 selectedSong = null
                                 showActionMenu = false
                             }
@@ -258,13 +246,13 @@ internal fun SongList(
                 selectedSong = null
             },
             onPlaylistSelected = { playlistName ->
-                selectedSong?.let { song -> onAddSongToPlaylist(song, playlistName) }
+                selectedSong?.let { song -> actions.addToPlaylist(song, playlistName) }
                 selectedSong = null
                 showPlaylistChooser = false
             },
             onCreatePlaylist = { name ->
-                onCreatePlaylist(name)
-                selectedSong?.let { song -> onAddSongToPlaylist(song, name) }
+                actions.createPlaylist(name)
+                selectedSong?.let { song -> actions.addToPlaylist(song, name) }
                 selectedSong = null
                 showPlaylistChooser = false
             }

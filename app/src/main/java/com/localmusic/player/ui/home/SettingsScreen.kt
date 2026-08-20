@@ -36,16 +36,7 @@ import com.localmusic.player.ui.theme.AppThemeMode
 @Composable
 internal fun SettingsContent(
     uiState: HomeUiState,
-    onThemeSelected: (AppThemeMode) -> Unit,
-    onAddFolderSource: () -> Unit,
-    onRemoveFolderSource: (String) -> Unit,
-    onClearArtworkCache: () -> Unit,
-    onDefaultFilterSelected: (LibraryFilter) -> Unit,
-    onDefaultSortOrderSelected: (SortOrder) -> Unit,
-    onCarModeManuallyEnabledChange: (Boolean) -> Unit,
-    onCarDeviceMarkedChange: (String, Boolean) -> Unit,
-    onExternalArtworkDownloadEnabledChange: (Boolean) -> Unit,
-    onVisualizerPreferredChange: (Boolean) -> Unit
+    actions: SettingsFeatureActions
 ) {
     var selectedLicenseNotice by remember { mutableStateOf<OpenSourceLicenseNotice?>(null) }
     Column(
@@ -57,7 +48,7 @@ internal fun SettingsContent(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AppThemeMode.entries.forEach { mode ->
                 AssistChip(
-                    onClick = { onThemeSelected(mode) },
+                    onClick = { actions.appearance.selectTheme(mode) },
                     label = { Text(mode.label) },
                     enabled = mode != uiState.themeMode
                 )
@@ -74,7 +65,7 @@ internal fun SettingsContent(
             }
             Switch(
                 checked = uiState.isExternalArtworkDownloadEnabled,
-                onCheckedChange = onExternalArtworkDownloadEnabledChange
+                onCheckedChange = actions.appearance.setExternalArtworkDownloadEnabled
             )
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -88,7 +79,7 @@ internal fun SettingsContent(
             }
             Switch(
                 checked = uiState.isVisualizerPreferred,
-                onCheckedChange = onVisualizerPreferredChange
+                onCheckedChange = actions.appearance.setVisualizerPreferred
             )
         }
         Spacer(modifier = Modifier.height(16.dp))
@@ -98,14 +89,14 @@ internal fun SettingsContent(
             selectedLabel = uiState.selectedFilter.label,
             options = LibraryFilter.entries,
             optionLabel = LibraryFilter::label,
-            onSelected = onDefaultFilterSelected
+            onSelected = actions.preferences.setDefaultFilter
         )
         LibraryDefaultMenu(
             label = "Sort order",
             selectedLabel = uiState.sortOrder.label,
             options = SortOrder.entries,
             optionLabel = SortOrder::label,
-            onSelected = onDefaultSortOrderSelected
+            onSelected = actions.preferences.setDefaultSortOrder
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(text = "Car Mode", style = MaterialTheme.typography.bodyLarge)
@@ -120,7 +111,7 @@ internal fun SettingsContent(
             }
             Switch(
                 checked = uiState.isCarModeManuallyEnabled,
-                onCheckedChange = onCarModeManuallyEnabledChange
+                onCheckedChange = actions.preferences.setCarModeManuallyEnabled
             )
         }
         if (uiState.connectedCarAudioDevices.isEmpty()) {
@@ -146,7 +137,7 @@ internal fun SettingsContent(
                     Switch(
                         checked = device.id in uiState.markedCarDeviceIds,
                         onCheckedChange = { marked ->
-                            onCarDeviceMarkedChange(device.id, marked)
+                            actions.preferences.setCarDeviceMarked(device.id, marked)
                         }
                     )
                 }
@@ -160,13 +151,13 @@ internal fun SettingsContent(
                 style = MaterialTheme.typography.bodySmall
             )
             OutlinedButton(
-                onClick = onClearArtworkCache,
+                onClick = actions.appearance.clearArtworkCache,
                 enabled = uiState.artworkCacheSizeBytes > 0L
             ) { Text("Clear") }
         }
         Spacer(modifier = Modifier.height(16.dp))
         Text(text = "Local folders", style = MaterialTheme.typography.bodyLarge)
-        OutlinedButton(onClick = onAddFolderSource) { Text("Add Folder") }
+        OutlinedButton(onClick = actions.folders.add) { Text("Add Folder") }
         if (uiState.folderSourceUris.isEmpty()) {
             Text(
                 text = "No additional folders selected.",
@@ -185,7 +176,9 @@ internal fun SettingsContent(
                         maxLines = 2
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    OutlinedButton(onClick = { onRemoveFolderSource(folderUri) }) { Text("Remove") }
+                    OutlinedButton(onClick = { actions.folders.remove(folderUri) }) {
+                        Text("Remove")
+                    }
                 }
             }
         }

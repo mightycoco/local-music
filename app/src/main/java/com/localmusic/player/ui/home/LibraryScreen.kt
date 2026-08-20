@@ -50,27 +50,20 @@ private val browsableFilters =
 internal fun LibraryContent(
     uiState: HomeUiState,
     listState: LazyListState,
-    onSearchChange: (String) -> Unit,
-    onFilterSelected: (LibraryFilter) -> Unit,
-    onBrowseValueSelected: (String?) -> Unit,
-    onSortSelected: (SortOrder) -> Unit,
-    onAddFolderSource: () -> Unit,
-    onSongSelected: (Song) -> Unit,
-    onFavouriteToggle: (Song) -> Unit,
-    onCreatePlaylist: (String) -> Unit,
-    onAddSongToPlaylist: (Song, String) -> Unit,
-    onAddSongToQueue: (Song) -> Unit
+    libraryActions: LibraryActions,
+    songActions: SongActions,
+    createPlaylist: (String) -> Unit
 ) {
     OutlinedTextField(
         value = uiState.searchQuery,
-        onValueChange = onSearchChange,
+        onValueChange = libraryActions.updateSearch,
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
         label = { Text("Search") }
     )
     Spacer(modifier = Modifier.height(12.dp))
     if (uiState.songs.isEmpty()) {
-        Button(onClick = onAddFolderSource) { Text("Add Folder") }
+        Button(onClick = libraryActions.addFolderSource) { Text("Add Folder") }
         Spacer(modifier = Modifier.height(12.dp))
     } else {
         Row(
@@ -79,25 +72,23 @@ internal fun LibraryContent(
         ) {
             FilterRow(
                 uiState = uiState,
-                onFilterSelected = onFilterSelected,
+                onFilterSelected = libraryActions.selectFilter,
                 modifier = Modifier.weight(1f)
             )
             SortOrderDropdown(
                 selectedSortOrder = uiState.sortOrder,
-                onSortSelected = onSortSelected
+                onSortSelected = libraryActions.selectSortOrder
             )
         }
     }
     Spacer(modifier = Modifier.height(12.dp))
+    val songListActions =
+        songActions.forList(createPlaylist = createPlaylist)
     AdaptiveLibraryContent(
         uiState = uiState,
         listState = listState,
-        onBrowseValueSelected = onBrowseValueSelected,
-        onSongSelected = onSongSelected,
-        onFavouriteToggle = onFavouriteToggle,
-        onCreatePlaylist = onCreatePlaylist,
-        onAddSongToPlaylist = onAddSongToPlaylist,
-        onAddSongToQueue = onAddSongToQueue
+        onBrowseValueSelected = libraryActions.selectBrowseValue,
+        songListActions = songListActions
     )
 }
 
@@ -154,11 +145,7 @@ private fun AdaptiveLibraryContent(
     uiState: HomeUiState,
     listState: LazyListState,
     onBrowseValueSelected: (String?) -> Unit,
-    onSongSelected: (Song) -> Unit,
-    onFavouriteToggle: (Song) -> Unit,
-    onCreatePlaylist: (String) -> Unit,
-    onAddSongToPlaylist: (Song, String) -> Unit,
-    onAddSongToQueue: (Song) -> Unit
+    songListActions: SongListActions
 ) {
     if (uiState.selectedFilter in browsableFilters && uiState.selectedBrowseValue == null) {
         BrowseFacetList(
@@ -184,12 +171,8 @@ private fun AdaptiveLibraryContent(
                     isPlaying = uiState.isPlaying,
                     listState = listState,
                     modifier = Modifier.weight(1f),
-                    onSongSelected = onSongSelected,
-                    onFavouriteToggle = onFavouriteToggle,
                     playlists = uiState.importedPlaylists,
-                    onCreatePlaylist = onCreatePlaylist,
-                    onAddSongToPlaylist = onAddSongToPlaylist,
-                    onAddSongToQueue = onAddSongToQueue
+                    actions = songListActions
                 )
                 SongList(
                     songs = uiState.favouriteSongs,
@@ -199,12 +182,8 @@ private fun AdaptiveLibraryContent(
                     emptyTitle = "No favourites yet",
                     emptyMessage = "Mark songs or online streams as favourites to pin them here.",
                     modifier = Modifier.width(320.dp),
-                    onSongSelected = onSongSelected,
-                    onFavouriteToggle = onFavouriteToggle,
                     playlists = uiState.importedPlaylists,
-                    onCreatePlaylist = onCreatePlaylist,
-                    onAddSongToPlaylist = onAddSongToPlaylist,
-                    onAddSongToQueue = onAddSongToQueue
+                    actions = songListActions
                 )
             }
         } else {
@@ -214,12 +193,8 @@ private fun AdaptiveLibraryContent(
                 nowPlayingSongId = uiState.nowPlayingSong?.id,
                 isPlaying = uiState.isPlaying,
                 listState = listState,
-                onSongSelected = onSongSelected,
-                onFavouriteToggle = onFavouriteToggle,
                 playlists = uiState.importedPlaylists,
-                onCreatePlaylist = onCreatePlaylist,
-                onAddSongToPlaylist = onAddSongToPlaylist,
-                onAddSongToQueue = onAddSongToQueue
+                actions = songListActions
             )
         }
     }

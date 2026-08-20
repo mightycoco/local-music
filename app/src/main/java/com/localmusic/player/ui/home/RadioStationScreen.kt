@@ -50,21 +50,16 @@ import com.localmusic.player.domain.model.RadioStation
 internal fun RadioStationScreen(
     uiState: HomeUiState,
     onBack: () -> Unit,
-    onQueryChange: (String) -> Unit,
-    onSearch: () -> Unit,
-    previewStation: RadioStation?,
-    onPreview: (RadioStation) -> Unit,
-    onStopPreview: () -> Unit,
+    actions: RadioActions,
     onAddToCurrentPlaylist: (RadioStation) -> Unit,
-    onAddToNewPlaylist: (RadioStation, String) -> Unit,
-    onCreatePlaylist: (String) -> Unit
+    createPlaylist: (String) -> Unit
 ) {
     var stationToAddToNewPlaylist by remember { mutableStateOf<RadioStation?>(null) }
     var searchFieldValue by remember { mutableStateOf(TextFieldValue(uiState.radioSearchQuery)) }
     val keyboardController = LocalSoftwareKeyboardController.current
     fun submitSearch() {
         keyboardController?.hide()
-        onSearch()
+        actions.search()
     }
 
     if (searchFieldValue.text != uiState.radioSearchQuery) {
@@ -84,7 +79,7 @@ internal fun RadioStationScreen(
             value = searchFieldValue,
             onValueChange = { value ->
                 searchFieldValue = value
-                onQueryChange(value.text)
+                actions.updateQuery(value.text)
             },
             label = { Text("Search Radio Browser") },
             singleLine = true,
@@ -106,13 +101,13 @@ internal fun RadioStationScreen(
                     }
                 }
         )
-        previewStation?.let { station ->
+        uiState.previewRadioStation?.let { station ->
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
-                    onClick = onStopPreview,
+                    onClick = actions.stopPreview,
                     modifier = Modifier.semantics { contentDescription = "Stop preview" }
                 ) {
                     Icon(imageVector = Icons.Filled.Stop, contentDescription = null)
@@ -158,7 +153,7 @@ internal fun RadioStationScreen(
                 items(uiState.radioStations, key = RadioStation::id) { station ->
                     RadioStationRow(
                         station = station,
-                        onPreview = onPreview,
+                        onPreview = actions.preview,
                         onAddToCurrentPlaylist = { onAddToCurrentPlaylist(station) },
                         onAddToNewPlaylist = { stationToAddToNewPlaylist = station }
                     )
@@ -170,8 +165,8 @@ internal fun RadioStationScreen(
         NewPlaylistNameDialog(
             onDismiss = { stationToAddToNewPlaylist = null },
             onConfirm = { playlistName ->
-                onCreatePlaylist(playlistName)
-                onAddToNewPlaylist(station, playlistName)
+                createPlaylist(playlistName)
+                actions.addToPlaylist(station, playlistName.trim())
                 stationToAddToNewPlaylist = null
             }
         )
