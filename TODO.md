@@ -86,7 +86,7 @@
 	- [x] Add a reproducible 50,000-song projection responsiveness benchmark and document the device-validation protocol.
 	- [x] Replace accumulated SQL result windows with a bounded Paging 3-backed list so scrolling cannot retain the complete library in ViewModel/UI state.
 	- [x] Query artist, album, genre, and folder facet counts in Room so drill-down counts represent the complete filtered library rather than a loaded page.
-	- [ ] Verify supported Room filter/sort query plans against the 50,000-song dataset and add any missing composite indexes, including genre, folder, and name order paths.
+	- [x] Verify supported Room filter/sort query plans against the 50,000-song dataset and add any missing composite indexes, including genre, folder, and name order paths.
 	- [ ] Capture target-device frame timings for search, filters, sorting, browse facets, and long-list scrolling with 50,000 scanned tracks; record the measured result and responsiveness threshold.
 - [x] Group the Home ViewModel and factory dependencies into typed feature-owned bundles once their ownership boundaries are stable; keep explicit composition and directional dependencies without a service locator.
 - [x] Split `HomeUiState` into feature-owned immutable substates so destination screens receive narrower projections without duplicating derived state.

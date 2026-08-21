@@ -1,5 +1,6 @@
 package com.localmusic.player.data.database
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -25,10 +26,10 @@ import androidx.room.PrimaryKey
 data class SongEntity(
     @PrimaryKey val id: String,
     val fileName: String,
-    val title: String,
-    val artist: String,
-    val album: String,
-    val genre: String,
+    @ColumnInfo(collate = ColumnInfo.NOCASE) val title: String,
+    @ColumnInfo(collate = ColumnInfo.NOCASE) val artist: String,
+    @ColumnInfo(collate = ColumnInfo.NOCASE) val album: String,
+    @ColumnInfo(collate = ColumnInfo.NOCASE) val genre: String,
     val albumArtist: String,
     val composer: String,
     val year: Int?,
@@ -36,7 +37,7 @@ data class SongEntity(
     val description: String,
     val durationMillis: Long,
     val dateAddedEpochSeconds: Long,
-    val folderName: String,
+    @ColumnInfo(collate = ColumnInfo.NOCASE) val folderName: String,
     val uri: String,
     val mimeType: String,
     val sizeBytes: Long,

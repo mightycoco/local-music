@@ -1,12 +1,18 @@
 package com.localmusic.player.data.database
 
 import androidx.room.Database
+import androidx.room.AutoMigration
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 /** Room database for local library metadata and user-owned music state. */
-@Database(entities = [SongEntity::class, PlaylistEntity::class], version = 9, exportSchema = true)
+@Database(
+    entities = [SongEntity::class, PlaylistEntity::class],
+    version = 10,
+    exportSchema = true,
+    autoMigrations = [AutoMigration(from = 9, to = 10)]
+)
 abstract class LocalMusicDatabase : RoomDatabase() {
     abstract fun songDao(): SongDao
     abstract fun playlistDao(): PlaylistDao
