@@ -2,7 +2,7 @@
 
 ## 0.1.0 - Unreleased
 
-- Replaced full-library Room observation and ViewModel projection with bounded SQL-backed filtered paging, targeted playlist lookups, and composite library indexes.
+- Replaced full-library Room observation and ViewModel projection with Paging 3-backed SQL filtering, a 500-song cache cap, complete Room facet aggregation, targeted playlist lookups, and composite library indexes.
 - Added vertical Now Playing artwork gestures for Android media-stream volume with a synchronized read-only volume indicator.
 - Fixed Now Playing so HTTP(S) radio artwork can be switched to and from the visualizer like local cover artwork.
 - Added a persisted, default-enabled Settings option that keeps the display awake while charging or connected to detected Bluetooth car audio.

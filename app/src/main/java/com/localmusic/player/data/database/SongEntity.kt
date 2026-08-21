@@ -16,6 +16,9 @@ import androidx.room.PrimaryKey
         Index(value = ["lastPlayedEpochMillis", "dateAddedEpochSeconds"]),
         Index(value = ["artist", "title"]),
         Index(value = ["album", "title"]),
+        Index(value = ["genre", "title"]),
+        Index(value = ["folderName", "title"]),
+        Index(value = ["title", "artist"]),
         Index(value = ["durationMillis", "title"])
     ]
 )

@@ -31,7 +31,6 @@ internal data class LibraryActions(
     val selectFilter: (LibraryFilter) -> Unit,
     val selectBrowseValue: (String?) -> Unit,
     val selectSortOrder: (SortOrder) -> Unit,
-    val loadNextPage: () -> Unit,
     val addFolderSource: () -> Unit
 )
 

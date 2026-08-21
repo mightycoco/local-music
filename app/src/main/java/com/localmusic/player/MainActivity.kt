@@ -68,7 +68,8 @@ class MainActivity : ComponentActivity() {
                     LocalMusicDatabase.MIGRATION_4_5,
                     LocalMusicDatabase.MIGRATION_5_6,
                     LocalMusicDatabase.MIGRATION_6_7,
-                    LocalMusicDatabase.MIGRATION_7_8
+                    LocalMusicDatabase.MIGRATION_7_8,
+                    LocalMusicDatabase.MIGRATION_8_9
                 )
                 .build()
         val safFolderSourceStore =

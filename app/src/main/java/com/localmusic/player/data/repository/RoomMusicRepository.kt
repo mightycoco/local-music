@@ -1,14 +1,20 @@
 package com.localmusic.player.data.repository
 
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.map
 import com.localmusic.player.data.database.SongDao
 import com.localmusic.player.data.database.SongEntity
 import com.localmusic.player.data.database.toSqlQuery
+import com.localmusic.player.data.database.toFacetSqlQuery
 import com.localmusic.player.data.database.toDomain
 import com.localmusic.player.data.database.toEntity
 import com.localmusic.player.data.mediastore.MusicScanner
 import com.localmusic.player.data.saf.SafFolderSourceStore
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.LibraryQuery
+import com.localmusic.player.domain.model.LibraryFacet
 import com.localmusic.player.domain.model.SongSource
 import com.localmusic.player.domain.model.StreamStation
 import com.localmusic.player.domain.repository.MusicRepository
@@ -33,6 +39,24 @@ class RoomMusicRepository(
 ) : MusicRepository {
     override fun observeLibrary(query: LibraryQuery): Flow<List<Song>> =
         songDao.observeSongs(query.toSqlQuery()).map { entities -> entities.map { it.toDomain() } }
+
+    override fun pageLibrary(query: LibraryQuery): Flow<PagingData<Song>> =
+        Pager(
+            config =
+                PagingConfig(
+                    pageSize = LibraryQuery.DEFAULT_PAGE_SIZE,
+                    prefetchDistance = LIBRARY_PREFETCH_DISTANCE,
+                    initialLoadSize = LibraryQuery.DEFAULT_PAGE_SIZE,
+                    maxSize = LIBRARY_MAX_CACHED_SONGS,
+                    enablePlaceholders = true
+                ),
+            pagingSourceFactory = { songDao.pageSongs(query.toSqlQuery(includeWindow = false)) }
+        ).flow.map { pagingData -> pagingData.map(SongEntity::toDomain) }
+
+    override fun observeLibraryFacets(query: LibraryQuery): Flow<List<LibraryFacet>> =
+        songDao.observeFacetCounts(query.toFacetSqlQuery()).map { rows ->
+            rows.map { row -> LibraryFacet(value = row.value, songCount = row.songCount) }
+        }
 
     override suspend fun songsByUris(uris: List<String>): List<Song> =
         withContext(ioDispatcher) { songDao.songsByUris(uris).map(SongEntity::toDomain) }
@@ -109,6 +133,9 @@ class RoomMusicRepository(
     override suspend fun updateStreamMetadata(songId: String, title: String, artist: String) =
         withContext(ioDispatcher) { songDao.updateStreamMetadata(songId, title, artist) }
 }
+
+private const val LIBRARY_PREFETCH_DISTANCE = 20
+private const val LIBRARY_MAX_CACHED_SONGS = 500
 
 private fun String.sha256(): String =
     MessageDigest.getInstance("SHA-256")

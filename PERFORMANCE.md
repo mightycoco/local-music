@@ -10,10 +10,12 @@ $env:PATH="$env:JAVA_HOME\bin;$env:PATH"
 .\gradlew.bat testDebugUnitTest --tests com.localmusic.player.ui.home.LibraryProjectionPerformanceTest
 ```
 
-The screen renders results through `LazyColumn`, so composition stays bounded to visible rows. Artwork work is also bounded: the ViewModel prefetches at most 64 visible candidates, and at most four missing covers can request external artwork in one pass. Embedded artwork input is byte-bounded and bitmap decoding is size-limited.
+The library renders Room-backed Paging 3 data through Compose `LazyColumn` rows. The pager loads 100-song pages, prefetches 20 rows ahead, enables placeholders, and caps its in-memory cache at 500 songs, so scrolling does not accumulate the full library in ViewModel or UI state. Artist, album, genre, and folder counts are separate Room aggregation queries over the complete filtered library.
 
-## Current Constraint
+Artwork work is also bounded: the ViewModel prefetches at most 64 visible candidates, and at most four missing covers can request external artwork in one pass. Embedded artwork input is byte-bounded and bitmap decoding is size-limited.
 
-Room currently observes the complete song library before the ViewModel applies filtering and sorting. Existing DAO indexes cover date added, scan generation, and URI, which keep scan reconciliation and URI lookup efficient, but they do not provide paging or indexed search/sort queries. The projection benchmark provides a repeatable baseline, not proof that loading a full 50,000-row Room snapshot is ideal.
+## Query Constraints
 
-Before treating the library as validated on a target device, seed or scan 50,000 tracks and capture frame timing while changing search, filters, sort order, and browse facets. If any interaction exceeds the product responsiveness target, replace the full-list observation with SQL-backed filtered paging and add composite indexes for the supported sort/filter combinations.
+Room applies filters, browse values, and supported sort orders before Paging materializes rows. Composite indexes cover favourite, play-history, artist/title, album/title, genre/title, folder/title, title/artist, and duration/title paths. Contains search uses bound `LIKE '%query%'` predicates across persisted metadata and therefore cannot use a conventional B-tree prefix lookup.
+
+The remaining validation work is empirical: run `EXPLAIN QUERY PLAN` for every supported query shape against a representative 50,000-row database, then capture target-device frame timing and interaction latency while changing search, filters, sort order, browse facets, and scrolling deeply. Record the device, build variant, responsiveness threshold, and measured results before marking the performance target complete.

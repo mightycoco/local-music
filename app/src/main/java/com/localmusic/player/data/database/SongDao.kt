@@ -5,6 +5,7 @@ import androidx.room.Query
 import androidx.room.RawQuery
 import androidx.room.Transaction
 import androidx.room.Upsert
+import androidx.paging.PagingSource
 import androidx.sqlite.db.SupportSQLiteQuery
 import kotlinx.coroutines.flow.Flow
 
@@ -13,6 +14,12 @@ import kotlinx.coroutines.flow.Flow
 interface SongDao {
     @RawQuery(observedEntities = [SongEntity::class])
     fun observeSongs(query: SupportSQLiteQuery): Flow<List<SongEntity>>
+
+    @RawQuery(observedEntities = [SongEntity::class])
+    fun pageSongs(query: SupportSQLiteQuery): PagingSource<Int, SongEntity>
+
+    @RawQuery(observedEntities = [SongEntity::class])
+    fun observeFacetCounts(query: SupportSQLiteQuery): Flow<List<LibraryFacetRow>>
 
     @Upsert
     suspend fun upsertAll(songs: List<SongEntity>)
@@ -59,3 +66,5 @@ interface SongDao {
         if (deleteMissing) deleteBeforeGeneration(generation)
     }
 }
+
+data class LibraryFacetRow(val value: String, val songCount: Int)

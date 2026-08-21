@@ -1,5 +1,8 @@
 package com.localmusic.player.data.repository
 
+import androidx.paging.PagingData
+import com.localmusic.player.domain.model.LibraryBrowser
+import com.localmusic.player.domain.model.LibraryFacet
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.LibraryQuery
 import com.localmusic.player.domain.model.SongSource
@@ -15,6 +18,16 @@ class InMemoryMusicRepository : MusicRepository {
 
     override fun observeLibrary(query: LibraryQuery): Flow<List<Song>> =
         songs.map { library -> library.drop(query.offset).take(query.limit) }
+
+    override fun pageLibrary(query: LibraryQuery): Flow<PagingData<Song>> =
+        songs.map { library -> PagingData.from(library) }
+
+    override fun observeLibraryFacets(query: LibraryQuery): Flow<List<LibraryFacet>> =
+        songs.map { library ->
+            LibraryBrowser.valueCounts(library, query.filter).map { (value, count) ->
+                LibraryFacet(value, count)
+            }
+        }
 
     override suspend fun songsByUris(uris: List<String>): List<Song> =
         songs.value.filter { it.uri in uris }

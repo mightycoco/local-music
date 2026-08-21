@@ -70,6 +70,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.core.content.ContextCompat
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.localmusic.player.bluetooth.CarAudioDevice
 import com.localmusic.player.bluetooth.CarModeDetector
 import com.localmusic.player.domain.model.LibraryFilter
@@ -108,6 +110,7 @@ fun HomeRoute(viewModel: HomeViewModel, uiState: HomeUiState) {
     val context = LocalContext.current
     val rootView = LocalView.current
     val coroutineScope = rememberCoroutineScope()
+    val librarySongs = viewModel.libraryPagingData.collectAsLazyPagingItems()
     var isCharging by remember { mutableStateOf(false) }
     val audioPermission =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -196,6 +199,10 @@ fun HomeRoute(viewModel: HomeViewModel, uiState: HomeUiState) {
     LaunchedEffect(hasAudioPermission) {
         yield()
         if (hasAudioPermission) viewModel.refreshLibraryOnce()
+    }
+
+    LaunchedEffect(librarySongs.itemSnapshotList.items) {
+        viewModel.updateLoadedLibrarySongs(librarySongs.itemSnapshotList.items)
     }
 
     LaunchedEffect(Unit) {
@@ -330,7 +337,6 @@ fun HomeRoute(viewModel: HomeViewModel, uiState: HomeUiState) {
                     selectFilter = viewModel::selectFilter,
                     selectBrowseValue = viewModel::selectBrowseValue,
                     selectSortOrder = viewModel::selectSortOrder,
-                    loadNextPage = viewModel::loadNextLibraryPage,
                     addFolderSource = addFolderSource
                 ),
             songs =
@@ -439,6 +445,7 @@ fun HomeRoute(viewModel: HomeViewModel, uiState: HomeUiState) {
 
     HomeScreen(
         uiState = uiState,
+        librarySongs = librarySongs,
         hasAudioPermission = hasAudioPermission,
         playbackActions = playbackActions,
         appActions = appActions
@@ -463,6 +470,7 @@ private const val DEFAULT_PLAYLIST_BUFFER_CHARS = 8 * 1024
 @Composable
 internal fun HomeScreen(
     uiState: HomeUiState,
+    librarySongs: LazyPagingItems<Song>,
     hasAudioPermission: Boolean,
     playbackActions: PlaybackActions,
     appActions: AppActions
@@ -655,6 +663,7 @@ internal fun HomeScreen(
                         HomeScreenDestination.Home ->
                             LibraryContent(
                                 uiState = uiState,
+                                songs = librarySongs,
                                 listState = libraryListState,
                                 libraryActions = appActions.library,
                                 songActions = appActions.songs,
@@ -689,8 +698,8 @@ internal fun HomeScreen(
                             )
 
                         HomeScreenDestination.Favourites ->
-                            SongList(
-                                songs = uiState.favouriteSongs,
+                            PagedSongList(
+                                songs = librarySongs,
                                 artworkBySongId = uiState.artworkBySongId,
                                 nowPlayingSongId = uiState.nowPlayingSong?.id,
                                 isPlaying = uiState.isPlaying,

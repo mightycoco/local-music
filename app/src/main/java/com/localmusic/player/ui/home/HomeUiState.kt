@@ -2,6 +2,7 @@ package com.localmusic.player.ui.home
 
 import com.localmusic.player.bluetooth.CarAudioDevice
 import com.localmusic.player.domain.model.LibraryFilter
+import com.localmusic.player.domain.model.LibraryFacet
 import com.localmusic.player.domain.model.RadioStation
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.SortOrder
@@ -14,7 +15,7 @@ data class HomeUiState(
     val songs: List<Song> = emptyList(),
     val librarySongs: List<Song> = emptyList(),
     val favouriteSongs: List<Song> = emptyList(),
-    val hasMoreLibrarySongs: Boolean = false,
+    val libraryFacets: List<LibraryFacet> = emptyList(),
     val artworkBySongId: Map<String, String> = emptyMap(),
     val selectedScreen: HomeScreenDestination = HomeScreenDestination.Home,
     val nowPlayingSong: Song? = null,

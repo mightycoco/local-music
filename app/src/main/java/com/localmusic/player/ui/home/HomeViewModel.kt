@@ -1,5 +1,7 @@
 package com.localmusic.player.ui.home
 
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -10,6 +12,7 @@ import com.localmusic.player.bluetooth.CarAudioDevice
 import com.localmusic.player.bluetooth.CarModePreferences
 import com.localmusic.player.domain.model.LibraryBrowser
 import com.localmusic.player.domain.model.LibraryFilter
+import com.localmusic.player.domain.model.LibraryFacet
 import com.localmusic.player.domain.model.LibraryQuery
 import com.localmusic.player.domain.model.RadioStation
 import com.localmusic.player.domain.model.SmartPlaylistRules
@@ -38,12 +41,13 @@ import com.localmusic.player.settings.LibraryPreferences
 import com.localmusic.player.ui.theme.AppThemeMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -76,7 +80,7 @@ class HomeViewModel(
     private val sortOrder =
         MutableStateFlow(libraryPreferences?.defaultSortOrder() ?: SortOrder.NewestAdded)
     private val searchQuery = MutableStateFlow("")
-    private val libraryPageOffset = MutableStateFlow(0)
+    private val loadedLibrarySongs = MutableStateFlow<List<Song>>(emptyList())
     private val radioSearchQuery = MutableStateFlow("")
     private val radioStations = MutableStateFlow<List<RadioStation>>(emptyList())
     private val isRadioSearchLoading = MutableStateFlow(false)
@@ -289,7 +293,7 @@ class HomeViewModel(
             )
         }
 
-    private val libraryPage =
+    private val libraryQuery =
         combine(selectedFilter, selectedBrowseValue, sortOrder, searchQuery) { filter, browseValue, order, query ->
             LibraryQuery(
                 filter = filter,
@@ -303,37 +307,40 @@ class HomeViewModel(
             } else {
                 query
             }
-        }.combine(libraryPageOffset) { query, offset -> query.copy(offset = offset) }
-            .flatMapLatest { query ->
-                observeLibraryPage(query).map { songs -> LibraryPage(query.offset, songs) }
+        }
+
+    val libraryPagingData: Flow<PagingData<Song>> =
+        libraryQuery.flatMapLatest(observeLibraryPage::paged).cachedIn(viewModelScope)
+
+    private val libraryFacets: Flow<List<LibraryFacet>> =
+        libraryQuery.flatMapLatest { query ->
+            if (query.filter.supportsFacets() && query.browseValue == null) {
+                observeLibraryPage.facets(query)
+            } else {
+                flowOf(emptyList())
             }
-            .scan(LoadedLibraryPage()) { loaded, page ->
-                if (page.offset == 0) {
-                    LoadedLibraryPage(songs = page.songs, hasMore = page.songs.size == LibraryQuery.DEFAULT_PAGE_SIZE)
-                } else {
-                    LoadedLibraryPage(
-                        songs = loaded.songs + page.songs.filterNot { song -> song.id in loaded.songIds },
-                        hasMore = page.songs.size == LibraryQuery.DEFAULT_PAGE_SIZE
-                    )
-                }
-            }
+        }
+
+    private val libraryControlsState =
+        combine(controlsState, libraryFacets) { state, facets ->
+            state.copy(libraryFacets = facets)
+        }
 
     val uiState: StateFlow<HomeUiState> =
         combine(
-            libraryPage,
-            controlsState,
+            loadedLibrarySongs,
+            libraryControlsState,
             artworkBySongId,
             playbackState,
             playbackSongsById
-        ) { page, state, artwork, playback, activePlaybackSongs ->
-            refreshArtwork(page.songs.take(ARTWORK_PREFETCH_LIMIT))
-            val songsById = page.songs.associateBy(Song::id) + activePlaybackSongs
+        ) { loadedSongs, state, artwork, playback, activePlaybackSongs ->
+            refreshArtwork(loadedSongs.take(ARTWORK_PREFETCH_LIMIT))
+            val songsById = loadedSongs.associateBy(Song::id) + activePlaybackSongs
             val nowPlaying = songsById[playback.songId]
             state.copy(
-                songs = page.songs,
-                librarySongs = page.songs,
-                favouriteSongs = if (state.selectedScreen == HomeScreenDestination.Favourites) page.songs else emptyList(),
-                hasMoreLibrarySongs = page.hasMore,
+                songs = loadedSongs,
+                librarySongs = loadedSongs,
+                favouriteSongs = if (state.selectedScreen == HomeScreenDestination.Favourites) loadedSongs else emptyList(),
                 nowPlayingSong = nowPlaying,
                 playbackQueue =
                     resolvePlaybackQueue(
@@ -358,17 +365,17 @@ class HomeViewModel(
     fun selectFilter(filter: LibraryFilter) {
         selectedFilter.value = filter
         selectedBrowseValue.value = null
-        resetLibraryPaging()
+        loadedLibrarySongs.value = emptyList()
     }
 
     fun selectBrowseValue(value: String?) {
         selectedBrowseValue.value = value
-        resetLibraryPaging()
+        loadedLibrarySongs.value = emptyList()
     }
 
     fun selectSortOrder(order: SortOrder) {
         sortOrder.value = order
-        resetLibraryPaging()
+        loadedLibrarySongs.value = emptyList()
     }
 
     fun setDefaultFilter(filter: LibraryFilter) {
@@ -383,13 +390,11 @@ class HomeViewModel(
 
     fun updateSearchQuery(query: String) {
         searchQuery.value = query
-        resetLibraryPaging()
+        loadedLibrarySongs.value = emptyList()
     }
 
-    fun loadNextLibraryPage() {
-        if (uiState.value.hasMoreLibrarySongs) {
-            libraryPageOffset.value = uiState.value.songs.size
-        }
+    fun updateLoadedLibrarySongs(songs: List<Song>) {
+        loadedLibrarySongs.value = songs
     }
 
     fun updateRadioSearchQuery(query: String) {
@@ -420,7 +425,7 @@ class HomeViewModel(
 
     fun selectScreen(destination: HomeScreenDestination) {
         selectedScreen.value = destination
-        resetLibraryPaging()
+        loadedLibrarySongs.value = emptyList()
         if (destination != HomeScreenDestination.NowPlaying) {
             startPlayback.setVisualizerEnabled(false)
         }
@@ -967,10 +972,6 @@ class HomeViewModel(
             }
     }
 
-    private fun resetLibraryPaging() {
-        libraryPageOffset.value = 0
-    }
-
     fun setCarModeManuallyEnabled(enabled: Boolean) {
         carModePreferences?.setManuallyEnabled(enabled)
         isCarModeManuallyEnabled.value = enabled
@@ -1043,6 +1044,12 @@ class HomeViewModel(
             LibraryFilter.Favourites -> isFavourite
         }
 
+    private fun LibraryFilter.supportsFacets(): Boolean =
+        this == LibraryFilter.Artists ||
+                this == LibraryFilter.Albums ||
+                this == LibraryFilter.Genres ||
+                this == LibraryFilter.Folders
+
     private fun SortOrder.comparator(): Comparator<Song> =
         when (this) {
             SortOrder.NewestAdded, SortOrder.DateAdded ->
@@ -1101,15 +1108,6 @@ private data class CarModeState(
     val connectedDevices: List<CarAudioDevice>,
     val markedDeviceIds: Set<String>
 )
-
-private data class LibraryPage(val offset: Int, val songs: List<Song>)
-
-private data class LoadedLibraryPage(
-    val songs: List<Song> = emptyList(),
-    val hasMore: Boolean = false
-) {
-    val songIds: Set<String> get() = songs.mapTo(mutableSetOf(), Song::id)
-}
 
 internal data class LibraryProjection(
     val filter: LibraryFilter,

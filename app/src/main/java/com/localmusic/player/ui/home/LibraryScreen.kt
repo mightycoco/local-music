@@ -33,10 +33,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.localmusic.player.domain.model.LibraryBrowser
 import com.localmusic.player.domain.model.LibraryFilter
+import com.localmusic.player.domain.model.LibraryFacet
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.SortOrder
+import androidx.paging.compose.LazyPagingItems
 
 private val browsableFilters =
     setOf(
@@ -49,6 +50,7 @@ private val browsableFilters =
 @Composable
 internal fun LibraryContent(
     uiState: HomeUiState,
+    songs: LazyPagingItems<Song>,
     listState: LazyListState,
     libraryActions: LibraryActions,
     songActions: SongActions,
@@ -62,7 +64,7 @@ internal fun LibraryContent(
         label = { Text("Search") }
     )
     Spacer(modifier = Modifier.height(12.dp))
-    if (uiState.songs.isEmpty()) {
+    if (songs.itemCount == 0) {
         Button(onClick = libraryActions.addFolderSource) { Text("Add Folder") }
         Spacer(modifier = Modifier.height(12.dp))
     } else {
@@ -86,9 +88,9 @@ internal fun LibraryContent(
         songActions.forList(createPlaylist = createPlaylist)
     AdaptiveLibraryContent(
         uiState = uiState,
+        songs = songs,
         listState = listState,
         onBrowseValueSelected = libraryActions.selectBrowseValue,
-        onLoadNextPage = libraryActions.loadNextPage,
         songListActions = songListActions
     )
 }
@@ -144,15 +146,15 @@ private fun SortOrderDropdown(selectedSortOrder: SortOrder, onSortSelected: (Sor
 @Composable
 private fun AdaptiveLibraryContent(
     uiState: HomeUiState,
+    songs: LazyPagingItems<Song>,
     listState: LazyListState,
     onBrowseValueSelected: (String?) -> Unit,
-    onLoadNextPage: () -> Unit,
     songListActions: SongListActions
 ) {
     if (uiState.selectedFilter in browsableFilters && uiState.selectedBrowseValue == null) {
         BrowseFacetList(
             filter = uiState.selectedFilter,
-            songs = uiState.songs,
+            facets = uiState.libraryFacets,
             onBrowseValueSelected = onBrowseValueSelected
         )
         return
@@ -166,15 +168,14 @@ private fun AdaptiveLibraryContent(
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         if (maxWidth >= 840.dp) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                SongList(
-                    songs = uiState.songs,
+                PagedSongList(
+                    songs = songs,
                     artworkBySongId = uiState.artworkBySongId,
                     nowPlayingSongId = uiState.nowPlayingSong?.id,
                     isPlaying = uiState.isPlaying,
                     listState = listState,
                     modifier = Modifier.weight(1f),
                     playlists = uiState.importedPlaylists,
-                    onLoadNextPage = onLoadNextPage,
                     actions = songListActions
                 )
                 SongList(
@@ -190,14 +191,13 @@ private fun AdaptiveLibraryContent(
                 )
             }
         } else {
-            SongList(
-                songs = uiState.songs,
+            PagedSongList(
+                songs = songs,
                 artworkBySongId = uiState.artworkBySongId,
                 nowPlayingSongId = uiState.nowPlayingSong?.id,
                 isPlaying = uiState.isPlaying,
                 listState = listState,
                 playlists = uiState.importedPlaylists,
-                onLoadNextPage = onLoadNextPage,
                 actions = songListActions
             )
         }
@@ -207,11 +207,10 @@ private fun AdaptiveLibraryContent(
 @Composable
 private fun BrowseFacetList(
     filter: LibraryFilter,
-    songs: List<Song>,
+    facets: List<LibraryFacet>,
     onBrowseValueSelected: (String) -> Unit
 ) {
-    val valueCounts = LibraryBrowser.valueCounts(songs, filter)
-    if (valueCounts.isEmpty()) {
+    if (facets.isEmpty()) {
         EmptyState(
             title = "No ${filter.label.lowercase()} found",
             message = "Refresh your local library or choose another filter."
@@ -220,11 +219,11 @@ private fun BrowseFacetList(
     }
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        items(valueCounts, key = { it.first.lowercase() }) { (value, songCount) ->
+        items(facets, key = { it.value.lowercase() }) { facet ->
             ListItem(
-                modifier = Modifier.clickable { onBrowseValueSelected(value) },
-                headlineContent = { Text(value) },
-                supportingContent = { Text("$songCount songs") }
+                modifier = Modifier.clickable { onBrowseValueSelected(facet.value) },
+                headlineContent = { Text(facet.value) },
+                supportingContent = { Text("${facet.songCount} songs") }
             )
         }
     }

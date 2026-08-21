@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -31,14 +32,14 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.playlist.M3uPlaylist
+import androidx.paging.LoadState
+import androidx.paging.compose.LazyPagingItems
 import kotlinx.coroutines.delay
 
 @Composable
@@ -128,7 +129,9 @@ internal fun SongList(
     actions: SongListActions
 ) {
     SongList(
-        songs = songs,
+        itemCount = songs.size,
+        songAt = songs::get,
+        isInitialLoad = false,
         artworkBySongId = artworkBySongId,
         nowPlayingSongId = nowPlayingSongId,
         isPlaying = isPlaying,
@@ -137,7 +140,35 @@ internal fun SongList(
         emptyMessage = "Allow audio access to scan MediaStore, or add a folder source.",
         modifier = modifier,
         playlists = playlists,
-        onLoadNextPage = onLoadNextPage,
+        actions = actions
+    )
+}
+
+@Composable
+internal fun PagedSongList(
+    songs: LazyPagingItems<Song>,
+    artworkBySongId: Map<String, String>,
+    nowPlayingSongId: String?,
+    isPlaying: Boolean,
+    listState: LazyListState = rememberLazyListState(),
+    emptyTitle: String = "No local songs indexed yet",
+    emptyMessage: String = "Allow audio access to scan MediaStore, or add a folder source.",
+    modifier: Modifier = Modifier.fillMaxSize(),
+    playlists: List<M3uPlaylist>,
+    actions: SongListActions
+) {
+    SongList(
+        itemCount = songs.itemCount,
+        songAt = { index -> songs[index] },
+        isInitialLoad = songs.loadState.refresh is LoadState.Loading,
+        artworkBySongId = artworkBySongId,
+        nowPlayingSongId = nowPlayingSongId,
+        isPlaying = isPlaying,
+        listState = listState,
+        emptyTitle = emptyTitle,
+        emptyMessage = emptyMessage,
+        modifier = modifier,
+        playlists = playlists,
         actions = actions
     )
 }
@@ -154,10 +185,45 @@ internal fun SongList(
     emptyMessage: String,
     modifier: Modifier = Modifier,
     playlists: List<M3uPlaylist>,
-    onLoadNextPage: (() -> Unit)? = null,
     actions: SongListActions
 ) {
-    if (songs.isEmpty()) {
+    SongList(
+        itemCount = songs.size,
+        songAt = songs::get,
+        isInitialLoad = false,
+        artworkBySongId = artworkBySongId,
+        nowPlayingSongId = nowPlayingSongId,
+        isPlaying = isPlaying,
+        listState = listState,
+        emptyTitle = emptyTitle,
+        emptyMessage = emptyMessage,
+        modifier = modifier,
+        playlists = playlists,
+        actions = actions
+    )
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SongList(
+    itemCount: Int,
+    songAt: (Int) -> Song?,
+    isInitialLoad: Boolean,
+    artworkBySongId: Map<String, String>,
+    nowPlayingSongId: String?,
+    isPlaying: Boolean,
+    listState: LazyListState,
+    emptyTitle: String,
+    emptyMessage: String,
+    modifier: Modifier,
+    playlists: List<M3uPlaylist>,
+    actions: SongListActions
+) {
+    if (isInitialLoad && itemCount == 0) {
+        CircularProgressIndicator(modifier = modifier.padding(48.dp))
+        return
+    }
+    if (itemCount == 0) {
         EmptyState(title = emptyTitle, message = emptyMessage, modifier = modifier)
         return
     }
@@ -166,21 +232,14 @@ internal fun SongList(
     var showActionMenu by remember { mutableStateOf(false) }
     var showPlaylistChooser by remember { mutableStateOf(false) }
 
-    LaunchedEffect(listState, songs.size, onLoadNextPage) {
-        if (onLoadNextPage == null) return@LaunchedEffect
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
-            .collectLatest { lastVisibleIndex ->
-                if (lastVisibleIndex >= songs.lastIndex - PAGE_LOAD_AHEAD_ITEMS) onLoadNextPage()
-            }
-    }
-
     LazyColumn(
         state = listState,
         modifier = modifier,
         contentPadding = PaddingValues(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        items(items = songs, key = { it.id }) { song ->
+        items(count = itemCount, key = { index -> songAt(index)?.id ?: "placeholder:$index" }) { index ->
+            val song = songAt(index) ?: return@items
             ListItem(
                 modifier =
                     Modifier.combinedClickable(
@@ -272,8 +331,6 @@ internal fun SongList(
         )
     }
 }
-
-private const val PAGE_LOAD_AHEAD_ITEMS = 20
 
 @Composable
 internal fun PlayingSongTitle(

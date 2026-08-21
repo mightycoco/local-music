@@ -1,6 +1,8 @@
 package com.localmusic.player.domain.usecase
 
+import androidx.paging.PagingData
 import com.localmusic.player.domain.model.Song
+import com.localmusic.player.domain.model.LibraryFacet
 import com.localmusic.player.domain.model.LibraryQuery
 import com.localmusic.player.domain.model.RadioStation
 import com.localmusic.player.domain.model.StreamStation
@@ -14,6 +16,10 @@ import kotlinx.coroutines.flow.Flow
 /** Observes one bounded, storage-filtered library result window. */
 class ObserveLibraryPageUseCase(private val repository: MusicRepository) {
     operator fun invoke(query: LibraryQuery): Flow<List<Song>> = repository.observeLibrary(query)
+
+    fun paged(query: LibraryQuery): Flow<PagingData<Song>> = repository.pageLibrary(query)
+
+    fun facets(query: LibraryQuery): Flow<List<LibraryFacet>> = repository.observeLibraryFacets(query)
 }
 
 class GetSongsByUrisUseCase(private val repository: MusicRepository) {

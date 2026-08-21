@@ -6,7 +6,7 @@ import com.localmusic.player.domain.model.LibraryFilter
 import com.localmusic.player.domain.model.LibraryQuery
 import com.localmusic.player.domain.model.SortOrder
 
-internal fun LibraryQuery.toSqlQuery(): SupportSQLiteQuery {
+internal fun LibraryQuery.toSqlQuery(includeWindow: Boolean = true): SupportSQLiteQuery {
     val selection = mutableListOf<String>()
     val arguments = mutableListOf<Any>()
 
@@ -15,6 +15,32 @@ internal fun LibraryQuery.toSqlQuery(): SupportSQLiteQuery {
         selection += "${filter.browseColumn()} COLLATE NOCASE = ?"
         arguments += value
     }
+    appendSearchSelection(searchQuery, selection, arguments)
+
+    val whereClause = selection.takeIf(List<String>::isNotEmpty)?.joinToString(
+        prefix = " WHERE ",
+        separator = " AND "
+    ).orEmpty()
+    val orderBy = sortOrder.toOrderBy()
+    val windowClause =
+        if (includeWindow) {
+            arguments += limit
+            arguments += offset
+            " LIMIT ? OFFSET ?"
+        } else {
+            ""
+        }
+    return SimpleSQLiteQuery(
+        "SELECT * FROM songs$whereClause ORDER BY $orderBy$windowClause",
+        arguments.toTypedArray()
+    )
+}
+
+private fun appendSearchSelection(
+    searchQuery: String,
+    selection: MutableList<String>,
+    arguments: MutableList<Any>
+) {
     searchQuery.trim().takeIf(String::isNotEmpty)?.let { query ->
         val searchExpression = "%$query%"
         selection +=
@@ -23,16 +49,17 @@ internal fun LibraryQuery.toSqlQuery(): SupportSQLiteQuery {
                     ")"
         repeat(SEARCH_COLUMNS.size) { arguments += searchExpression }
     }
+}
 
-    val whereClause = selection.takeIf(List<String>::isNotEmpty)?.joinToString(
-        prefix = " WHERE ",
-        separator = " AND "
-    ).orEmpty()
-    val orderBy = sortOrder.toOrderBy()
-    arguments += limit
-    arguments += offset
+internal fun LibraryQuery.toFacetSqlQuery(): SupportSQLiteQuery {
+    val column = filter.browseColumn()
+    val selection = mutableListOf("TRIM($column) != ''")
+    val arguments = mutableListOf<Any>()
+    appendSearchSelection(searchQuery, selection, arguments)
+    val whereClause = selection.joinToString(prefix = " WHERE ", separator = " AND ")
     return SimpleSQLiteQuery(
-        "SELECT * FROM songs$whereClause ORDER BY $orderBy LIMIT ? OFFSET ?",
+        "SELECT $column AS value, COUNT(*) AS songCount FROM songs$whereClause " +
+                "GROUP BY $column COLLATE NOCASE ORDER BY $column COLLATE NOCASE ASC",
         arguments.toTypedArray()
     )
 }
