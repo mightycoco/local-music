@@ -1,6 +1,7 @@
 package com.localmusic.player.domain.usecase
 
 import com.localmusic.player.domain.model.Song
+import com.localmusic.player.domain.model.LibraryQuery
 import com.localmusic.player.domain.model.RadioStation
 import com.localmusic.player.domain.model.StreamStation
 import com.localmusic.player.domain.repository.MusicRepository
@@ -10,9 +11,13 @@ import com.localmusic.player.domain.repository.RepeatMode
 import com.localmusic.player.domain.repository.StreamSourceResolver
 import kotlinx.coroutines.flow.Flow
 
-/** Observes the merged, de-duplicated local music library. */
-class ObserveSongsUseCase(private val repository: MusicRepository) {
-    operator fun invoke(): Flow<List<Song>> = repository.observeSongs()
+/** Observes one bounded, storage-filtered library result window. */
+class ObserveLibraryPageUseCase(private val repository: MusicRepository) {
+    operator fun invoke(query: LibraryQuery): Flow<List<Song>> = repository.observeLibrary(query)
+}
+
+class GetSongsByUrisUseCase(private val repository: MusicRepository) {
+    suspend operator fun invoke(uris: List<String>): List<Song> = repository.songsByUris(uris)
 }
 
 /** Refreshes local music metadata from configured device sources. */

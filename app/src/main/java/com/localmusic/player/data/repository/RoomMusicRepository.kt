@@ -2,11 +2,13 @@ package com.localmusic.player.data.repository
 
 import com.localmusic.player.data.database.SongDao
 import com.localmusic.player.data.database.SongEntity
+import com.localmusic.player.data.database.toSqlQuery
 import com.localmusic.player.data.database.toDomain
 import com.localmusic.player.data.database.toEntity
 import com.localmusic.player.data.mediastore.MusicScanner
 import com.localmusic.player.data.saf.SafFolderSourceStore
 import com.localmusic.player.domain.model.Song
+import com.localmusic.player.domain.model.LibraryQuery
 import com.localmusic.player.domain.model.SongSource
 import com.localmusic.player.domain.model.StreamStation
 import com.localmusic.player.domain.repository.MusicRepository
@@ -29,8 +31,14 @@ class RoomMusicRepository(
     private val duplicateSongResolver: DuplicateSongResolver = DuplicateSongResolver(),
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : MusicRepository {
-    override fun observeSongs(): Flow<List<Song>> =
-        songDao.observeNewestAdded().map { entities -> entities.map { it.toDomain() } }
+    override fun observeLibrary(query: LibraryQuery): Flow<List<Song>> =
+        songDao.observeSongs(query.toSqlQuery()).map { entities -> entities.map { it.toDomain() } }
+
+    override suspend fun songsByUris(uris: List<String>): List<Song> =
+        withContext(ioDispatcher) { songDao.songsByUris(uris).map(SongEntity::toDomain) }
+
+    override suspend fun songsByIds(ids: List<String>): List<Song> =
+        withContext(ioDispatcher) { songDao.songsByIds(ids).map(SongEntity::toDomain) }
 
     override suspend fun refreshLibrary() =
         withContext(ioDispatcher) {

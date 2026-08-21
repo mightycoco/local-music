@@ -88,6 +88,7 @@ internal fun LibraryContent(
         uiState = uiState,
         listState = listState,
         onBrowseValueSelected = libraryActions.selectBrowseValue,
+        onLoadNextPage = libraryActions.loadNextPage,
         songListActions = songListActions
     )
 }
@@ -145,6 +146,7 @@ private fun AdaptiveLibraryContent(
     uiState: HomeUiState,
     listState: LazyListState,
     onBrowseValueSelected: (String?) -> Unit,
+    onLoadNextPage: () -> Unit,
     songListActions: SongListActions
 ) {
     if (uiState.selectedFilter in browsableFilters && uiState.selectedBrowseValue == null) {
@@ -172,6 +174,7 @@ private fun AdaptiveLibraryContent(
                     listState = listState,
                     modifier = Modifier.weight(1f),
                     playlists = uiState.importedPlaylists,
+                    onLoadNextPage = onLoadNextPage,
                     actions = songListActions
                 )
                 SongList(
@@ -194,6 +197,7 @@ private fun AdaptiveLibraryContent(
                 isPlaying = uiState.isPlaying,
                 listState = listState,
                 playlists = uiState.importedPlaylists,
+                onLoadNextPage = onLoadNextPage,
                 actions = songListActions
             )
         }

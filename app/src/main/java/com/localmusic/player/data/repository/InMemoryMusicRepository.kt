@@ -1,17 +1,26 @@
 package com.localmusic.player.data.repository
 
 import com.localmusic.player.domain.model.Song
+import com.localmusic.player.domain.model.LibraryQuery
 import com.localmusic.player.domain.model.SongSource
 import com.localmusic.player.domain.model.StreamStation
 import com.localmusic.player.domain.repository.MusicRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 
 /** Initial repository implementation used until MediaStore and SAF sources are wired in. */
 class InMemoryMusicRepository : MusicRepository {
     private val songs = MutableStateFlow<List<Song>>(emptyList())
 
-    override fun observeSongs(): Flow<List<Song>> = songs
+    override fun observeLibrary(query: LibraryQuery): Flow<List<Song>> =
+        songs.map { library -> library.drop(query.offset).take(query.limit) }
+
+    override suspend fun songsByUris(uris: List<String>): List<Song> =
+        songs.value.filter { it.uri in uris }
+
+    override suspend fun songsByIds(ids: List<String>): List<Song> =
+        songs.value.filter { it.id in ids }
 
     override suspend fun refreshLibrary() = Unit
 

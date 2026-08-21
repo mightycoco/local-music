@@ -10,6 +10,7 @@ import com.localmusic.player.bluetooth.CarAudioDevice
 import com.localmusic.player.bluetooth.CarModePreferences
 import com.localmusic.player.domain.model.LibraryBrowser
 import com.localmusic.player.domain.model.LibraryFilter
+import com.localmusic.player.domain.model.LibraryQuery
 import com.localmusic.player.domain.model.RadioStation
 import com.localmusic.player.domain.model.SmartPlaylistRules
 import com.localmusic.player.domain.model.Song
@@ -17,7 +18,8 @@ import com.localmusic.player.domain.model.SortOrder
 import com.localmusic.player.domain.repository.RepeatMode
 import com.localmusic.player.domain.usecase.AddFolderSourceUseCase
 import com.localmusic.player.domain.usecase.ImportStreamSourceUseCase
-import com.localmusic.player.domain.usecase.ObserveSongsUseCase
+import com.localmusic.player.domain.usecase.GetSongsByUrisUseCase
+import com.localmusic.player.domain.usecase.ObserveLibraryPageUseCase
 import com.localmusic.player.domain.usecase.PreviewRadioStationUseCase
 import com.localmusic.player.domain.usecase.RefreshMusicLibraryUseCase
 import com.localmusic.player.domain.usecase.RemoveFolderSourceUseCase
@@ -39,14 +41,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** ViewModel for library browsing, filtering, sorting, and search state. */
 class HomeViewModel(
-    observeSongs: ObserveSongsUseCase,
+    observeLibraryPage: ObserveLibraryPageUseCase,
+    private val getSongsByUris: GetSongsByUrisUseCase,
     private val refreshMusicLibrary: RefreshMusicLibraryUseCase,
     private val addFolderSource: AddFolderSourceUseCase,
     private val removeFolderSource: RemoveFolderSourceUseCase,
@@ -71,6 +76,7 @@ class HomeViewModel(
     private val sortOrder =
         MutableStateFlow(libraryPreferences?.defaultSortOrder() ?: SortOrder.NewestAdded)
     private val searchQuery = MutableStateFlow("")
+    private val libraryPageOffset = MutableStateFlow(0)
     private val radioSearchQuery = MutableStateFlow("")
     private val radioStations = MutableStateFlow<List<RadioStation>>(emptyList())
     private val isRadioSearchLoading = MutableStateFlow(false)
@@ -283,40 +289,51 @@ class HomeViewModel(
             )
         }
 
-    private val projectedSongs =
-        combine(selectedFilter, selectedBrowseValue, sortOrder, searchQuery, importedPlaylists) { filter,
-                                                                                                  browseValue,
-                                                                                                  order,
-                                                                                                  query,
-                                                                                                  playlists ->
-            LibraryProjection(filter, browseValue, order, query, playlists)
-        }
-            .combine(observeSongs()) { projection, songs -> songs to projection }
-            .map { (songs, projection) ->
-                ProjectedSongs(
-                    allSongs = songs,
-                    visibleSongs =
-                        withContext(Dispatchers.Default) {
-                            projectLibrarySongs(songs, projection)
-                        }
-                )
+    private val libraryPage =
+        combine(selectedFilter, selectedBrowseValue, sortOrder, searchQuery) { filter, browseValue, order, query ->
+            LibraryQuery(
+                filter = filter,
+                browseValue = browseValue,
+                sortOrder = order,
+                searchQuery = query
+            )
+        }.combine(selectedScreen) { query, screen ->
+            if (screen == HomeScreenDestination.Favourites) {
+                query.copy(filter = LibraryFilter.Favourites, browseValue = null)
+            } else {
+                query
+            }
+        }.combine(libraryPageOffset) { query, offset -> query.copy(offset = offset) }
+            .flatMapLatest { query ->
+                observeLibraryPage(query).map { songs -> LibraryPage(query.offset, songs) }
+            }
+            .scan(LoadedLibraryPage()) { loaded, page ->
+                if (page.offset == 0) {
+                    LoadedLibraryPage(songs = page.songs, hasMore = page.songs.size == LibraryQuery.DEFAULT_PAGE_SIZE)
+                } else {
+                    LoadedLibraryPage(
+                        songs = loaded.songs + page.songs.filterNot { song -> song.id in loaded.songIds },
+                        hasMore = page.songs.size == LibraryQuery.DEFAULT_PAGE_SIZE
+                    )
+                }
             }
 
     val uiState: StateFlow<HomeUiState> =
         combine(
-            projectedSongs,
+            libraryPage,
             controlsState,
             artworkBySongId,
             playbackState,
             playbackSongsById
-        ) { projected, state, artwork, playback, activePlaybackSongs ->
-            refreshArtwork(projected.visibleSongs.take(ARTWORK_PREFETCH_LIMIT))
-            val songsById = projected.allSongs.associateBy(Song::id) + activePlaybackSongs
+        ) { page, state, artwork, playback, activePlaybackSongs ->
+            refreshArtwork(page.songs.take(ARTWORK_PREFETCH_LIMIT))
+            val songsById = page.songs.associateBy(Song::id) + activePlaybackSongs
             val nowPlaying = songsById[playback.songId]
             state.copy(
-                songs = projected.visibleSongs,
-                librarySongs = projected.allSongs,
-                favouriteSongs = projected.allSongs.filter(Song::isFavourite),
+                songs = page.songs,
+                librarySongs = page.songs,
+                favouriteSongs = if (state.selectedScreen == HomeScreenDestination.Favourites) page.songs else emptyList(),
+                hasMoreLibrarySongs = page.hasMore,
                 nowPlayingSong = nowPlaying,
                 playbackQueue =
                     resolvePlaybackQueue(
@@ -341,14 +358,17 @@ class HomeViewModel(
     fun selectFilter(filter: LibraryFilter) {
         selectedFilter.value = filter
         selectedBrowseValue.value = null
+        resetLibraryPaging()
     }
 
     fun selectBrowseValue(value: String?) {
         selectedBrowseValue.value = value
+        resetLibraryPaging()
     }
 
     fun selectSortOrder(order: SortOrder) {
         sortOrder.value = order
+        resetLibraryPaging()
     }
 
     fun setDefaultFilter(filter: LibraryFilter) {
@@ -363,6 +383,13 @@ class HomeViewModel(
 
     fun updateSearchQuery(query: String) {
         searchQuery.value = query
+        resetLibraryPaging()
+    }
+
+    fun loadNextLibraryPage() {
+        if (uiState.value.hasMoreLibrarySongs) {
+            libraryPageOffset.value = uiState.value.songs.size
+        }
     }
 
     fun updateRadioSearchQuery(query: String) {
@@ -393,6 +420,7 @@ class HomeViewModel(
 
     fun selectScreen(destination: HomeScreenDestination) {
         selectedScreen.value = destination
+        resetLibraryPaging()
         if (destination != HomeScreenDestination.NowPlaying) {
             startPlayback.setVisualizerEnabled(false)
         }
@@ -452,7 +480,9 @@ class HomeViewModel(
     }
 
     fun togglePlaylistEntryFavourite(entry: M3uPlaylistEntry) {
-        uiState.value.librarySongs.firstOrNull { it.uri == entry.uri }?.let(::toggleFavourite)
+        viewModelScope.launch {
+            getSongsByUris(listOf(entry.uri)).firstOrNull()?.let(::toggleFavourite)
+        }
     }
 
     fun playSong(song: Song) {
@@ -480,29 +510,31 @@ class HomeViewModel(
     }
 
     fun playPlaylist(playlist: M3uPlaylist) {
-        val songsByUri = uiState.value.librarySongs.associateBy(Song::uri)
-        val playlistSongs = playlist.entries.mapNotNull { entry -> songsByUri[entry.uri] }
-        val firstSong = playlistSongs.firstOrNull()
-        if (firstSong == null) {
-            refreshError.value = "No playable songs found in ${playlist.name}"
-            return
+        viewModelScope.launch {
+            val songsByUri = getSongsByUris(playlist.entries.map(M3uPlaylistEntry::uri)).associateBy(Song::uri)
+            val playlistSongs = playlist.entries.mapNotNull { entry -> songsByUri[entry.uri] }
+            val firstSong = playlistSongs.firstOrNull()
+            if (firstSong == null) {
+                refreshError.value = "No playable songs found in ${playlist.name}"
+                return@launch
+            }
+            savePlaylist(M3uPlaylist(name = M3uPlaylist.QUEUE_NAME, entries = playlist.entries))
+            playSongs(queue = playlistSongs, startSong = firstSong)
         }
-
-        savePlaylist(M3uPlaylist(name = M3uPlaylist.QUEUE_NAME, entries = playlist.entries))
-        playSongs(queue = playlistSongs, startSong = firstSong)
     }
 
     fun playPlaylistEntry(playlist: M3uPlaylist, entry: M3uPlaylistEntry) {
-        val songsByUri = uiState.value.librarySongs.associateBy(Song::uri)
-        val playlistSongs = playlist.entries.mapNotNull { playlistEntry -> songsByUri[playlistEntry.uri] }
-        val selectedSong = songsByUri[entry.uri]
-        if (selectedSong == null || playlistSongs.isEmpty()) {
-            refreshError.value = "No playable song found for ${entry.title}"
-            return
+        viewModelScope.launch {
+            val songsByUri = getSongsByUris(playlist.entries.map(M3uPlaylistEntry::uri)).associateBy(Song::uri)
+            val playlistSongs = playlist.entries.mapNotNull { playlistEntry -> songsByUri[playlistEntry.uri] }
+            val selectedSong = songsByUri[entry.uri]
+            if (selectedSong == null || playlistSongs.isEmpty()) {
+                refreshError.value = "No playable song found for ${entry.title}"
+                return@launch
+            }
+            savePlaylist(M3uPlaylist(name = M3uPlaylist.QUEUE_NAME, entries = playlist.entries))
+            playSongs(queue = playlistSongs, startSong = selectedSong)
         }
-
-        savePlaylist(M3uPlaylist(name = M3uPlaylist.QUEUE_NAME, entries = playlist.entries))
-        playSongs(queue = playlistSongs, startSong = selectedSong)
     }
 
     private fun playSongs(queue: List<Song>, startSong: Song) {
@@ -759,7 +791,9 @@ class HomeViewModel(
                     savePlaylist(
                         updatedQueue
                     )
-                    val songsByUri = uiState.value.librarySongs.associateBy(Song::uri) + (song.uri to song)
+                    val songsByUri =
+                        getSongsByUris(updatedQueue.entries.map(M3uPlaylistEntry::uri)).associateBy(Song::uri) +
+                                (song.uri to song)
                     val queueSongs = updatedQueue.entries.mapNotNull { entry -> songsByUri[entry.uri] }
                     playSongs(queue = queueSongs, startSong = song)
                 }
@@ -823,24 +857,21 @@ class HomeViewModel(
     }
 
     fun enqueuePlaylist(playlist: M3uPlaylist) {
-        val queue =
-            importedPlaylists.value.firstOrNull { it.name == M3uPlaylist.QUEUE_NAME } ?: return
-        val songsToEnqueue =
-            resolvePlaylistEntriesToEnqueue(
-                queueEntries = queue.entries,
-                playlistEntries = playlist.entries,
-                songsByUri = uiState.value.librarySongs.associateBy(Song::uri)
-            )
-        if (songsToEnqueue.isEmpty()) {
-            refreshError.value = "No new playable songs found in ${playlist.name}"
-            return
-        }
-
-        savePlaylist(
-            queue.copy(entries = queue.entries + songsToEnqueue.map(Song::toM3uEntry))
-        )
-        runCatching { songsToEnqueue.forEach(startPlayback::enqueue) }.onFailure { error ->
-            refreshError.value = error.message ?: "Queue update failed"
+        viewModelScope.launch {
+            val queue =
+                importedPlaylists.value.firstOrNull { it.name == M3uPlaylist.QUEUE_NAME } ?: return@launch
+            val songsByUri =
+                getSongsByUris(playlist.entries.map(M3uPlaylistEntry::uri)).associateBy(Song::uri)
+            val songsToEnqueue =
+                resolvePlaylistEntriesToEnqueue(queue.entries, playlist.entries, songsByUri)
+            if (songsToEnqueue.isEmpty()) {
+                refreshError.value = "No new playable songs found in ${playlist.name}"
+                return@launch
+            }
+            savePlaylist(queue.copy(entries = queue.entries + songsToEnqueue.map(Song::toM3uEntry)))
+            runCatching { songsToEnqueue.forEach(startPlayback::enqueue) }.onFailure { error ->
+                refreshError.value = error.message ?: "Queue update failed"
+            }
         }
     }
 
@@ -934,6 +965,10 @@ class HomeViewModel(
             connectedCarAudioDevices.value.any { device ->
                 device.isLikelyCarDevice || device.id in markedCarDeviceIds.value
             }
+    }
+
+    private fun resetLibraryPaging() {
+        libraryPageOffset.value = 0
     }
 
     fun setCarModeManuallyEnabled(enabled: Boolean) {
@@ -1067,7 +1102,14 @@ private data class CarModeState(
     val markedDeviceIds: Set<String>
 )
 
-private data class ProjectedSongs(val allSongs: List<Song>, val visibleSongs: List<Song>)
+private data class LibraryPage(val offset: Int, val songs: List<Song>)
+
+private data class LoadedLibraryPage(
+    val songs: List<Song> = emptyList(),
+    val hasMore: Boolean = false
+) {
+    val songIds: Set<String> get() = songs.mapTo(mutableSetOf(), Song::id)
+}
 
 internal data class LibraryProjection(
     val filter: LibraryFilter,
@@ -1100,7 +1142,8 @@ private const val EXTERNAL_ARTWORK_PREFETCH_LIMIT = 4
 
 /** Factory used until a dependency injection container is introduced. */
 class HomeViewModelFactory(
-    private val observeSongs: ObserveSongsUseCase,
+    private val observeLibraryPage: ObserveLibraryPageUseCase,
+    private val getSongsByUris: GetSongsByUrisUseCase,
     private val refreshMusicLibrary: RefreshMusicLibraryUseCase,
     private val addFolderSource: AddFolderSourceUseCase,
     private val removeFolderSource: RemoveFolderSourceUseCase,
@@ -1123,7 +1166,8 @@ class HomeViewModelFactory(
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(HomeViewModel::class.java))
         return HomeViewModel(
-            observeSongs,
+            observeLibraryPage,
+            getSongsByUris,
             refreshMusicLibrary,
             addFolderSource,
             removeFolderSource,

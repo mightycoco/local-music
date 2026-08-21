@@ -29,7 +29,8 @@ import com.localmusic.player.data.saf.SharedPreferencesSafFolderSourceStore
 import com.localmusic.player.data.stream.HttpStreamSourceResolver
 import com.localmusic.player.domain.usecase.AddFolderSourceUseCase
 import com.localmusic.player.domain.usecase.ImportStreamSourceUseCase
-import com.localmusic.player.domain.usecase.ObserveSongsUseCase
+import com.localmusic.player.domain.usecase.GetSongsByUrisUseCase
+import com.localmusic.player.domain.usecase.ObserveLibraryPageUseCase
 import com.localmusic.player.domain.usecase.PreviewRadioStationUseCase
 import com.localmusic.player.domain.usecase.RefreshMusicLibraryUseCase
 import com.localmusic.player.domain.usecase.RemoveFolderSourceUseCase
@@ -66,7 +67,8 @@ class MainActivity : ComponentActivity() {
                     LocalMusicDatabase.MIGRATION_3_4,
                     LocalMusicDatabase.MIGRATION_4_5,
                     LocalMusicDatabase.MIGRATION_5_6,
-                    LocalMusicDatabase.MIGRATION_6_7
+                    LocalMusicDatabase.MIGRATION_6_7,
+                    LocalMusicDatabase.MIGRATION_7_8
                 )
                 .build()
         val safFolderSourceStore =
@@ -97,7 +99,8 @@ class MainActivity : ComponentActivity() {
         val artworkCache = ArtworkDiskCache(filesDir)
         val factory =
             HomeViewModelFactory(
-                observeSongs = ObserveSongsUseCase(repository),
+                observeLibraryPage = ObserveLibraryPageUseCase(repository),
+                getSongsByUris = GetSongsByUrisUseCase(repository),
                 refreshMusicLibrary = RefreshMusicLibraryUseCase(repository),
                 addFolderSource = AddFolderSourceUseCase(repository),
                 removeFolderSource = RemoveFolderSourceUseCase(repository),

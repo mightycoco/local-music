@@ -31,8 +31,10 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import com.localmusic.player.domain.model.Song
@@ -122,6 +124,7 @@ internal fun SongList(
     listState: LazyListState = rememberLazyListState(),
     modifier: Modifier = Modifier.fillMaxSize(),
     playlists: List<M3uPlaylist>,
+    onLoadNextPage: (() -> Unit)? = null,
     actions: SongListActions
 ) {
     SongList(
@@ -134,6 +137,7 @@ internal fun SongList(
         emptyMessage = "Allow audio access to scan MediaStore, or add a folder source.",
         modifier = modifier,
         playlists = playlists,
+        onLoadNextPage = onLoadNextPage,
         actions = actions
     )
 }
@@ -150,6 +154,7 @@ internal fun SongList(
     emptyMessage: String,
     modifier: Modifier = Modifier,
     playlists: List<M3uPlaylist>,
+    onLoadNextPage: (() -> Unit)? = null,
     actions: SongListActions
 ) {
     if (songs.isEmpty()) {
@@ -160,6 +165,14 @@ internal fun SongList(
     var selectedSong by remember { mutableStateOf<Song?>(null) }
     var showActionMenu by remember { mutableStateOf(false) }
     var showPlaylistChooser by remember { mutableStateOf(false) }
+
+    LaunchedEffect(listState, songs.size, onLoadNextPage) {
+        if (onLoadNextPage == null) return@LaunchedEffect
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
+            .collectLatest { lastVisibleIndex ->
+                if (lastVisibleIndex >= songs.lastIndex - PAGE_LOAD_AHEAD_ITEMS) onLoadNextPage()
+            }
+    }
 
     LazyColumn(
         state = listState,
@@ -259,6 +272,8 @@ internal fun SongList(
         )
     }
 }
+
+private const val PAGE_LOAD_AHEAD_ITEMS = 20
 
 @Composable
 internal fun PlayingSongTitle(

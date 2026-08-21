@@ -330,6 +330,7 @@ fun HomeRoute(viewModel: HomeViewModel, uiState: HomeUiState) {
                     selectFilter = viewModel::selectFilter,
                     selectBrowseValue = viewModel::selectBrowseValue,
                     selectSortOrder = viewModel::selectSortOrder,
+                    loadNextPage = viewModel::loadNextLibraryPage,
                     addFolderSource = addFolderSource
                 ),
             songs =

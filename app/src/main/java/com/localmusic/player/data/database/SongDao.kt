@@ -2,15 +2,17 @@ package com.localmusic.player.data.database
 
 import androidx.room.Dao
 import androidx.room.Query
+import androidx.room.RawQuery
 import androidx.room.Transaction
 import androidx.room.Upsert
+import androidx.sqlite.db.SupportSQLiteQuery
 import kotlinx.coroutines.flow.Flow
 
 /** Room access object for cached local song metadata. */
 @Dao
 interface SongDao {
-    @Query("SELECT * FROM songs ORDER BY dateAddedEpochSeconds DESC")
-    fun observeNewestAdded(): Flow<List<SongEntity>>
+    @RawQuery(observedEntities = [SongEntity::class])
+    fun observeSongs(query: SupportSQLiteQuery): Flow<List<SongEntity>>
 
     @Upsert
     suspend fun upsertAll(songs: List<SongEntity>)
@@ -23,6 +25,9 @@ interface SongDao {
 
     @Query("SELECT * FROM songs WHERE uri IN (:uris)")
     suspend fun songsByUris(uris: List<String>): List<SongEntity>
+
+    @Query("SELECT * FROM songs WHERE id IN (:ids)")
+    suspend fun songsByIds(ids: List<String>): List<SongEntity>
 
     @Query("UPDATE songs SET title = :title, artist = :artist WHERE id = :songId AND sourceType = 'STREAM'")
     suspend fun updateStreamMetadata(songId: String, title: String, artist: String)

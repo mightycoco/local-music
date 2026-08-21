@@ -6,7 +6,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 /** Room database for local library metadata and user-owned music state. */
-@Database(entities = [SongEntity::class, PlaylistEntity::class], version = 7, exportSchema = true)
+@Database(entities = [SongEntity::class, PlaylistEntity::class], version = 8, exportSchema = true)
 abstract class LocalMusicDatabase : RoomDatabase() {
     abstract fun songDao(): SongDao
     abstract fun playlistDao(): PlaylistDao
@@ -80,6 +80,30 @@ abstract class LocalMusicDatabase : RoomDatabase() {
             object : Migration(6, 7) {
                 override fun migrate(database: SupportSQLiteDatabase) {
                     database.execSQL("ALTER TABLE songs ADD COLUMN artworkUri TEXT")
+                }
+            }
+
+        val MIGRATION_7_8 =
+            object : Migration(7, 8) {
+                override fun migrate(database: SupportSQLiteDatabase) {
+                    database.execSQL(
+                        "CREATE INDEX IF NOT EXISTS index_songs_isFavourite_dateAddedEpochSeconds ON songs(isFavourite, dateAddedEpochSeconds)"
+                    )
+                    database.execSQL(
+                        "CREATE INDEX IF NOT EXISTS index_songs_playCount_dateAddedEpochSeconds ON songs(playCount, dateAddedEpochSeconds)"
+                    )
+                    database.execSQL(
+                        "CREATE INDEX IF NOT EXISTS index_songs_lastPlayedEpochMillis_dateAddedEpochSeconds ON songs(lastPlayedEpochMillis, dateAddedEpochSeconds)"
+                    )
+                    database.execSQL(
+                        "CREATE INDEX IF NOT EXISTS index_songs_artist_title ON songs(artist, title)"
+                    )
+                    database.execSQL(
+                        "CREATE INDEX IF NOT EXISTS index_songs_album_title ON songs(album, title)"
+                    )
+                    database.execSQL(
+                        "CREATE INDEX IF NOT EXISTS index_songs_durationMillis_title ON songs(durationMillis, title)"
+                    )
                 }
             }
     }

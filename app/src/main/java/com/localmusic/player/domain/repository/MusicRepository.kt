@@ -1,12 +1,17 @@
 package com.localmusic.player.domain.repository
 
+import com.localmusic.player.domain.model.LibraryQuery
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.StreamStation
 import kotlinx.coroutines.flow.Flow
 
 /** Boundary for the common music library; UI never talks to storage or MediaStore directly. */
 interface MusicRepository {
-    fun observeSongs(): Flow<List<Song>>
+    fun observeLibrary(query: LibraryQuery): Flow<List<Song>>
+
+    suspend fun songsByUris(uris: List<String>): List<Song>
+
+    suspend fun songsByIds(ids: List<String>): List<Song>
 
     suspend fun refreshLibrary()
 

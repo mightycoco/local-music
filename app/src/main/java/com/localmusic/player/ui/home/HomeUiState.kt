@@ -14,6 +14,7 @@ data class HomeUiState(
     val songs: List<Song> = emptyList(),
     val librarySongs: List<Song> = emptyList(),
     val favouriteSongs: List<Song> = emptyList(),
+    val hasMoreLibrarySongs: Boolean = false,
     val artworkBySongId: Map<String, String> = emptyMap(),
     val selectedScreen: HomeScreenDestination = HomeScreenDestination.Home,
     val nowPlayingSong: Song? = null,
