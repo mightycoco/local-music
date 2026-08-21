@@ -45,6 +45,7 @@
 	- [x] Preserve the compact-player full-width transport layout with 80 dp Car Mode targets and additional spacing.
 - [x] Complete Now Playing: shuffle, repeat, swipe navigation, a system equalizer entry point, elapsed/remaining time, favourites, and queue contents.
 	- [x] Show the active playback playlist below the controls and position it at the current song whenever Now Playing becomes visible.
+	- [x] Change Android media-stream volume with vertical artwork dragging and show a read-only volume indicator.
 - [x] The selection of the screen must be at the bottom (Home/Now Playing/Playlists/Favourites/Settings)
 - [x] The default setting for the theme must be "Follow System", other options are Dark, Light
 - [x] The navigation is very slow. The enumeration of media files seems to be done on any UI input

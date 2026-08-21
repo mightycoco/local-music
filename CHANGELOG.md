@@ -2,6 +2,7 @@
 
 ## 0.1.0 - Unreleased
 
+- Added vertical Now Playing artwork gestures for Android media-stream volume with a synchronized read-only volume indicator.
 - Fixed Now Playing so HTTP(S) radio artwork can be switched to and from the visualizer like local cover artwork.
 - Added a persisted, default-enabled Settings option that keeps the display awake while charging or connected to detected Bluetooth car audio.
 - Added Radio Browser station search from the playlist editor with favicon-backed result rows.
