@@ -297,16 +297,7 @@ class HomeViewModel(
                     allSongs = songs,
                     visibleSongs =
                         withContext(Dispatchers.Default) {
-                            songs.applyLibraryProjection(
-                                HomeUiState(
-                                    selectedFilter = projection.filter,
-                                    selectedBrowseValue =
-                                        projection.browseValue,
-                                    sortOrder = projection.sortOrder,
-                                    searchQuery = projection.searchQuery
-                                ),
-                                projection.playlists
-                            )
+                            projectLibrarySongs(songs, projection)
                         }
                 )
             }
@@ -955,20 +946,21 @@ class HomeViewModel(
         isKeepDisplayOnEnabled.value = enabled
     }
 
-    private fun List<Song>.applyLibraryProjection(
-        state: HomeUiState,
-        playlists: List<M3uPlaylist>
+    internal fun projectLibrarySongs(
+        songs: List<Song>,
+        projection: LibraryProjection
     ): List<Song> =
-        filter { song ->
-            song.matchesSearch(state.searchQuery, playlists) &&
-                    song.matchesFilter(state.selectedFilter) &&
-                    LibraryBrowser.matches(
-                        song,
-                        state.selectedFilter,
-                        state.selectedBrowseValue
-                    )
-        }
-            .sortedWith(state.sortOrder.comparator())
+        songs
+            .filter { song ->
+                song.matchesSearch(projection.searchQuery, projection.playlists) &&
+                        song.matchesFilter(projection.filter) &&
+                        LibraryBrowser.matches(
+                            song,
+                            projection.filter,
+                            projection.browseValue
+                        )
+            }
+            .sortedWith(projection.sortOrder.comparator())
 
     private fun Song.matchesSearch(query: String, playlists: List<M3uPlaylist>): Boolean {
         val normalizedQuery = query.trim()
@@ -1077,7 +1069,7 @@ private data class CarModeState(
 
 private data class ProjectedSongs(val allSongs: List<Song>, val visibleSongs: List<Song>)
 
-private data class LibraryProjection(
+internal data class LibraryProjection(
     val filter: LibraryFilter,
     val browseValue: String?,
     val sortOrder: SortOrder,
