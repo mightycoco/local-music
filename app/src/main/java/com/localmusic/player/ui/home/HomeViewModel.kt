@@ -341,6 +341,7 @@ class HomeViewModel(
                 songs = loadedSongs,
                 librarySongs = loadedSongs,
                 favouriteSongs = if (state.selectedScreen == HomeScreenDestination.Favourites) loadedSongs else emptyList(),
+                favouriteUris = loadedSongs.filter(Song::isFavourite).mapTo(mutableSetOf(), Song::uri),
                 nowPlayingSong = nowPlaying,
                 playbackQueue =
                     resolvePlaybackQueue(
@@ -478,9 +479,18 @@ class HomeViewModel(
 
     fun toggleFavourite(song: Song) {
         viewModelScope.launch {
-            runCatching { setFavourite(song.id, !song.isFavourite) }.onFailure { error ->
-                refreshError.value = error.message ?: "Favourite update failed"
-            }
+            val isFavourite = !song.isFavourite
+            runCatching { setFavourite(song.id, isFavourite) }
+                .onSuccess {
+                    playbackSongsById.value =
+                        playbackSongsById.value.mapValues { (_, playbackSong) ->
+                            if (playbackSong.id == song.id) playbackSong.copy(isFavourite = isFavourite)
+                            else playbackSong
+                        }
+                }
+                .onFailure { error ->
+                    refreshError.value = error.message ?: "Favourite update failed"
+                }
         }
     }
 

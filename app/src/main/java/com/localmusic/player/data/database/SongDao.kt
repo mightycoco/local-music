@@ -36,6 +36,24 @@ interface SongDao {
     @Query("SELECT * FROM songs WHERE id IN (:ids)")
     suspend fun songsByIds(ids: List<String>): List<SongEntity>
 
+    @Transaction
+    suspend fun upsertStreamStations(stations: List<SongEntity>): List<SongEntity> {
+        val existingByUri = songsByUris(stations.map(SongEntity::uri)).associateBy(SongEntity::uri)
+        val merged = stations.map { station ->
+            existingByUri[station.uri]?.let { existing ->
+                station.copy(
+                    id = existing.id,
+                    playCount = existing.playCount,
+                    lastPlayedEpochMillis = existing.lastPlayedEpochMillis,
+                    isFavourite = existing.isFavourite,
+                    scanGeneration = existing.scanGeneration
+                )
+            } ?: station
+        }
+        upsertAll(merged)
+        return merged
+    }
+
     @Query("UPDATE songs SET title = :title, artist = :artist WHERE id = :songId AND sourceType = 'STREAM'")
     suspend fun updateStreamMetadata(songId: String, title: String, artist: String)
 

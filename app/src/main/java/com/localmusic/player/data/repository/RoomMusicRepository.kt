@@ -96,12 +96,10 @@ class RoomMusicRepository(
     override suspend fun upsertStreamStations(stations: List<StreamStation>): List<Song> =
         withContext(ioDispatcher) {
             if (stations.isEmpty()) return@withContext emptyList()
-            val existingByUri = songDao.songsByUris(stations.map(StreamStation::uri)).associateBy(SongEntity::uri)
             val now = System.currentTimeMillis()
             val entities = stations.distinctBy(StreamStation::uri).map { station ->
-                val existing = existingByUri[station.uri]
                 SongEntity(
-                    id = existing?.id ?: "stream:${station.uri.sha256()}",
+                    id = "stream:${station.uri.sha256()}",
                     fileName = station.uri,
                     title = station.title,
                     artist = station.artist,
@@ -118,16 +116,15 @@ class RoomMusicRepository(
                     uri = station.uri,
                     mimeType = "audio/*",
                     sizeBytes = 0L,
-                    playCount = existing?.playCount ?: 0,
-                    lastPlayedEpochMillis = existing?.lastPlayedEpochMillis,
-                    isFavourite = existing?.isFavourite ?: false,
-                    scanGeneration = existing?.scanGeneration ?: 0L,
+                    playCount = 0,
+                    lastPlayedEpochMillis = null,
+                    isFavourite = false,
+                    scanGeneration = 0L,
                     sourceType = SongSource.STREAM.name,
-                    artworkUri = station.artworkUri ?: existing?.artworkUri
+                    artworkUri = station.artworkUri
                 )
             }
-            songDao.upsertAll(entities)
-            entities.map(SongEntity::toDomain)
+            songDao.upsertStreamStations(entities).map(SongEntity::toDomain)
         }
 
     override suspend fun updateStreamMetadata(songId: String, title: String, artist: String) =

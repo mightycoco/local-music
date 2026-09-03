@@ -131,6 +131,7 @@ internal fun SongList(
     SongList(
         itemCount = songs.size,
         songAt = songs::get,
+        keyAt = { index -> songs[index].id },
         isInitialLoad = false,
         artworkBySongId = artworkBySongId,
         nowPlayingSongId = nowPlayingSongId,
@@ -160,6 +161,7 @@ internal fun PagedSongList(
     SongList(
         itemCount = songs.itemCount,
         songAt = { index -> songs[index] },
+        keyAt = null,
         isInitialLoad = songs.loadState.refresh is LoadState.Loading,
         artworkBySongId = artworkBySongId,
         nowPlayingSongId = nowPlayingSongId,
@@ -190,6 +192,7 @@ internal fun SongList(
     SongList(
         itemCount = songs.size,
         songAt = songs::get,
+        keyAt = { index -> songs[index].id },
         isInitialLoad = false,
         artworkBySongId = artworkBySongId,
         nowPlayingSongId = nowPlayingSongId,
@@ -208,6 +211,7 @@ internal fun SongList(
 private fun SongList(
     itemCount: Int,
     songAt: (Int) -> Song?,
+    keyAt: ((Int) -> Any)?,
     isInitialLoad: Boolean,
     artworkBySongId: Map<String, String>,
     nowPlayingSongId: String?,
@@ -238,38 +242,32 @@ private fun SongList(
         contentPadding = PaddingValues(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        items(count = itemCount, key = { index -> songAt(index)?.id ?: "placeholder:$index" }) { index ->
-            val song = songAt(index) ?: return@items
-            ListItem(
-                modifier =
-                    Modifier.combinedClickable(
-                        onClick = { actions.select(song) },
-                        onLongClick = {
-                            selectedSong = song
-                            showActionMenu = true
-                        }
-                    ),
-                leadingContent = { ArtworkThumbnail(artworkUri = artworkBySongId[song.id]) },
-                headlineContent = {
-                    PlayingSongTitle(
-                        title = song.title,
-                        isCurrent = song.id == nowPlayingSongId,
-                        isPlaying = isPlaying
-                    )
-                },
-                supportingContent = { Text("${song.artist} - ${song.album}") },
-                trailingContent = {
-                    IconButton(onClick = { actions.toggleFavourite(song) }) {
-                        Icon(
-                            imageVector =
-                                if (song.isFavourite) Icons.Filled.Favorite
-                                else Icons.Outlined.FavoriteBorder,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                        )
-                    }
+        if (keyAt == null) {
+            items(count = itemCount) { index ->
+                SongListItem(
+                    songAt(index),
+                    artworkBySongId,
+                    nowPlayingSongId,
+                    isPlaying,
+                    actions
+                ) { song ->
+                    selectedSong = song
+                    showActionMenu = true
                 }
-            )
+            }
+        } else {
+            items(count = itemCount, key = keyAt) { index ->
+                SongListItem(
+                    songAt(index),
+                    artworkBySongId,
+                    nowPlayingSongId,
+                    isPlaying,
+                    actions
+                ) { song ->
+                    selectedSong = song
+                    showActionMenu = true
+                }
+            }
         }
     }
 
@@ -330,6 +328,46 @@ private fun SongList(
             }
         )
     }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SongListItem(
+    song: Song?,
+    artworkBySongId: Map<String, String>,
+    nowPlayingSongId: String?,
+    isPlaying: Boolean,
+    actions: SongListActions,
+    onShowActions: (Song) -> Unit
+) {
+    song ?: return
+    ListItem(
+        modifier =
+            Modifier.combinedClickable(
+                onClick = { actions.select(song) },
+                onLongClick = { onShowActions(song) }
+            ),
+        leadingContent = { ArtworkThumbnail(artworkUri = artworkBySongId[song.id]) },
+        headlineContent = {
+            PlayingSongTitle(
+                title = song.title,
+                isCurrent = song.id == nowPlayingSongId,
+                isPlaying = isPlaying
+            )
+        },
+        supportingContent = { Text("${song.artist} - ${song.album}") },
+        trailingContent = {
+            IconButton(onClick = { actions.toggleFavourite(song) }) {
+                Icon(
+                    imageVector =
+                        if (song.isFavourite) Icons.Filled.Favorite
+                        else Icons.Outlined.FavoriteBorder,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp)
+                )
+            }
+        }
+    )
 }
 
 @Composable

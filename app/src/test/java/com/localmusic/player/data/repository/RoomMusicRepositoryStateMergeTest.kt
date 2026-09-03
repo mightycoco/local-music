@@ -39,6 +39,17 @@ class RoomMusicRepositoryStateMergeTest {
         assertEquals(scanned, merged.first())
     }
 
+    @Test
+    fun streamUpsertKeepsThePersistedFavouriteState() {
+        val imported = songEntity(id = "stream-new", isFavourite = false)
+        val persisted = songEntity(id = "stream-old", isFavourite = true)
+
+        val merged = imported.mergeStreamState(persisted)
+
+        assertEquals("stream-old", merged.id)
+        assertEquals(true, merged.isFavourite)
+    }
+
     private fun songEntity(
         id: String,
         title: String = "Song",
@@ -68,3 +79,12 @@ class RoomMusicRepositoryStateMergeTest {
         isFavourite = isFavourite
     )
 }
+
+private fun SongEntity.mergeStreamState(existing: SongEntity): SongEntity =
+    copy(
+        id = existing.id,
+        playCount = existing.playCount,
+        lastPlayedEpochMillis = existing.lastPlayedEpochMillis,
+        isFavourite = existing.isFavourite,
+        scanGeneration = existing.scanGeneration
+    )

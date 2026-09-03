@@ -734,7 +734,7 @@ internal fun HomeScreen(
                             } else {
                                 PlaylistEditorContent(
                                     playlist = playlist,
-                                    favouriteUris = uiState.favouriteSongs.mapTo(mutableSetOf()) { it.uri },
+                                    favouriteUris = uiState.favouriteUris,
                                     artworkByUri =
                                         uiState.librarySongs.mapNotNull { song ->
                                             uiState.artworkBySongId[song.id]?.let { song.uri to it }
