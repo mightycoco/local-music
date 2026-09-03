@@ -982,104 +982,104 @@ class HomeViewModel(
         isKeepDisplayOnEnabled.value = enabled
     }
 
-    internal fun projectLibrarySongs(
-        songs: List<Song>,
-        projection: LibraryProjection
-    ): List<Song> =
-        songs
-            .filter { song ->
-                song.matchesSearch(projection.searchQuery, projection.playlists) &&
-                        song.matchesFilter(projection.filter) &&
-                        LibraryBrowser.matches(
-                            song,
-                            projection.filter,
-                            projection.browseValue
-                        )
-            }
-            .sortedWith(projection.sortOrder.comparator())
-
-    private fun Song.matchesSearch(query: String, playlists: List<M3uPlaylist>): Boolean {
-        val normalizedQuery = query.trim()
-        if (normalizedQuery.isEmpty()) return true
-
-        val matchingPlaylistNames =
-            playlists.filter { playlist -> playlist.entries.any { it.uri == uri } }.map { it.name }
-        return listOf(
-            title,
-            artist,
-            album,
-            albumArtist,
-            genre,
-            composer,
-            year?.toString().orEmpty(),
-            comments,
-            description,
-            fileName,
-            folderName
-        )
-            .plus(matchingPlaylistNames)
-            .any { value ->
-                value.contains(normalizedQuery, ignoreCase = true)
-            }
-    }
-
-    private fun Song.matchesFilter(filter: LibraryFilter): Boolean =
-        when (filter) {
-            LibraryFilter.AllSongs,
-            LibraryFilter.Artists,
-            LibraryFilter.Albums,
-            LibraryFilter.Genres,
-            LibraryFilter.Folders -> true
-
-            LibraryFilter.RecentlyAdded -> dateAddedEpochSeconds > 0L
-            LibraryFilter.RecentlyPlayed -> lastPlayedEpochMillis != null
-            LibraryFilter.MostPlayed -> playCount > 0
-            LibraryFilter.NeverPlayed -> SmartPlaylistRules.isNeverPlayed(this)
-            LibraryFilter.LastThirtyDays ->
-                SmartPlaylistRules.wasPlayedWithinLastThirtyDays(
-                    song = this,
-                    nowEpochMillis = System.currentTimeMillis()
-                )
-
-            LibraryFilter.Favourites -> isFavourite
-        }
-
     private fun LibraryFilter.supportsFacets(): Boolean =
         this == LibraryFilter.Artists ||
                 this == LibraryFilter.Albums ||
                 this == LibraryFilter.Genres ||
                 this == LibraryFilter.Folders
+}
 
-    private fun SortOrder.comparator(): Comparator<Song> =
-        when (this) {
-            SortOrder.NewestAdded, SortOrder.DateAdded ->
-                compareByDescending<Song> { it.dateAddedEpochSeconds }.thenBy {
-                    it.title.lowercase()
-                }
+internal fun projectLibrarySongs(
+    songs: List<Song>,
+    projection: LibraryProjection
+): List<Song> =
+    songs
+        .filter { song ->
+            song.matchesSearch(projection.searchQuery, projection.playlists) &&
+                    song.matchesFilter(projection.filter) &&
+                    LibraryBrowser.matches(
+                        song,
+                        projection.filter,
+                        projection.browseValue
+                    )
+        }
+        .sortedWith(projection.sortOrder.comparator())
 
-            SortOrder.Name ->
-                compareBy<Song> { it.title.lowercase() }.thenBy { it.artist.lowercase() }
+private fun Song.matchesSearch(query: String, playlists: List<M3uPlaylist>): Boolean {
+    val normalizedQuery = query.trim()
+    if (normalizedQuery.isEmpty()) return true
 
-            SortOrder.Artist ->
-                compareBy<Song> { it.artist.lowercase() }.thenBy { it.title.lowercase() }
-
-            SortOrder.Album ->
-                compareBy<Song> { it.album.lowercase() }.thenBy { it.title.lowercase() }
-
-            SortOrder.Duration ->
-                compareByDescending<Song> { it.durationMillis }.thenBy {
-                    it.title.lowercase()
-                }
-
-            SortOrder.RecentlyPlayed ->
-                compareByDescending<Song> { it.lastPlayedEpochMillis ?: 0L }.thenBy {
-                    it.title.lowercase()
-                }
-
-            SortOrder.MostPlayed ->
-                compareByDescending<Song> { it.playCount }.thenBy { it.title.lowercase() }
+    val matchingPlaylistNames =
+        playlists.filter { playlist -> playlist.entries.any { it.uri == uri } }.map { it.name }
+    return listOf(
+        title,
+        artist,
+        album,
+        albumArtist,
+        genre,
+        composer,
+        year?.toString().orEmpty(),
+        comments,
+        description,
+        fileName,
+        folderName
+    )
+        .plus(matchingPlaylistNames)
+        .any { value ->
+            value.contains(normalizedQuery, ignoreCase = true)
         }
 }
+
+private fun Song.matchesFilter(filter: LibraryFilter): Boolean =
+    when (filter) {
+        LibraryFilter.AllSongs,
+        LibraryFilter.Artists,
+        LibraryFilter.Albums,
+        LibraryFilter.Genres,
+        LibraryFilter.Folders -> true
+
+        LibraryFilter.RecentlyAdded -> dateAddedEpochSeconds > 0L
+        LibraryFilter.RecentlyPlayed -> lastPlayedEpochMillis != null
+        LibraryFilter.MostPlayed -> playCount > 0
+        LibraryFilter.NeverPlayed -> SmartPlaylistRules.isNeverPlayed(this)
+        LibraryFilter.LastThirtyDays ->
+            SmartPlaylistRules.wasPlayedWithinLastThirtyDays(
+                song = this,
+                nowEpochMillis = System.currentTimeMillis()
+            )
+
+        LibraryFilter.Favourites -> isFavourite
+    }
+
+private fun SortOrder.comparator(): Comparator<Song> =
+    when (this) {
+        SortOrder.NewestAdded, SortOrder.DateAdded ->
+            compareByDescending<Song> { it.dateAddedEpochSeconds }.thenBy {
+                it.title.lowercase()
+            }
+
+        SortOrder.Name ->
+            compareBy<Song> { it.title.lowercase() }.thenBy { it.artist.lowercase() }
+
+        SortOrder.Artist ->
+            compareBy<Song> { it.artist.lowercase() }.thenBy { it.title.lowercase() }
+
+        SortOrder.Album ->
+            compareBy<Song> { it.album.lowercase() }.thenBy { it.title.lowercase() }
+
+        SortOrder.Duration ->
+            compareByDescending<Song> { it.durationMillis }.thenBy {
+                it.title.lowercase()
+            }
+
+        SortOrder.RecentlyPlayed ->
+            compareByDescending<Song> { it.lastPlayedEpochMillis ?: 0L }.thenBy {
+                it.title.lowercase()
+            }
+
+        SortOrder.MostPlayed ->
+            compareByDescending<Song> { it.playCount }.thenBy { it.title.lowercase() }
+    }
 
 private data class PlaybackState(
     val songId: String?,

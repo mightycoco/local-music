@@ -1,5 +1,6 @@
 package com.localmusic.player.domain.usecase
 
+import com.localmusic.player.domain.model.LibraryQuery
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.StreamStation
 import com.localmusic.player.domain.repository.MusicRepository
@@ -14,7 +15,7 @@ import org.junit.Test
 
 class ObserveSongsUseCaseTest {
     @Test
-    fun observeSongsDelegatesToRepository() = runTest {
+    fun observeLibraryDelegatesToRepository() = runTest {
         val expected =
             listOf(
                 Song(
@@ -28,9 +29,9 @@ class ObserveSongsUseCaseTest {
                     uri = "content://media/song-1"
                 )
             )
-        val useCase = ObserveSongsUseCase(FakeMusicRepository(expected))
+        val useCase = ObserveLibraryPageUseCase(FakeMusicRepository(expected))
 
-        useCase().collect { songs -> assertEquals(expected, songs) }
+        useCase(LibraryQuery()).collect { songs -> assertEquals(expected, songs) }
     }
 
     @Test
@@ -108,7 +109,17 @@ class ObserveSongsUseCaseTest {
         var removedFolderUri: String? = null
         var favouriteUpdate: Pair<String, Boolean>? = null
 
-        override fun observeSongs(): Flow<List<Song>> = flowOf(songs)
+        override fun observeLibrary(query: LibraryQuery): Flow<List<Song>> = flowOf(songs)
+
+        override fun pageLibrary(query: LibraryQuery) =
+            throw UnsupportedOperationException("Not used by this test")
+
+        override fun observeLibraryFacets(query: LibraryQuery) =
+            throw UnsupportedOperationException("Not used by this test")
+
+        override suspend fun songsByUris(uris: List<String>): List<Song> = emptyList()
+
+        override suspend fun songsByIds(ids: List<String>): List<Song> = emptyList()
 
         override suspend fun refreshLibrary() = Unit
 
