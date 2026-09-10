@@ -41,6 +41,7 @@ import com.localmusic.player.domain.usecase.StartPlaybackUseCase
 import com.localmusic.player.domain.usecase.UpdateStreamMetadataUseCase
 import com.localmusic.player.playback.Media3PlaybackController
 import com.localmusic.player.playback.Media3RadioPreviewController
+import com.localmusic.player.playback.PlaybackPreferences
 import com.localmusic.player.playlist.RoomPlaylistStore
 import com.localmusic.player.playlist.SharedPreferencesPlaylistStore
 import com.localmusic.player.settings.LibraryPreferences
@@ -145,6 +146,10 @@ class MainActivity : ComponentActivity() {
                 carModePreferences =
                     CarModePreferences(
                         getSharedPreferences("local-music-car-mode", MODE_PRIVATE)
+                    ),
+                playbackPreferences =
+                    PlaybackPreferences(
+                        getSharedPreferences("local-music-playback", MODE_PRIVATE)
                     )
             )
 

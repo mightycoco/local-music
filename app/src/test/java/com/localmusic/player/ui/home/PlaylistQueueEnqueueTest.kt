@@ -7,6 +7,50 @@ import org.junit.Test
 
 class PlaylistQueueEnqueueTest {
     @Test
+    fun restoresPersistedQueueAtLastPlayedSong() {
+        val firstSong = testSong("first")
+        val lastPlayedSong = testSong("last-played")
+
+        val result =
+            resolvePersistedQueue(
+                queueEntries = listOf(firstSong.toEntry(), lastPlayedSong.toEntry()),
+                songsByUri = listOf(firstSong, lastPlayedSong).associateBy(Song::uri),
+                lastPlayedSongUri = lastPlayedSong.uri
+            )
+
+        assertEquals(listOf(firstSong, lastPlayedSong), result?.songs)
+        assertEquals(lastPlayedSong, result?.startSong)
+    }
+
+    @Test
+    fun restoredQueueFallsBackToFirstPlayableSong() {
+        val unavailableEntry = testEntry("unavailable")
+        val playableSong = testSong("playable")
+
+        val result =
+            resolvePersistedQueue(
+                queueEntries = listOf(unavailableEntry, playableSong.toEntry()),
+                songsByUri = mapOf(playableSong.uri to playableSong),
+                lastPlayedSongUri = unavailableEntry.uri
+            )
+
+        assertEquals(listOf(playableSong), result?.songs)
+        assertEquals(playableSong, result?.startSong)
+    }
+
+    @Test
+    fun emptyPlayableQueueHasNoRestoration() {
+        val result =
+            resolvePersistedQueue(
+                queueEntries = listOf(testEntry("unavailable")),
+                songsByUri = emptyMap(),
+                lastPlayedSongUri = null
+            )
+
+        assertEquals(null, result)
+    }
+
+    @Test
     fun resolvesNewPlayableEntriesInPlaylistOrder() {
         val queuedSong = testSong("queued")
         val firstSong = testSong("first")

@@ -105,6 +105,17 @@ class Media3PlaybackController(
         }
     }
 
+    override fun restoreQueue(songs: List<Song>, startSongId: String) {
+        val queue = queueFactory.createQueue(songs, startSongId)
+        if (queue.isEmpty()) return
+
+        withController { controller ->
+            controller.setMediaItems(queue)
+            controller.prepare()
+            controller.pause()
+        }
+    }
+
     override fun enqueue(song: Song) {
         val item = queueFactory.createQueue(listOf(song)).singleOrNull() ?: return
         withController { controller -> controller.addMediaItem(item) }

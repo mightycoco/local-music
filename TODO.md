@@ -54,6 +54,7 @@
 - [x] Playlist screen must allow deleting playlists
 - [x] Now Playing must allow adding to a new/existing playlist
 - [x] Queueing of items must update both the persistent Queue playlist and active Media3 playback queue; Queue cannot be deleted, can be cleared, and is always listed first.
+- [x] Restore the persisted Queue and last selected song at startup, opening Now Playing only when the queue contains playable items.
 - [x] Playlists must be persisted and loaded after app restart.
 - [x] Media list items must have a long press menu with the options to queue, add to a new/existing playlist
 - [x] Creating a playlist should just show a modal dialog with a generic TextInput field and Cancel/Create buttons

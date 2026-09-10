@@ -37,6 +37,7 @@ import com.localmusic.player.playlist.M3uPlaylistEntry
 import com.localmusic.player.playlist.PlaylistStore
 import com.localmusic.player.playlist.toM3uEntry
 import com.localmusic.player.playlist.withQueueFirst
+import com.localmusic.player.playback.PlaybackPreferences
 import com.localmusic.player.settings.LibraryPreferences
 import com.localmusic.player.ui.theme.AppThemeMode
 import kotlinx.coroutines.Dispatchers
@@ -72,7 +73,8 @@ class HomeViewModel(
     private val artworkCache: ArtworkDiskCache? = null,
     private val artworkPreferences: ArtworkPreferences? = null,
     private val libraryPreferences: LibraryPreferences? = null,
-    private val carModePreferences: CarModePreferences? = null
+    private val carModePreferences: CarModePreferences? = null,
+    private val playbackPreferences: PlaybackPreferences? = null
 ) : ViewModel() {
     private val selectedFilter =
         MutableStateFlow(libraryPreferences?.defaultFilter() ?: LibraryFilter.AllSongs)
@@ -126,11 +128,15 @@ class HomeViewModel(
                 importedPlaylists.value = storedPlaylists
                 ensureQueuePlaylist()
             }
+            restorePersistedQueue(storedPlaylists)
         }
         viewModelScope.launch {
             startPlayback.observePlayback().collect { playback ->
                 nowPlayingSongId.value = playback.songId
                 playbackQueueSongIds.value = playback.queueSongIds
+                playbackSongsById.value[playback.songId]?.let { song ->
+                    playbackPreferences?.setLastPlayedSongUri(song.uri)
+                }
                 updateRemoteStreamMetadata(playback)
                 isPlaying.value = playback.isPlaying
                 playbackProgress.value = playback.progress
@@ -554,6 +560,7 @@ class HomeViewModel(
 
     private fun playSongs(queue: List<Song>, startSong: Song) {
         refreshError.value = null
+        playbackPreferences?.setLastPlayedSongUri(startSong.uri)
         nowPlayingSongId.value = startSong.id
         playbackQueueSongIds.value = queue.map(Song::id)
         playbackSongsById.value = queue.associateBy(Song::id)
@@ -891,6 +898,7 @@ class HomeViewModel(
     }
 
     fun clearQueue() {
+        playbackPreferences?.setLastPlayedSongUri(null)
         savePlaylist(M3uPlaylist(name = M3uPlaylist.QUEUE_NAME, entries = emptyList()))
         runCatching { startPlayback.clearQueue() }.onFailure { error ->
             refreshError.value = error.message ?: "Queue clear failed"
@@ -901,6 +909,26 @@ class HomeViewModel(
         if (importedPlaylists.value.none { it.name == M3uPlaylist.QUEUE_NAME }) {
             savePlaylist(M3uPlaylist(name = M3uPlaylist.QUEUE_NAME, entries = emptyList()))
         }
+    }
+
+    private suspend fun restorePersistedQueue(playlists: List<M3uPlaylist>) {
+        val queue = playlists.firstOrNull { it.name == M3uPlaylist.QUEUE_NAME } ?: return
+        val songsByUri = getSongsByUris(queue.entries.map(M3uPlaylistEntry::uri)).associateBy(Song::uri)
+        val restoration =
+            resolvePersistedQueue(
+                queueEntries = queue.entries,
+                songsByUri = songsByUri,
+                lastPlayedSongUri = playbackPreferences?.lastPlayedSongUri()
+            ) ?: return
+
+        withContext(Dispatchers.Main) {
+            nowPlayingSongId.value = restoration.startSong.id
+            playbackQueueSongIds.value = restoration.songs.map(Song::id)
+            playbackSongsById.value = restoration.songs.associateBy(Song::id)
+            isPlaying.value = false
+            selectedScreen.value = HomeScreenDestination.NowPlaying
+        }
+        startPlayback.restoreQueue(restoration.songs, restoration.startSong.id)
     }
 
     private fun addSongToPlaylistInternal(song: Song, name: String): Boolean {
@@ -1145,6 +1173,21 @@ internal fun resolvePlaylistEntriesToEnqueue(
     }
 }
 
+internal data class PersistedQueueRestoration(
+    val songs: List<Song>,
+    val startSong: Song
+)
+
+internal fun resolvePersistedQueue(
+    queueEntries: List<M3uPlaylistEntry>,
+    songsByUri: Map<String, Song>,
+    lastPlayedSongUri: String?
+): PersistedQueueRestoration? {
+    val songs = queueEntries.mapNotNull { entry -> songsByUri[entry.uri] }.distinctBy(Song::uri)
+    val startSong = songs.firstOrNull { it.uri == lastPlayedSongUri } ?: songs.firstOrNull() ?: return null
+    return PersistedQueueRestoration(songs = songs, startSong = startSong)
+}
+
 private const val ARTWORK_PREFETCH_LIMIT = 64
 private const val EXTERNAL_ARTWORK_PREFETCH_LIMIT = 4
 
@@ -1168,7 +1211,8 @@ class HomeViewModelFactory(
     private val artworkCache: ArtworkDiskCache? = null,
     private val artworkPreferences: ArtworkPreferences? = null,
     private val libraryPreferences: LibraryPreferences? = null,
-    private val carModePreferences: CarModePreferences? = null
+    private val carModePreferences: CarModePreferences? = null,
+    private val playbackPreferences: PlaybackPreferences? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -1192,7 +1236,8 @@ class HomeViewModelFactory(
             artworkCache,
             artworkPreferences,
             libraryPreferences,
-            carModePreferences
+            carModePreferences,
+            playbackPreferences
         ) as
                 T
     }

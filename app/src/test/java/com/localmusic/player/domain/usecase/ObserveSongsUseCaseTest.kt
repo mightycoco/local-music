@@ -156,6 +156,8 @@ class ObserveSongsUseCaseTest {
             startedPlayback = songs to startSongId
         }
 
+        override fun restoreQueue(songs: List<Song>, startSongId: String) = Unit
+
         override fun enqueue(song: Song) {
             enqueuedSong = song
         }
