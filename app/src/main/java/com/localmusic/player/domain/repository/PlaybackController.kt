@@ -8,6 +8,7 @@ interface PlaybackController {
     fun observePlayback(): Flow<PlaybackSnapshot>
     fun play(songs: List<Song>, startSongId: String)
     fun restoreQueue(songs: List<Song>, startSongId: String)
+    fun synchronizeQueue(songs: List<Song>, currentSongId: String?)
     fun enqueue(song: Song)
     fun clearQueue()
     fun resume()

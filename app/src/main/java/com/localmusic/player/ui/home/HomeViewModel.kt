@@ -41,6 +41,7 @@ import com.localmusic.player.playback.PlaybackPreferences
 import com.localmusic.player.settings.LibraryPreferences
 import com.localmusic.player.ui.theme.AppThemeMode
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -119,9 +120,17 @@ class HomeViewModel(
     private val refreshError = MutableStateFlow<String?>(null)
     private val playlistCodec = M3uPlaylistCodec()
     private val requestedArtworkSongIds = mutableSetOf<String>()
+    private val playlistSaveRequests = Channel<M3uPlaylist>(Channel.UNLIMITED)
     private var hasRequestedInitialRefresh = false
+    private var queueMutationGeneration = 0L
+    private var hasObservedActiveQueue = false
 
     init {
+        viewModelScope.launch(Dispatchers.IO) {
+            for (playlist in playlistSaveRequests) {
+                playlistStore?.save(playlist)
+            }
+        }
         viewModelScope.launch(Dispatchers.IO) {
             val storedPlaylists = playlistStore?.playlists().orEmpty()
             withContext(Dispatchers.Main) {
@@ -132,6 +141,7 @@ class HomeViewModel(
         }
         viewModelScope.launch {
             startPlayback.observePlayback().collect { playback ->
+                if (playback.queueSongIds.isNotEmpty()) hasObservedActiveQueue = true
                 nowPlayingSongId.value = playback.songId
                 playbackQueueSongIds.value = playback.queueSongIds
                 playbackSongsById.value[playback.songId]?.let { song ->
@@ -559,7 +569,14 @@ class HomeViewModel(
     }
 
     private fun playSongs(queue: List<Song>, startSong: Song) {
+        queueMutationGeneration++
         refreshError.value = null
+        savePlaylist(
+            M3uPlaylist(
+                name = M3uPlaylist.QUEUE_NAME,
+                entries = queue.map(Song::toM3uEntry)
+            )
+        )
         playbackPreferences?.setLastPlayedSongUri(startSong.uri)
         nowPlayingSongId.value = startSong.id
         playbackQueueSongIds.value = queue.map(Song::id)
@@ -871,33 +888,43 @@ class HomeViewModel(
     }
 
     fun addSongToQueue(song: Song) {
-        if (addSongToPlaylistInternal(song, M3uPlaylist.QUEUE_NAME)) {
-            runCatching { startPlayback.enqueue(song) }.onFailure { error ->
-                refreshError.value = error.message ?: "Queue update failed"
-            }
+        queueMutationGeneration++
+        viewModelScope.launch {
+            val queue =
+                importedPlaylists.value.firstOrNull { it.name == M3uPlaylist.QUEUE_NAME }
+                    ?: M3uPlaylist(name = M3uPlaylist.QUEUE_NAME, entries = emptyList())
+            val updatedQueue =
+                if (queue.entries.any { it.uri == song.uri }) queue
+                else queue.copy(entries = queue.entries + song.toM3uEntry())
+            savePlaylist(updatedQueue)
+            synchronizeActiveQueue(updatedQueue, additionalSongs = listOf(song))
         }
     }
 
     fun enqueuePlaylist(playlist: M3uPlaylist) {
+        queueMutationGeneration++
         viewModelScope.launch {
             val queue =
                 importedPlaylists.value.firstOrNull { it.name == M3uPlaylist.QUEUE_NAME } ?: return@launch
-            val songsByUri =
-                getSongsByUris(playlist.entries.map(M3uPlaylistEntry::uri)).associateBy(Song::uri)
+            val allUris = (queue.entries + playlist.entries).map(M3uPlaylistEntry::uri)
+            val songsByUri = getSongsByUris(allUris).associateBy(Song::uri)
             val songsToEnqueue =
                 resolvePlaylistEntriesToEnqueue(queue.entries, playlist.entries, songsByUri)
-            if (songsToEnqueue.isEmpty()) {
-                refreshError.value = "No new playable songs found in ${playlist.name}"
+            val updatedQueue = queue.copy(entries = queue.entries + songsToEnqueue.map(Song::toM3uEntry))
+            if (songsToEnqueue.isNotEmpty()) savePlaylist(updatedQueue)
+            val queueSongs = updatedQueue.entries.mapNotNull { entry -> songsByUri[entry.uri] }
+            if (queueSongs.isEmpty()) {
+                refreshError.value = "No playable songs found in ${playlist.name}"
                 return@launch
             }
-            savePlaylist(queue.copy(entries = queue.entries + songsToEnqueue.map(Song::toM3uEntry)))
-            runCatching { songsToEnqueue.forEach(startPlayback::enqueue) }.onFailure { error ->
-                refreshError.value = error.message ?: "Queue update failed"
-            }
+            playbackSongsById.value = queueSongs.associateBy(Song::id)
+            playbackQueueSongIds.value = queueSongs.map(Song::id)
+            startPlayback.synchronizeQueue(queueSongs, nowPlayingSongId.value)
         }
     }
 
     fun clearQueue() {
+        queueMutationGeneration++
         playbackPreferences?.setLastPlayedSongUri(null)
         savePlaylist(M3uPlaylist(name = M3uPlaylist.QUEUE_NAME, entries = emptyList()))
         runCatching { startPlayback.clearQueue() }.onFailure { error ->
@@ -912,6 +939,7 @@ class HomeViewModel(
     }
 
     private suspend fun restorePersistedQueue(playlists: List<M3uPlaylist>) {
+        val restorationGeneration = queueMutationGeneration
         val queue = playlists.firstOrNull { it.name == M3uPlaylist.QUEUE_NAME } ?: return
         val songsByUri = getSongsByUris(queue.entries.map(M3uPlaylistEntry::uri)).associateBy(Song::uri)
         val restoration =
@@ -921,6 +949,8 @@ class HomeViewModel(
                 lastPlayedSongUri = playbackPreferences?.lastPlayedSongUri()
             ) ?: return
 
+        if (queueMutationGeneration != restorationGeneration || hasObservedActiveQueue) return
+
         withContext(Dispatchers.Main) {
             nowPlayingSongId.value = restoration.startSong.id
             playbackQueueSongIds.value = restoration.songs.map(Song::id)
@@ -929,6 +959,19 @@ class HomeViewModel(
             selectedScreen.value = HomeScreenDestination.NowPlaying
         }
         startPlayback.restoreQueue(restoration.songs, restoration.startSong.id)
+    }
+
+    private suspend fun synchronizeActiveQueue(
+        queue: M3uPlaylist,
+        additionalSongs: List<Song> = emptyList()
+    ) {
+        val songsByUri =
+            getSongsByUris(queue.entries.map(M3uPlaylistEntry::uri)).associateBy(Song::uri) +
+                    additionalSongs.associateBy(Song::uri)
+        val queueSongs = queue.entries.mapNotNull { entry -> songsByUri[entry.uri] }
+        playbackSongsById.value = queueSongs.associateBy(Song::id)
+        playbackQueueSongIds.value = queueSongs.map(Song::id)
+        startPlayback.synchronizeQueue(queueSongs, nowPlayingSongId.value)
     }
 
     private fun addSongToPlaylistInternal(song: Song, name: String): Boolean {
@@ -958,7 +1001,7 @@ class HomeViewModel(
         importedPlaylists.value =
             (importedPlaylists.value.filterNot { it.name == playlist.name } + playlist)
                 .withQueueFirst()
-        viewModelScope.launch(Dispatchers.IO) { playlistStore?.save(playlist) }
+        playlistSaveRequests.trySend(playlist)
     }
 
     private fun updateRemoteStreamMetadata(playback: com.localmusic.player.domain.repository.PlaybackSnapshot) {

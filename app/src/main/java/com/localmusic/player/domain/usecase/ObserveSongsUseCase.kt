@@ -74,6 +74,9 @@ class StartPlaybackUseCase(private val playbackController: PlaybackController) {
     fun restoreQueue(songs: List<Song>, startSongId: String) =
         playbackController.restoreQueue(songs, startSongId)
 
+    fun synchronizeQueue(songs: List<Song>, currentSongId: String?) =
+        playbackController.synchronizeQueue(songs, currentSongId)
+
     fun enqueue(song: Song) = playbackController.enqueue(song)
     fun clearQueue() = playbackController.clearQueue()
     fun resume() = playbackController.resume()

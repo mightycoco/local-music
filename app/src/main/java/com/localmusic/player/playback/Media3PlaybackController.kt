@@ -95,24 +95,48 @@ class Media3PlaybackController(
             .buffer(Channel.CONFLATED)
 
     override fun play(songs: List<Song>, startSongId: String) {
-        val queue = queueFactory.createQueue(songs, startSongId)
+        val queue = queueFactory.createQueue(songs)
         if (queue.isEmpty()) return
+        val startIndex = songs.indexOfFirst { it.id == startSongId }.coerceAtLeast(0)
 
         withController { controller ->
-            controller.setMediaItems(queue)
+            controller.setMediaItems(queue, startIndex, 0L)
             controller.prepare()
             controller.play()
         }
     }
 
     override fun restoreQueue(songs: List<Song>, startSongId: String) {
-        val queue = queueFactory.createQueue(songs, startSongId)
+        val queue = queueFactory.createQueue(songs)
         if (queue.isEmpty()) return
+        val startIndex = songs.indexOfFirst { it.id == startSongId }.coerceAtLeast(0)
 
         withController { controller ->
-            controller.setMediaItems(queue)
+            controller.setMediaItems(queue, startIndex, 0L)
             controller.prepare()
             controller.pause()
+        }
+    }
+
+    override fun synchronizeQueue(songs: List<Song>, currentSongId: String?) {
+        val queue = queueFactory.createQueue(songs)
+        withController { controller ->
+            if (queue.isEmpty()) {
+                controller.clearMediaItems()
+                return@withController
+            }
+            val retainedSongId = currentSongId?.takeIf { id -> songs.any { it.id == id } }
+            val startIndex = songs.indexOfFirst { it.id == retainedSongId }.coerceAtLeast(0)
+            val startPosition =
+                if (controller.currentMediaItem?.mediaId == retainedSongId) {
+                    controller.currentPosition.coerceAtLeast(0L)
+                } else {
+                    0L
+                }
+            val shouldPlay = controller.playWhenReady
+            controller.setMediaItems(queue, startIndex, startPosition)
+            controller.prepare()
+            controller.playWhenReady = shouldPlay
         }
     }
 
@@ -172,14 +196,33 @@ class Media3PlaybackController(
         controllerFuture = null
     }
 
-    private fun withController(command: (MediaController) -> Unit) {
+    private fun withController(
+        canRetry: Boolean = true,
+        command: (MediaController) -> Unit
+    ) {
+        val existingFuture = controllerFuture
         val future =
-            controllerFuture
-                ?: MediaController.Builder(context, sessionToken()).buildAsync().also {
+            if (existingFuture == null || existingFuture.isCancelled ||
+                (existingFuture.isDone && runCatching(existingFuture::get).getOrNull()?.isConnected != true)
+            ) {
+                existingFuture?.let(MediaController::releaseFuture)
+                MediaController.Builder(context, sessionToken()).buildAsync().also {
                     controllerFuture = it
                 }
+            } else {
+                existingFuture
+            }
         future.addListener(
-            { runCatching(future::get).getOrNull()?.let(command) },
+            {
+                val controller = runCatching(future::get).getOrNull()
+                if (controller?.isConnected == true) {
+                    runCatching { command(controller) }
+                } else if (controllerFuture === future) {
+                    controllerFuture = null
+                    MediaController.releaseFuture(future)
+                    if (canRetry) withController(canRetry = false, command = command)
+                }
+            },
             ContextCompat.getMainExecutor(context)
         )
     }

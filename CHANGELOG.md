@@ -3,6 +3,7 @@
 ## 0.1.0 - Unreleased
 
 - Restored the persisted Queue and its last selected song on app launch, opening Now Playing when playable queue items remain and Home otherwise.
+- Reconciled playlist enqueue operations against the complete active queue, persisted Home playback queues, and recovered Media3 controller connections after failures or disconnections.
 - Replaced full-library Room observation and ViewModel projection with Paging 3-backed SQL filtering, a 500-song cache cap, complete Room facet aggregation, targeted playlist lookups, and composite library indexes.
 - Added a 50,000-row Room query-plan instrumentation test and aligned sortable text columns and indexes with case-insensitive production ordering.
 - Added vertical Now Playing artwork gestures for Android media-stream volume with a synchronized read-only volume indicator.

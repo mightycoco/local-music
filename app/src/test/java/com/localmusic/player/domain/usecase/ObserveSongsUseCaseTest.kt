@@ -158,6 +158,8 @@ class ObserveSongsUseCaseTest {
 
         override fun restoreQueue(songs: List<Song>, startSongId: String) = Unit
 
+        override fun synchronizeQueue(songs: List<Song>, currentSongId: String?) = Unit
+
         override fun enqueue(song: Song) {
             enqueuedSong = song
         }
