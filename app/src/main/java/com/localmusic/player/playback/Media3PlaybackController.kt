@@ -216,7 +216,12 @@ class Media3PlaybackController(
             {
                 val controller = runCatching(future::get).getOrNull()
                 if (controller?.isConnected == true) {
-                    runCatching { command(controller) }
+                    val commandResult = runCatching { command(controller) }
+                    if (commandResult.isFailure && controllerFuture === future) {
+                        controllerFuture = null
+                        MediaController.releaseFuture(future)
+                        if (canRetry) withController(canRetry = false, command = command)
+                    }
                 } else if (controllerFuture === future) {
                     controllerFuture = null
                     MediaController.releaseFuture(future)
