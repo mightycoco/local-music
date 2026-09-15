@@ -13,6 +13,7 @@ paging = "3.3.6"
 coroutines = "1.9.0"
 serialization = "1.7.3"
 coil = "2.7.0"
+googleCast = "22.2.0"
 junit = "4.13.2"
 androidxTestCore = "1.6.1"
 androidxTestExtJunit = "1.2.1"
@@ -40,6 +41,7 @@ androidx-paging-compose = { module = "androidx.paging:paging-compose", version.r
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
+google-play-services-cast-framework = { module = "com.google.android.gms:play-services-cast-framework", version.ref = "googleCast" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 junit = { module = "junit:junit", version.ref = "junit" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTestCore" }

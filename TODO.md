@@ -70,6 +70,12 @@
 
 ## Remaining Prompt Requirements
 
+- [ ] Add Google Cast handoff for online HTTP(S) streams.
+	- [x] Configure the Default Media Receiver and show the standard Cast chooser only for eligible Now Playing streams.
+	- [ ] Validate Citation Oasis discovery and receiver-side playback with a known HTTPS MP3 and a saved app stream.
+	- [ ] Add remote stream state, load orchestration, confirmed-playing local pause, and remote play/pause/stop controls.
+	- [ ] Add focused state-machine, ViewModel, and Now Playing UI tests.
+
 - [ ] Verify all required local formats on device and document Media3 fallback behavior: MP3, AAC, M4A, FLAC, WAV, AIFF, OGG, and Opus.
 - [x] Complete Home filters: Artists, Albums, Genres, and Folders provide local drill-down browsing.
 - [x] Expand the song metadata model and instant search to include album artist, genre, composer, year, comments, description, and playlist names.

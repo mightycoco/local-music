@@ -1,6 +1,6 @@
 # Local Music
 
-Local Music is an Android music player focused exclusively on local audio playback. The project is designed for source-first development in Visual Studio Code using Kotlin, Gradle, Jetpack Compose, AndroidX Media3, Room, Coroutines, Flow, MVVM, and Clean Architecture.
+Local Music is an Android music player focused on local audio playback with optional online radio streams. The project is designed for source-first development in Visual Studio Code using Kotlin, Gradle, Jetpack Compose, AndroidX Media3, Room, Coroutines, Flow, MVVM, and Clean Architecture.
 
 ## Current Increment
 
@@ -25,6 +25,7 @@ This repository currently contains a buildable local-playback foundation and sel
 - Bluetooth car-audio detection, runtime Bluetooth permission handling, settings import/export, and license foundations.
 - Bottom navigation with Home, Now Playing, Playlists, Favourites, and Settings destinations.
 - Now Playing play, pause, previous, next, seek, playlist, and Queue controls wired through the Media3 playback boundary.
+- Google Cast device discovery from Now Playing for eligible HTTP(S) radio streams.
 - Follow System, Dark, and Light theme modes.
 - Unit, repository, playlist persistence, artwork-cache, and settings serialization tests.
 
@@ -115,7 +116,8 @@ The CI workflow uses the same configured key for debug and release APKs on trust
 
 ## Development Notes
 
-- The app plays local files only; no streaming or cloud integrations are planned.
+- Local files remain the primary library. Online radio streams may be played locally and handed to compatible Google Cast devices; local files are not exposed or served over the LAN.
+- Google Play services Cast framework is a narrow exception to the project's open-source dependency preference because Citation Oasis discovery and control require the official sender SDK.
 - Missing artwork may optionally use MusicBrainz and Cover Art Archive only after embedded, `folder.jpg`, `cover.jpg`, and cached artwork are unavailable. The setting is enabled by default and can be disabled in Settings. Artist and album metadata is sent to those services for lookup; successful images are stored in the app cache and no audio or library data is uploaded or streamed.
 - MediaStore and Storage Access Framework scanning should be implemented behind `MusicRepository`.
 - UI classes must not access MediaStore directly.
