@@ -48,9 +48,13 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.dp
+import androidx.mediarouter.app.MediaRouteButton
+import com.google.android.gms.cast.framework.CastButtonFactory
 import com.localmusic.player.domain.model.Song
+import com.localmusic.player.domain.model.SongSource
 import com.localmusic.player.ui.theme.UiAnimationTimings
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -316,6 +320,17 @@ internal fun AnimatedNowPlayingArtwork(
                     contentDescription = null
                 )
             }
+            if (song.isCastEligible()) {
+                AndroidView(
+                    factory = { viewContext ->
+                        MediaRouteButton(viewContext).also { button ->
+                            CastButtonFactory.setUpMediaRouteButton(viewContext, button)
+                            button.contentDescription = "Stream to device"
+                        }
+                    },
+                    modifier = Modifier.size(48.dp)
+                )
+            }
             IconButton(
                 onClick = onShowMoreActions,
                 modifier = Modifier.semantics { contentDescription = "More actions" }
@@ -333,6 +348,12 @@ internal fun AnimatedNowPlayingArtwork(
         )
     }
 }
+
+private fun Song.isCastEligible(): Boolean =
+    source == SongSource.STREAM &&
+            runCatching {
+                android.net.Uri.parse(uri).scheme?.lowercase() in setOf("http", "https")
+            }.getOrDefault(false)
 
 @Composable
 private fun VolumeIndicator(

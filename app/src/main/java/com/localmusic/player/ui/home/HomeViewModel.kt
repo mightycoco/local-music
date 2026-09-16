@@ -10,15 +10,19 @@ import com.localmusic.player.artwork.ArtworkPreferences
 import com.localmusic.player.artwork.EmbeddedArtworkExtractor
 import com.localmusic.player.bluetooth.CarAudioDevice
 import com.localmusic.player.bluetooth.CarModePreferences
+import com.localmusic.player.cast.RemoteHandoffCoordinator
 import com.localmusic.player.domain.model.LibraryBrowser
 import com.localmusic.player.domain.model.LibraryFilter
 import com.localmusic.player.domain.model.LibraryFacet
 import com.localmusic.player.domain.model.LibraryQuery
 import com.localmusic.player.domain.model.RadioStation
+import com.localmusic.player.domain.model.RemoteStreamState
+import com.localmusic.player.domain.model.RemoteStreamStatus
 import com.localmusic.player.domain.model.SmartPlaylistRules
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.SortOrder
 import com.localmusic.player.domain.repository.RepeatMode
+import com.localmusic.player.domain.repository.RemoteStreamController
 import com.localmusic.player.domain.usecase.AddFolderSourceUseCase
 import com.localmusic.player.domain.usecase.ImportStreamSourceUseCase
 import com.localmusic.player.domain.usecase.GetSongsByUrisUseCase
@@ -75,7 +79,8 @@ class HomeViewModel(
     private val artworkPreferences: ArtworkPreferences? = null,
     private val libraryPreferences: LibraryPreferences? = null,
     private val carModePreferences: CarModePreferences? = null,
-    private val playbackPreferences: PlaybackPreferences? = null
+    private val playbackPreferences: PlaybackPreferences? = null,
+    private val remoteStreamController: RemoteStreamController? = null
 ) : ViewModel() {
     private val selectedFilter =
         MutableStateFlow(libraryPreferences?.defaultFilter() ?: LibraryFilter.AllSongs)
@@ -99,6 +104,7 @@ class HomeViewModel(
     private val visualizerLevels = MutableStateFlow<List<Float>>(emptyList())
     private val isShuffleEnabled = MutableStateFlow(false)
     private val repeatMode = MutableStateFlow(RepeatMode.Off)
+    private val remoteStreamState = MutableStateFlow(RemoteStreamState())
     private val themeMode = MutableStateFlow(AppThemeMode.FollowSystem)
     private val importedPlaylists = MutableStateFlow<List<M3uPlaylist>>(emptyList())
     private val sourceFolderUris = MutableStateFlow(folderSourceUris())
@@ -124,6 +130,7 @@ class HomeViewModel(
     private var hasRequestedInitialRefresh = false
     private var queueMutationGeneration = 0L
     private var hasObservedActiveQueue = false
+    private val remoteHandoffCoordinator = RemoteHandoffCoordinator()
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
@@ -155,6 +162,23 @@ class HomeViewModel(
                 isShuffleEnabled.value = playback.isShuffleEnabled
                 repeatMode.value = playback.repeatMode
                 playback.errorMessage?.let { refreshError.value = "Playback failed: $it" }
+            }
+        }
+        viewModelScope.launch {
+            combine(nowPlayingSongId, playbackSongsById) { songId, songsById -> songsById[songId] }
+                .collect { song -> remoteStreamController?.prepare(song) }
+        }
+        viewModelScope.launch {
+            remoteStreamController?.state?.collect { remoteState ->
+                remoteStreamState.value = remoteState
+                val currentSong = playbackSongsById.value[nowPlayingSongId.value]
+                if (remoteHandoffCoordinator.shouldPauseLocal(remoteState, currentSong)) {
+                    runCatching { startPlayback.pause() }
+                        .onSuccess { remoteHandoffCoordinator.markLocalPaused(remoteState) }
+                        .onFailure { error ->
+                            refreshError.value = error.message ?: "Could not pause local playback"
+                        }
+                }
             }
         }
     }
@@ -373,6 +397,19 @@ class HomeViewModel(
                 artworkBySongId = artwork
             )
         }
+            .combine(remoteStreamState) { state, remoteState ->
+                val currentSong = state.nowPlayingSong
+                val ownsPlayback =
+                    currentSong != null &&
+                            remoteState.requestedSongId == currentSong.id &&
+                            remoteState.requestedUri == currentSong.uri &&
+                            remoteState.status in
+                            setOf(RemoteStreamStatus.Playing, RemoteStreamStatus.Paused)
+                state.copy(
+                    isPlaying = if (ownsPlayback) remoteState.status == RemoteStreamStatus.Playing else state.isPlaying,
+                    remoteStreamState = remoteState
+                )
+            }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
@@ -598,6 +635,19 @@ class HomeViewModel(
 
     fun togglePlayback() {
         if (nowPlayingSongId.value == null) return
+        val remoteState = remoteStreamState.value
+        if (remoteStateMatchesCurrentSong(remoteState)) {
+            runCatching {
+                if (remoteState.status == RemoteStreamStatus.Playing) {
+                    remoteStreamController?.pause()
+                } else {
+                    remoteStreamController?.play()
+                }
+            }.onFailure { error ->
+                refreshError.value = error.message ?: "Cast playback control failed"
+            }
+            return
+        }
         runCatching { if (isPlaying.value) startPlayback.pause() else startPlayback.resume() }
             .onSuccess { isPlaying.value = !isPlaying.value }
             .onFailure { error ->
@@ -606,18 +656,21 @@ class HomeViewModel(
     }
 
     fun skipToNext() {
+        if (remoteStateMatchesCurrentSong(remoteStreamState.value)) return
         runCatching(startPlayback::skipToNext).onFailure { error ->
             refreshError.value = error.message ?: "Next track failed"
         }
     }
 
     fun skipToPrevious() {
+        if (remoteStateMatchesCurrentSong(remoteStreamState.value)) return
         runCatching(startPlayback::skipToPrevious).onFailure { error ->
             refreshError.value = error.message ?: "Previous track failed"
         }
     }
 
     fun updatePlaybackProgress(progress: Float) {
+        if (remoteStateMatchesCurrentSong(remoteStreamState.value)) return
         val coercedProgress = progress.coerceIn(0f, 1f)
         runCatching { startPlayback.seekTo(coercedProgress) }
             .onSuccess { playbackProgress.value = coercedProgress }
@@ -636,6 +689,7 @@ class HomeViewModel(
     }
 
     fun toggleShuffle() {
+        if (remoteStateMatchesCurrentSong(remoteStreamState.value)) return
         runCatching { startPlayback.setShuffleEnabled(!isShuffleEnabled.value) }.onFailure { error
             ->
             refreshError.value = error.message ?: "Shuffle update failed"
@@ -643,6 +697,7 @@ class HomeViewModel(
     }
 
     fun cycleRepeatMode() {
+        if (remoteStateMatchesCurrentSong(remoteStreamState.value)) return
         val nextMode =
             when (repeatMode.value) {
                 RepeatMode.Off -> RepeatMode.All
@@ -743,8 +798,15 @@ class HomeViewModel(
 
     override fun onCleared() {
         startPlayback.setVisualizerEnabled(false)
+        remoteStreamController?.close()
         startPlayback.close()
         super.onCleared()
+    }
+
+    private fun remoteStateMatchesCurrentSong(state: RemoteStreamState): Boolean {
+        if (state.status !in setOf(RemoteStreamStatus.Playing, RemoteStreamStatus.Paused)) return false
+        val song = playbackSongsById.value[nowPlayingSongId.value] ?: return false
+        return state.requestedSongId == song.id && state.requestedUri == song.uri
     }
 
     fun deletePlaylist(playlist: M3uPlaylist) {
@@ -1255,7 +1317,8 @@ class HomeViewModelFactory(
     private val artworkPreferences: ArtworkPreferences? = null,
     private val libraryPreferences: LibraryPreferences? = null,
     private val carModePreferences: CarModePreferences? = null,
-    private val playbackPreferences: PlaybackPreferences? = null
+    private val playbackPreferences: PlaybackPreferences? = null,
+    private val remoteStreamController: RemoteStreamController? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -1280,7 +1343,8 @@ class HomeViewModelFactory(
             artworkPreferences,
             libraryPreferences,
             carModePreferences,
-            playbackPreferences
+            playbackPreferences,
+            remoteStreamController
         ) as
                 T
     }

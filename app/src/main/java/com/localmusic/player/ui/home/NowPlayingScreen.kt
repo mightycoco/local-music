@@ -55,10 +55,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.dp
-import androidx.mediarouter.app.MediaRouteButton
-import com.google.android.gms.cast.framework.CastButtonFactory
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.SongSource
 import com.localmusic.player.playlist.M3uPlaylist
@@ -421,12 +418,6 @@ private fun NowPlayingPlaybackControls(
     actions: NowPlayingLayoutActions,
     modifier: Modifier = Modifier
 ) {
-    val isStreamCastEligible =
-        state.song.source == SongSource.STREAM &&
-                runCatching {
-                    android.net.Uri.parse(state.song.uri).scheme?.lowercase() in setOf("http", "https")
-                }.getOrDefault(false)
-
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         PlaybackControls(
             playbackProgress = state.playbackProgress,
@@ -445,17 +436,6 @@ private fun NowPlayingPlaybackControls(
                 actions.playback.next()
             }
         )
-        if (isStreamCastEligible) {
-            AndroidView(
-                factory = { context ->
-                    MediaRouteButton(context).also { button ->
-                        CastButtonFactory.setUpMediaRouteButton(context, button)
-                        button.contentDescription = "Stream to device"
-                    }
-                },
-                modifier = Modifier.size(48.dp)
-            )
-        }
     }
 }
 

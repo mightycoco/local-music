@@ -1,7 +1,6 @@
 package com.localmusic.player
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -11,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.util.UnstableApi
@@ -19,6 +19,7 @@ import com.localmusic.player.artwork.ArtworkDiskCache
 import com.localmusic.player.artwork.ArtworkPreferences
 import com.localmusic.player.artwork.EmbeddedArtworkExtractor
 import com.localmusic.player.bluetooth.CarModePreferences
+import com.localmusic.player.cast.GoogleCastRemoteStreamController
 import com.localmusic.player.data.database.LocalMusicDatabase
 import com.localmusic.player.data.mediastore.CompositeMusicScanner
 import com.localmusic.player.data.mediastore.MediaStoreMusicScanner
@@ -52,7 +53,7 @@ import com.localmusic.player.ui.theme.LocalMusicTheme
 
 /** Main Android entry point for the local music player. */
 @UnstableApi
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -150,7 +151,8 @@ class MainActivity : ComponentActivity() {
                 playbackPreferences =
                     PlaybackPreferences(
                         getSharedPreferences("local-music-playback", MODE_PRIVATE)
-                    )
+                    ),
+                remoteStreamController = GoogleCastRemoteStreamController(applicationContext)
             )
 
         setContent {

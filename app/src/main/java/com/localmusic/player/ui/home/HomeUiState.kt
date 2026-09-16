@@ -4,6 +4,7 @@ import com.localmusic.player.bluetooth.CarAudioDevice
 import com.localmusic.player.domain.model.LibraryFilter
 import com.localmusic.player.domain.model.LibraryFacet
 import com.localmusic.player.domain.model.RadioStation
+import com.localmusic.player.domain.model.RemoteStreamState
 import com.localmusic.player.domain.model.Song
 import com.localmusic.player.domain.model.SortOrder
 import com.localmusic.player.domain.repository.RepeatMode
@@ -27,6 +28,7 @@ data class HomeUiState(
     val visualizerLevels: List<Float> = emptyList(),
     val isShuffleEnabled: Boolean = false,
     val repeatMode: RepeatMode = RepeatMode.Off,
+    val remoteStreamState: RemoteStreamState = RemoteStreamState(),
     val themeMode: AppThemeMode = AppThemeMode.FollowSystem,
     val isExternalArtworkDownloadEnabled: Boolean = true,
     val isVisualizerPreferred: Boolean = false,

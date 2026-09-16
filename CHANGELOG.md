@@ -3,6 +3,9 @@
 ## 0.1.0 - Unreleased
 
 - Added the first Google Cast discovery slice for eligible online streams using the Default Media Receiver and standard Cast chooser.
+- Added Cast receiver URI loading with request-matched playback state, confirmed-playing local pause, and remote play/pause control orchestration.
+- Moved the eligible-stream Cast chooser into the Now Playing artwork action row between Favourite and More.
+- Fixed Cast route-button startup and chooser crashes by using an opaque AppCompat host theme and a FragmentActivity host.
 - Restored the persisted Queue and its last selected song on app launch, opening Now Playing when playable queue items remain and Home otherwise.
 - Reconciled playlist enqueue operations against the complete active queue, persisted Home playback queues, and recovered Media3 controller connections after failures or disconnections.
 - Replaced full-library Room observation and ViewModel projection with Paging 3-backed SQL filtering, a 500-song cache cap, complete Room facet aggregation, targeted playlist lookups, and composite library indexes.
