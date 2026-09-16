@@ -2,6 +2,8 @@ package com.localmusic.player.ui.home
 
 import com.localmusic.player.domain.model.Song
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlaybackQueueProjectionTest {
@@ -19,6 +21,16 @@ class PlaybackQueueProjectionTest {
             )
 
         assertEquals(listOf(first, second, third), result)
+    }
+
+    @Test
+    fun ignoresOldAndEmptySnapshotsUntilRequestedSongBecomesCurrent() {
+        val pendingSongId = "song-outside-playlist"
+
+        assertFalse(shouldApplyPlaybackSnapshot(pendingSongId, "playlist-song"))
+        assertFalse(shouldApplyPlaybackSnapshot(pendingSongId, null))
+        assertTrue(shouldApplyPlaybackSnapshot(pendingSongId, pendingSongId))
+        assertTrue(shouldApplyPlaybackSnapshot(null, null))
     }
 
     private fun testSong(id: String): Song =

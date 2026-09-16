@@ -130,6 +130,7 @@ class HomeViewModel(
     private var hasRequestedInitialRefresh = false
     private var queueMutationGeneration = 0L
     private var hasObservedActiveQueue = false
+    private var pendingPlaybackSongId: String? = null
     private val remoteHandoffCoordinator = RemoteHandoffCoordinator()
 
     init {
@@ -148,6 +149,9 @@ class HomeViewModel(
         }
         viewModelScope.launch {
             startPlayback.observePlayback().collect { playback ->
+                val pendingSongId = pendingPlaybackSongId
+                if (!shouldApplyPlaybackSnapshot(pendingSongId, playback.songId)) return@collect
+                if (pendingSongId != null) pendingPlaybackSongId = null
                 if (playback.queueSongIds.isNotEmpty()) hasObservedActiveQueue = true
                 nowPlayingSongId.value = playback.songId
                 playbackQueueSongIds.value = playback.queueSongIds
@@ -615,6 +619,7 @@ class HomeViewModel(
             )
         )
         playbackPreferences?.setLastPlayedSongUri(startSong.uri)
+        pendingPlaybackSongId = startSong.id
         nowPlayingSongId.value = startSong.id
         playbackQueueSongIds.value = queue.map(Song::id)
         playbackSongsById.value = queue.associateBy(Song::id)
@@ -626,6 +631,7 @@ class HomeViewModel(
         viewModelScope.launch(Dispatchers.Default) {
             runCatching { startPlayback(queue, startSong.id) }.onFailure { error ->
                 withContext(Dispatchers.Main) {
+                    pendingPlaybackSongId = null
                     isPlaying.value = false
                     refreshError.value = error.message ?: "Playback failed"
                 }
@@ -987,6 +993,7 @@ class HomeViewModel(
 
     fun clearQueue() {
         queueMutationGeneration++
+        pendingPlaybackSongId = null
         playbackPreferences?.setLastPlayedSongUri(null)
         savePlaylist(M3uPlaylist(name = M3uPlaylist.QUEUE_NAME, entries = emptyList()))
         runCatching { startPlayback.clearQueue() }.onFailure { error ->
@@ -1266,6 +1273,11 @@ internal fun resolvePlaybackQueue(
 ): List<Song> {
     return queueSongIds.distinct().mapNotNull(songsById::get)
 }
+
+internal fun shouldApplyPlaybackSnapshot(
+    pendingSongId: String?,
+    observedSongId: String?
+): Boolean = pendingSongId == null || observedSongId == pendingSongId
 
 internal fun resolvePlaylistEntriesToEnqueue(
     queueEntries: List<M3uPlaylistEntry>,
