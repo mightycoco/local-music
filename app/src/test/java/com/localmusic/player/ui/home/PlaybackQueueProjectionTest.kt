@@ -24,13 +24,34 @@ class PlaybackQueueProjectionTest {
     }
 
     @Test
-    fun ignoresOldAndEmptySnapshotsUntilRequestedSongBecomesCurrent() {
+    fun ignoresIncoherentSnapshotsUntilRequestedSongAndQueueAreCurrent() {
         val pendingSongId = "song-outside-playlist"
 
-        assertFalse(shouldApplyPlaybackSnapshot(pendingSongId, "playlist-song"))
-        assertFalse(shouldApplyPlaybackSnapshot(pendingSongId, null))
-        assertTrue(shouldApplyPlaybackSnapshot(pendingSongId, pendingSongId))
-        assertTrue(shouldApplyPlaybackSnapshot(null, null))
+        assertFalse(
+            shouldApplyPlaybackSnapshot(pendingSongId, "playlist-song", listOf("playlist-song"))
+        )
+        assertFalse(shouldApplyPlaybackSnapshot(pendingSongId, null, emptyList()))
+        assertFalse(shouldApplyPlaybackSnapshot(pendingSongId, pendingSongId, emptyList()))
+        assertTrue(shouldApplyPlaybackSnapshot(pendingSongId, pendingSongId, listOf(pendingSongId)))
+        assertTrue(shouldApplyPlaybackSnapshot(null, null, emptyList()))
+    }
+
+    @Test
+    fun selectedSongBecomesReplacementQueueWhenPagingSnapshotIsEmpty() {
+        val selectedSong = testSong("selected-local-mp3")
+
+        assertEquals(listOf(selectedSong), resolveReplacementQueue(emptyList(), selectedSong))
+    }
+
+    @Test
+    fun replacementQueueRetainsLoadedOrderWhenItContainsSelectedSong() {
+        val first = testSong("first")
+        val selectedSong = testSong("selected")
+
+        assertEquals(
+            listOf(first, selectedSong),
+            resolveReplacementQueue(listOf(first, selectedSong, first), selectedSong)
+        )
     }
 
     private fun testSong(id: String): Song =

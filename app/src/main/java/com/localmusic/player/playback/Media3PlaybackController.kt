@@ -35,13 +35,11 @@ class Media3PlaybackController(
             var controller: MediaController? = null
             var listener: Player.Listener? = null
             val visualizerLevels = AtomicReference<List<Float>>(emptyList())
-            val queueSongIds = AtomicReference<List<String>>(emptyList())
 
             fun emitSnapshot() {
                 controller?.let { mediaController ->
                     trySend(
                         mediaController.toPlaybackSnapshot(
-                            queueSongIds.get(),
                             visualizerLevels.get()
                         )
                     )
@@ -57,9 +55,6 @@ class Media3PlaybackController(
                             player: Player,
                             events: Player.Events
                         ) {
-                            if (events.contains(Player.EVENT_TIMELINE_CHANGED)) {
-                                queueSongIds.set(player.queueSongIds())
-                            }
                             emitSnapshot()
                         }
 
@@ -68,7 +63,6 @@ class Media3PlaybackController(
                         }
                     }
                 mediaController.addListener(listener!!)
-                queueSongIds.set(mediaController.queueSongIds())
                 emitSnapshot()
             }
 
@@ -236,12 +230,11 @@ class Media3PlaybackController(
         SessionToken(context, ComponentName(context, LocalMusicPlaybackService::class.java))
 
     private fun MediaController.toPlaybackSnapshot(
-        queueSongIds: List<String>,
         visualizerLevels: List<Float>
     ): PlaybackSnapshot =
         PlaybackSnapshot(
             songId = currentMediaItem?.mediaId,
-            queueSongIds = queueSongIds,
+            queueSongIds = queueSongIds(),
             title = mediaMetadata.title?.toString(),
             artist = mediaMetadata.artist?.toString(),
             isPlaying = isPlaying,

@@ -150,7 +150,12 @@ class HomeViewModel(
         viewModelScope.launch {
             startPlayback.observePlayback().collect { playback ->
                 val pendingSongId = pendingPlaybackSongId
-                if (!shouldApplyPlaybackSnapshot(pendingSongId, playback.songId)) return@collect
+                if (!shouldApplyPlaybackSnapshot(
+                        pendingSongId = pendingSongId,
+                        observedSongId = playback.songId,
+                        observedQueueSongIds = playback.queueSongIds
+                    )
+                ) return@collect
                 if (pendingSongId != null) pendingPlaybackSongId = null
                 if (playback.queueSongIds.isNotEmpty()) hasObservedActiveQueue = true
                 nowPlayingSongId.value = playback.songId
@@ -610,26 +615,27 @@ class HomeViewModel(
     }
 
     private fun playSongs(queue: List<Song>, startSong: Song) {
+        val replacementQueue = resolveReplacementQueue(queue, startSong)
         queueMutationGeneration++
         refreshError.value = null
         savePlaylist(
             M3uPlaylist(
                 name = M3uPlaylist.QUEUE_NAME,
-                entries = queue.map(Song::toM3uEntry)
+                entries = replacementQueue.map(Song::toM3uEntry)
             )
         )
         playbackPreferences?.setLastPlayedSongUri(startSong.uri)
         pendingPlaybackSongId = startSong.id
         nowPlayingSongId.value = startSong.id
-        playbackQueueSongIds.value = queue.map(Song::id)
-        playbackSongsById.value = queue.associateBy(Song::id)
+        playbackQueueSongIds.value = replacementQueue.map(Song::id)
+        playbackSongsById.value = replacementQueue.associateBy(Song::id)
         isPlaying.value = true
         playbackProgress.value = 0f
         playbackDurationMillis.value = 0L
         selectedScreen.value = HomeScreenDestination.NowPlaying
 
         viewModelScope.launch(Dispatchers.Default) {
-            runCatching { startPlayback(queue, startSong.id) }.onFailure { error ->
+            runCatching { startPlayback(replacementQueue, startSong.id) }.onFailure { error ->
                 withContext(Dispatchers.Main) {
                     pendingPlaybackSongId = null
                     isPlaying.value = false
@@ -1274,10 +1280,18 @@ internal fun resolvePlaybackQueue(
     return queueSongIds.distinct().mapNotNull(songsById::get)
 }
 
+internal fun resolveReplacementQueue(queue: List<Song>, startSong: Song): List<Song> {
+    val uniqueQueue = queue.distinctBy(Song::id)
+    return if (uniqueQueue.any { it.id == startSong.id }) uniqueQueue else listOf(startSong)
+}
+
 internal fun shouldApplyPlaybackSnapshot(
     pendingSongId: String?,
-    observedSongId: String?
-): Boolean = pendingSongId == null || observedSongId == pendingSongId
+    observedSongId: String?,
+    observedQueueSongIds: List<String>
+): Boolean =
+    pendingSongId == null ||
+            (observedSongId == pendingSongId && pendingSongId in observedQueueSongIds)
 
 internal fun resolvePlaylistEntriesToEnqueue(
     queueEntries: List<M3uPlaylistEntry>,

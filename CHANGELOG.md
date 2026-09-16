@@ -2,7 +2,7 @@
 
 ## 0.1.0 - Unreleased
 
-- Fixed single-song playback after playlist enqueue so transient Media3 timeline updates cannot clear the replacement queue and leave Now Playing empty.
+- Fixed single-song playback after playlist enqueue by retaining the tapped song when Paging temporarily exposes an empty list and reading Media3 current-item and queue state atomically.
 - Fixed CI packaging so trusted builds publish the release-signed APK instead of an ephemeral debug-signed APK, and removed the duplicate debug-only workflow.
 - Added the first Google Cast discovery slice for eligible online streams using the Default Media Receiver and standard Cast chooser.
 - Added Cast receiver URI loading with request-matched playback state, confirmed-playing local pause, and remote play/pause control orchestration.
