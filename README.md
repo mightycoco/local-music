@@ -97,7 +97,7 @@ app\build\outputs\bundle\release\app-release.aab
 
 ## Release Signing and CI
 
-Debug APKs are signed with Android's debug key and can be installed for development. Release artifacts are signed only when the following environment variables are available: `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`.
+Debug APKs are signed with the machine-specific Android debug key and can be installed for development. Debug APKs built on different machines generally cannot update each other. Release artifacts are signed only when the following environment variables are available: `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`.
 
 Generate and retain a private release/upload key outside the repository:
 
@@ -112,7 +112,7 @@ For GitHub Actions, add these repository secrets under **Settings > Secrets and 
 - `ANDROID_KEY_ALIAS`
 - `ANDROID_KEY_PASSWORD`
 
-The CI workflow uses the same configured key for debug and release APKs on trusted push and manual runs, so the `local-music-apk` artifact can update an existing installation signed by that key. Pull requests and CI runs without the signing secrets publish `local-music-development-debug-apk` instead; it is only for testing and cannot update an app signed with another key. Tags beginning with `v` also upload a signed release APK and AAB. Keep the keystore and passwords private and backed up; they are required for app updates. Use this key as the upload key when enabling Google Play App Signing.
+On trusted push and manual runs with signing secrets, CI publishes the release-signed `local-music-apk` artifact. It can update an existing installation signed by the same release key. Pull requests and CI runs without signing secrets publish `local-music-development-debug-apk` instead; it is only for testing and cannot reliably update APKs built on another machine or CI runner. Tags beginning with `v` also upload a signed release APK and AAB. Keep the keystore and passwords private and backed up; they are required for app updates. Use this key as the upload key when enabling Google Play App Signing.
 
 ## Development Notes
 

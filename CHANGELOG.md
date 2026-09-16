@@ -2,6 +2,7 @@
 
 ## 0.1.0 - Unreleased
 
+- Fixed CI packaging so trusted builds publish the release-signed APK instead of an ephemeral debug-signed APK, and removed the duplicate debug-only workflow.
 - Added the first Google Cast discovery slice for eligible online streams using the Default Media Receiver and standard Cast chooser.
 - Added Cast receiver URI loading with request-matched playback state, confirmed-playing local pause, and remote play/pause control orchestration.
 - Moved the eligible-stream Cast chooser into the Now Playing artwork action row between Favourite and More.
