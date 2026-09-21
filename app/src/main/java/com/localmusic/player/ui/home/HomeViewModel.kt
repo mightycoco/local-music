@@ -563,7 +563,38 @@ class HomeViewModel(
     }
 
     fun playSong(song: Song) {
-        playSongs(queue = uiState.value.playbackQueue, startSong = song)
+        val queue =
+            importedPlaylists.value.firstOrNull { it.name == M3uPlaylist.QUEUE_NAME }
+                ?: M3uPlaylist(name = M3uPlaylist.QUEUE_NAME, entries = emptyList())
+        val isAlreadyQueued = queue.entries.any { it.uri == song.uri }
+        val updatedQueue =
+            if (isAlreadyQueued) queue
+            else queue.copy(entries = queue.entries + song.toM3uEntry())
+
+        queueMutationGeneration++
+        refreshError.value = null
+        if (!isAlreadyQueued) savePlaylist(updatedQueue)
+        playbackPreferences?.setLastPlayedSongUri(song.uri)
+        pendingPlaybackSongId = song.id
+        nowPlayingSongId.value = song.id
+        if (song.id !in playbackQueueSongIds.value) {
+            playbackQueueSongIds.value = playbackQueueSongIds.value + song.id
+        }
+        playbackSongsById.value = playbackSongsById.value + (song.id to song)
+        isPlaying.value = true
+        playbackProgress.value = 0f
+        playbackDurationMillis.value = 0L
+        selectedScreen.value = HomeScreenDestination.NowPlaying
+
+        viewModelScope.launch(Dispatchers.Default) {
+            runCatching { startPlayback.enqueueAndPlay(song) }.onFailure { error ->
+                withContext(Dispatchers.Main) {
+                    pendingPlaybackSongId = null
+                    isPlaying.value = false
+                    refreshError.value = error.message ?: "Playback failed"
+                }
+            }
+        }
     }
 
     fun playFavourites(song: Song) {

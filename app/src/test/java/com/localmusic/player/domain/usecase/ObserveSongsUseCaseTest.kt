@@ -82,9 +82,11 @@ class ObserveSongsUseCaseTest {
         val useCase = StartPlaybackUseCase(playbackController)
 
         useCase.enqueue(song)
+        useCase.enqueueAndPlay(song)
         useCase.clearQueue()
 
         assertEquals(song, playbackController.enqueuedSong)
+        assertEquals(song, playbackController.enqueuedAndPlayedSong)
         assertEquals(true, playbackController.queueWasCleared)
     }
 
@@ -144,6 +146,7 @@ class ObserveSongsUseCaseTest {
     private class FakePlaybackController : PlaybackController {
         var startedPlayback: Pair<List<Song>, String>? = null
         var enqueuedSong: Song? = null
+        var enqueuedAndPlayedSong: Song? = null
         var queueWasCleared = false
         var shuffleEnabled: Boolean? = null
         var recordedRepeatMode: RepeatMode? = null
@@ -162,6 +165,10 @@ class ObserveSongsUseCaseTest {
 
         override fun enqueue(song: Song) {
             enqueuedSong = song
+        }
+
+        override fun enqueueAndPlay(song: Song) {
+            enqueuedAndPlayedSong = song
         }
 
         override fun clearQueue() {

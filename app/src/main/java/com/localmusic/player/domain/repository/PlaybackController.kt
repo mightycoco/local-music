@@ -10,6 +10,7 @@ interface PlaybackController {
     fun restoreQueue(songs: List<Song>, startSongId: String)
     fun synchronizeQueue(songs: List<Song>, currentSongId: String?)
     fun enqueue(song: Song)
+    fun enqueueAndPlay(song: Song)
     fun clearQueue()
     fun resume()
     fun pause()

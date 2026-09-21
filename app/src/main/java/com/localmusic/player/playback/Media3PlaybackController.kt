@@ -139,6 +139,22 @@ class Media3PlaybackController(
         withController { controller -> controller.addMediaItem(item) }
     }
 
+    override fun enqueueAndPlay(song: Song) {
+        val item = queueFactory.createQueue(listOf(song)).singleOrNull() ?: return
+        withController { controller ->
+            val existingIndex =
+                (0 until controller.mediaItemCount).firstOrNull { index ->
+                    controller.getMediaItemAt(index).mediaId == song.id
+                }
+            val targetIndex = existingIndex ?: controller.mediaItemCount.also {
+                controller.addMediaItem(item)
+            }
+            controller.seekTo(targetIndex, 0L)
+            if (controller.playbackState == Player.STATE_IDLE) controller.prepare()
+            controller.play()
+        }
+    }
+
     override fun clearQueue() {
         withController { controller -> controller.clearMediaItems() }
     }
