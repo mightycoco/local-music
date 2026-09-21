@@ -79,6 +79,15 @@
 	- [ ] Add a dedicated remote stop/disconnect action and remote-owned control states to Now Playing.
 	- [ ] Add focused state-machine, ViewModel, and Now Playing UI tests.
 
+- [ ] Add configurable crossfade for automatic transitions between local queue songs.
+	- [ ] Use two coordinated Media3 players to preload the next song and overlap decoded audio while fading the current player out and the next player in.
+	- [ ] Apply crossfade only when playback advances automatically at the end of a song; manual song selection, Previous, Next, seeking, and queue-item selection must switch normally without crossfade.
+	- [ ] Add a persisted Settings switch to enable or disable crossfade.
+	- [ ] Add a Settings slider for a crossfade duration from 5 to 30 seconds, enabled only while crossfade is on.
+	- [ ] Bound the effective overlap for short tracks and skip crossfade for unknown-duration media, online streams, playback errors, and unavailable next items.
+	- [ ] Keep MediaSession state, queue position, shuffle/repeat behavior, notification controls, audio focus, and visualizer output coherent while player ownership changes.
+	- [ ] Add focused unit and playback tests for automatic overlap timing, configured duration limits, disabled behavior, manual-transition bypass, cancellation, and failure fallback.
+
 - [ ] Verify all required local formats on device and document Media3 fallback behavior: MP3, AAC, M4A, FLAC, WAV, AIFF, OGG, and Opus.
 - [x] Complete Home filters: Artists, Albums, Genres, and Folders provide local drill-down browsing.
 - [x] Expand the song metadata model and instant search to include album artist, genre, composer, year, comments, description, and playlist names.
