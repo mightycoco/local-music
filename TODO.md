@@ -54,6 +54,7 @@
 - [x] Playlist screen must allow deleting playlists
 - [x] Now Playing must allow adding to a new/existing playlist
 - [x] Queueing of items must update both the persistent Queue playlist and active Media3 playback queue; Queue cannot be deleted, can be cleared, and is always listed first.
+- [x] Append single-song queue actions without interrupting or re-preparing the currently playing item.
 - [x] Preserve the active queue when selecting a Home song, append it only when absent, start it, and scroll its Now Playing entry into view.
 - [x] Restore the persisted Queue and last selected song at startup, opening Now Playing only when the queue contains playable items.
 - [x] Playlists must be persisted and loaded after app restart.

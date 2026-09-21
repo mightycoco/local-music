@@ -967,11 +967,12 @@ class HomeViewModel(
             val queue =
                 importedPlaylists.value.firstOrNull { it.name == M3uPlaylist.QUEUE_NAME }
                     ?: M3uPlaylist(name = M3uPlaylist.QUEUE_NAME, entries = emptyList())
-            val updatedQueue =
-                if (queue.entries.any { it.uri == song.uri }) queue
-                else queue.copy(entries = queue.entries + song.toM3uEntry())
+            if (queue.entries.any { it.uri == song.uri }) return@launch
+            val updatedQueue = queue.copy(entries = queue.entries + song.toM3uEntry())
             savePlaylist(updatedQueue)
-            synchronizeActiveQueue(updatedQueue, additionalSongs = listOf(song))
+            playbackSongsById.value = playbackSongsById.value + (song.id to song)
+            playbackQueueSongIds.value = playbackQueueSongIds.value + song.id
+            startPlayback.enqueue(song)
         }
     }
 
