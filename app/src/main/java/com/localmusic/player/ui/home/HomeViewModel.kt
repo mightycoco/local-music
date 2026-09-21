@@ -563,7 +563,7 @@ class HomeViewModel(
     }
 
     fun playSong(song: Song) {
-        playSongs(queue = uiState.value.songs, startSong = song)
+        playSongs(queue = uiState.value.playbackQueue, startSong = song)
     }
 
     fun playFavourites(song: Song) {
@@ -1282,7 +1282,7 @@ internal fun resolvePlaybackQueue(
 
 internal fun resolveReplacementQueue(queue: List<Song>, startSong: Song): List<Song> {
     val uniqueQueue = queue.distinctBy(Song::id)
-    return if (uniqueQueue.any { it.id == startSong.id }) uniqueQueue else listOf(startSong)
+    return if (uniqueQueue.any { it.id == startSong.id }) uniqueQueue else uniqueQueue + startSong
 }
 
 internal fun shouldApplyPlaybackSnapshot(

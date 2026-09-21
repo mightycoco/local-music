@@ -44,7 +44,19 @@ class PlaybackQueueProjectionTest {
     }
 
     @Test
-    fun replacementQueueRetainsLoadedOrderWhenItContainsSelectedSong() {
+    fun selectedSongIsAppendedToExistingQueueAndPlayed() {
+        val first = testSong("first")
+        val second = testSong("second")
+        val selectedSong = testSong("selected")
+
+        assertEquals(
+            listOf(first, second, selectedSong),
+            resolveReplacementQueue(listOf(first, second), selectedSong)
+        )
+    }
+
+    @Test
+    fun replacementQueueRetainsOrderWhenItAlreadyContainsSelectedSong() {
         val first = testSong("first")
         val selectedSong = testSong("selected")
 
