@@ -102,6 +102,14 @@ val hasReleaseSigningConfig = listOf(
     releaseKeyAlias,
     releaseKeyPassword
 ).all { !it.isNullOrBlank() }
+val requestedReleaseArtifact = gradle.startParameter.taskNames.any { taskName ->
+    taskName.substringAfterLast(':') in setOf("assembleRelease", "bundleRelease")
+}
+
+require(!requestedReleaseArtifact || hasReleaseSigningConfig) {
+    "Release builds require ANDROID_KEYSTORE_PATH, ANDROID_KEYSTORE_PASSWORD, " +
+        "ANDROID_KEY_ALIAS, and ANDROID_KEY_PASSWORD. Use npm run build:aab for a local bundle."
+}
 
 android {
     namespace = "com.localmusic.player"

@@ -71,22 +71,10 @@ Output:
 app\build\outputs\apk\debug\app-debug.apk
 ```
 
-Create a release APK:
+Create a signed Google Play Store upload bundle after exporting the four signing variables described below:
 
 ```cmd
-gradlew.bat assembleRelease
-```
-
-Output:
-
-```text
-app\build\outputs\apk\release\app-release-unsigned.apk
-```
-
-Create the Google Play Store upload bundle:
-
-```cmd
-gradlew.bat bundleRelease
+npm run build:aab
 ```
 
 Output:
@@ -97,7 +85,7 @@ app\build\outputs\bundle\release\app-release.aab
 
 ## Release Signing and CI
 
-Debug APKs are signed with the machine-specific Android debug key and can be installed for development. Debug APKs built on different machines generally cannot update each other. Release artifacts are signed only when the following environment variables are available: `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`.
+Debug APKs are signed with the machine-specific Android debug key and can be installed for development. Debug APKs built on different machines generally cannot update each other. Release builds fail unless every signing credential is present.
 
 Generate and retain a private release/upload key outside the repository:
 
@@ -105,14 +93,17 @@ Generate and retain a private release/upload key outside the repository:
 keytool -genkeypair -keystore local-music-release.p12 -storetype PKCS12 -alias local-music -keyalg RSA -keysize 4096 -validity 10000
 ```
 
-For GitHub Actions, add these repository secrets under **Settings > Secrets and variables > Actions**:
+For local AAB builds, place the ignored keystore at `.github/local-music-release.p12`, then configure this clone once:
 
-- `ANDROID_KEYSTORE_BASE64`: the base64 encoding of `local-music-release.p12`
-- `ANDROID_KEYSTORE_PASSWORD`
-- `ANDROID_KEY_ALIAS`
-- `ANDROID_KEY_PASSWORD`
+```powershell
+npm run configure:signing
+```
 
-On trusted push and manual runs with signing secrets, CI publishes the release-signed `local-music-apk` artifact. It can update an existing installation signed by the same release key. Pull requests and CI runs without signing secrets publish `local-music-development-debug-apk` instead; it is only for testing and cannot reliably update APKs built on another machine or CI runner. Tags beginning with `v` also upload a signed release APK and AAB. Keep the keystore and passwords private and backed up; they are required for app updates. Use this key as the upload key when enabling Google Play App Signing.
+The setup command prompts for the shared PKCS#12 keystore/key password without echoing it and stores the path, alias, and password in this clone's plain-text `.git/config`. Protect access to the workstation and repository directory. Run `npm run build:aab` to execute unit tests and build the signed bundle.
+
+GitHub Actions continues to use `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD` repository secrets. The npm script detects the complete CI environment, decodes the keystore into a temporary directory, and removes it afterward. Tagged builds fail if signing secrets are incomplete. Trusted non-tag builds produce a signed release APK when secrets are available; pull requests or runs without secrets produce a development debug APK.
+
+Keep the keystore and passwords private and backed up; they are required for app updates. Use this key as the upload key when enabling Google Play App Signing.
 
 ## Development Notes
 

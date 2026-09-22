@@ -7,6 +7,7 @@
 - [x] Add initial Compose home screen with visible search, filters, and sorting controls.
 - [x] Add Room metadata schema foundation.
 - [x] Add initial domain use case test.
+- [x] Support clone-local Git configuration for local signing and environment-backed tagged-CI release bundles.
 
 ## Next Feature Slice
 

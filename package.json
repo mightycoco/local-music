@@ -1,0 +1,8 @@
+{
+  "name": "local-music-build",
+  "private": true,
+  "scripts": {
+    "configure:signing": "node scripts/configure-local-signing.mjs",
+    "build:aab": "node scripts/build-local-aab.mjs"
+  }
+}
