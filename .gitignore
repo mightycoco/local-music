@@ -12,3 +12,4 @@ captures/
 .idea/
 .vscode/.browse.VC.db*
 .DS_Store
+*.p12
