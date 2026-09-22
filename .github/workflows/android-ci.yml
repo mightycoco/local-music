@@ -2,11 +2,19 @@ name: Android CI
 
 on:
   push:
+    branches:
+      - main
+    tags:
+      - "v*"
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: android-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   continuous-build:
@@ -29,22 +37,24 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Make Gradle wrapper executable
-        run: chmod +x gradlew
-
       - name: Prepare stable signing keystore
         if: github.event_name != 'pull_request' && env.HAS_SIGNING_SECRETS == 'true'
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/local-music-release.p12"
 
-      - name: Run unit tests and build artifacts
+      - name: Test and build signed release APK
+        if: github.event_name != 'pull_request' && env.HAS_SIGNING_SECRETS == 'true'
         env:
           ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/local-music-release.p12
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew testDebugUnitTest assembleDebug assembleRelease bundleRelease
+        run: ./gradlew testDebugUnitTest assembleRelease
+
+      - name: Test and build development debug APK
+        if: github.event_name == 'pull_request' || env.HAS_SIGNING_SECRETS != 'true'
+        run: ./gradlew testDebugUnitTest assembleDebug
 
       - name: Upload signed installable APK
         if: github.event_name != 'pull_request' && env.HAS_SIGNING_SECRETS == 'true'
@@ -54,6 +64,7 @@ jobs:
           path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 1
+          compression-level: 0
 
       - name: Upload development debug APK
         if: github.event_name == 'pull_request' || env.HAS_SIGNING_SECRETS != 'true'
@@ -63,6 +74,7 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 1
+          compression-level: 0
 
   tagged-release:
     name: Build signed Android release artifacts
@@ -82,9 +94,6 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Make Gradle wrapper executable
-        run: chmod +x gradlew
-
       - name: Prepare release keystore
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -96,7 +105,7 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew testDebugUnitTest assembleDebug assembleRelease bundleRelease
+        run: ./gradlew testDebugUnitTest assembleRelease bundleRelease
 
       - name: Upload signed release APK
         uses: actions/upload-artifact@v4
@@ -104,6 +113,7 @@ jobs:
           name: local-music-release-apk
           path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
+          compression-level: 0
 
       - name: Upload signed release bundle
         uses: actions/upload-artifact@v4
@@ -111,3 +121,4 @@ jobs:
           name: local-music-release-aab
           path: app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
+          compression-level: 0
