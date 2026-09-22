@@ -2,6 +2,7 @@
 
 ## 0.1.0 - Unreleased
 
+- Removed redundant unsigned CI artifact uploads that failed when trusted builds produced signed release outputs.
 - Fixed single-song Add to queue actions interrupting active playback by appending to Media3 instead of rebuilding and preparing the full queue.
 - Home song selection now preserves the Now Playing queue, appends a missing song or selects its existing entry, starts it, and keeps Media3 current-item and queue state synchronized.
 - Fixed CI packaging so trusted builds publish the release-signed APK instead of an ephemeral debug-signed APK, and removed the duplicate debug-only workflow.
