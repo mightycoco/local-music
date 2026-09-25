@@ -10,7 +10,8 @@ const requiredVariables = [
     "ANDROID_KEY_PASSWORD",
 ];
 const gradleWrapper = process.platform === "win32" ? "gradlew.bat" : "./gradlew";
-const additionalTasks = process.argv.slice(2);
+const requestedTasks = process.argv.slice(2);
+const releaseTasks = requestedTasks.length > 0 ? requestedTasks : ["bundleRelease"];
 const environmentIsComplete = requiredVariables.every(
     (variable) => process.env[variable]?.trim(),
 );
@@ -96,7 +97,7 @@ if (environmentIsComplete && !localPassword) {
 try {
     const result = spawnSync(
         gradleWrapper,
-        ["testDebugUnitTest", "bundleRelease", ...additionalTasks],
+        ["testDebugUnitTest", ...releaseTasks],
         {
             cwd: process.cwd(),
             env: {

@@ -3,6 +3,7 @@
 ## 0.1.0 - Unreleased
 
 - Added clone-local release signing setup through `npm run configure:signing`, while preserving environment-backed signing for tagged CI releases.
+- Fixed the VS Code release APK and AAB tasks to load clone-local signing credentials through the release-build wrapper.
 - Updated the app to compile and target Android API 36, with a new Play Store version code.
 - Slimmed Android CI by cancelling superseded runs, avoiding duplicate branch and pull-request builds, building only consumed artifacts, and skipping recompression of APK/AAB uploads.
 - Removed redundant unsigned CI artifact uploads that failed when trusted builds produced signed release outputs.

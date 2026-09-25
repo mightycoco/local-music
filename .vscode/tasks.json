@@ -9,7 +9,7 @@
 				"/d",
 				"/v:on",
 				"/c",
-				"set \"JAVA_HOME=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\" & set \"PATH=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin;%PATH%\" & gradlew.bat assembleDebug"
+				"set \"JAVA_HOME=%JAVA_HOME%\" & set \"PATH=%JAVA_HOME%\\bin;%PATH%\" & gradlew.bat assembleDebug"
 			],
 			"options": {
 				"cwd": "${workspaceFolder:local-music}"
@@ -48,7 +48,7 @@
 				"/d",
 				"/v:on",
 				"/c",
-				"set \"JAVA_HOME=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\" & set \"PATH=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin;%PATH%\" & gradlew.bat assembleRelease"
+				"set \"JAVA_HOME=%JAVA_HOME%\" & set \"PATH=%JAVA_HOME%\\bin;%PATH%\" & node scripts\\build-local-aab.mjs assembleRelease"
 			],
 			"options": {
 				"cwd": "${workspaceFolder:local-music}"
@@ -64,7 +64,7 @@
 				"/d",
 				"/v:on",
 				"/c",
-				"set \"JAVA_HOME=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\" & set \"PATH=C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.19.10-hotspot\\bin;%PATH%\" & gradlew.bat bundleRelease"
+				"set \"JAVA_HOME=%JAVA_HOME%\" & set \"PATH=%JAVA_HOME%\\bin;%PATH%\" & node scripts\\build-local-aab.mjs bundleRelease"
 			],
 			"options": {
 				"cwd": "${workspaceFolder:local-music}"
