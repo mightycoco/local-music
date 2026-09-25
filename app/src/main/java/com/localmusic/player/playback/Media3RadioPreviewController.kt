@@ -2,6 +2,8 @@ package com.localmusic.player.playback
 
 import android.content.Context
 import androidx.core.net.toUri
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -16,7 +18,16 @@ import kotlinx.coroutines.flow.asStateFlow
 /** Dedicated one-item player for auditioning a Radio Browser result. */
 @UnstableApi
 class Media3RadioPreviewController(context: Context) : RadioPreviewController {
-    private val player = ExoPlayer.Builder(context).build()
+    private val player =
+        ExoPlayer.Builder(context).build().apply {
+            setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                    .setUsage(C.USAGE_MEDIA)
+                    .build(),
+                true
+            )
+        }
     private val _previewStation = MutableStateFlow<RadioStation?>(null)
     override val previewStation = _previewStation.asStateFlow()
     private val _previewError = MutableStateFlow<String?>(null)
