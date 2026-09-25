@@ -107,6 +107,7 @@ class HomeViewModel(
     private val remoteStreamState = MutableStateFlow(RemoteStreamState())
     private val themeMode = MutableStateFlow(AppThemeMode.FollowSystem)
     private val importedPlaylists = MutableStateFlow<List<M3uPlaylist>>(emptyList())
+    private val playlistSongs = MutableStateFlow<List<Song>>(emptyList())
     private val sourceFolderUris = MutableStateFlow(folderSourceUris())
     private val artworkBySongId = MutableStateFlow<Map<String, String>>(emptyMap())
     private val artworkCacheSizeBytes = MutableStateFlow(artworkCache?.sizeBytes() ?: 0L)
@@ -146,6 +147,16 @@ class HomeViewModel(
                 ensureQueuePlaylist()
             }
             restorePersistedQueue(storedPlaylists)
+        }
+        viewModelScope.launch {
+            importedPlaylists.collect { playlists ->
+                val resolvedSongs = withContext(Dispatchers.IO) {
+                    playlists.playableUris().chunked(PLAYLIST_URI_QUERY_LIMIT).flatMap { uris ->
+                        getSongsByUris(uris)
+                    }
+                }
+                playlistSongs.value = resolvedSongs
+            }
         }
         viewModelScope.launch {
             startPlayback.observePlayback().collect { playback ->
@@ -406,6 +417,13 @@ class HomeViewModel(
                 artworkBySongId = artwork
             )
         }
+            .combine(playlistSongs) { state, resolvedPlaylistSongs ->
+                refreshArtwork(resolvedPlaylistSongs)
+                state.copy(
+                    playlistArtworkByUri =
+                        playlistArtworkByUri(resolvedPlaylistSongs, state.artworkBySongId)
+                )
+            }
             .combine(remoteStreamState) { state, remoteState ->
                 val currentSong = state.nowPlayingSong
                 val ownsPlayback =
@@ -791,11 +809,13 @@ class HomeViewModel(
         val cachedArtworkIds = artworkBySongId.value.keys
         val persistedArtworkIds = persistedArtwork.mapTo(mutableSetOf()) { it.first }
         val missingSongs =
-            songs.filter { song ->
-                song.id !in cachedArtworkIds &&
-                        song.id !in persistedArtworkIds &&
-                        requestedArtworkSongIds.add(song.id)
-            }
+            songs.asSequence()
+                .filter { song ->
+                    song.id !in cachedArtworkIds && song.id !in persistedArtworkIds
+                }
+                .take(ARTWORK_PREFETCH_LIMIT)
+                .filter { song -> requestedArtworkSongIds.add(song.id) }
+                .toList()
         if (missingSongs.isEmpty()) return
 
         viewModelScope.launch(Dispatchers.IO) {
@@ -1351,8 +1371,18 @@ internal fun resolvePersistedQueue(
     return PersistedQueueRestoration(songs = songs, startSong = startSong)
 }
 
+internal fun playlistArtworkByUri(
+    songs: List<Song>,
+    artworkBySongId: Map<String, String>
+): Map<String, String> =
+    songs.mapNotNull { song -> artworkBySongId[song.id]?.let { song.uri to it } }.toMap()
+
+private fun List<M3uPlaylist>.playableUris(): List<String> =
+    flatMap { playlist -> playlist.entries.map(M3uPlaylistEntry::uri) }.distinct()
+
 private const val ARTWORK_PREFETCH_LIMIT = 64
 private const val EXTERNAL_ARTWORK_PREFETCH_LIMIT = 4
+private const val PLAYLIST_URI_QUERY_LIMIT = 500
 
 /** Factory used until a dependency injection container is introduced. */
 class HomeViewModelFactory(

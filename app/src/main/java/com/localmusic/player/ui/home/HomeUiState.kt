@@ -19,6 +19,7 @@ data class HomeUiState(
     val favouriteUris: Set<String> = emptySet(),
     val libraryFacets: List<LibraryFacet> = emptyList(),
     val artworkBySongId: Map<String, String> = emptyMap(),
+    val playlistArtworkByUri: Map<String, String> = emptyMap(),
     val selectedScreen: HomeScreenDestination = HomeScreenDestination.Home,
     val nowPlayingSong: Song? = null,
     val playbackQueue: List<Song> = emptyList(),

@@ -735,10 +735,7 @@ internal fun HomeScreen(
                                 PlaylistEditorContent(
                                     playlist = playlist,
                                     favouriteUris = uiState.favouriteUris,
-                                    artworkByUri =
-                                        uiState.librarySongs.mapNotNull { song ->
-                                            uiState.artworkBySongId[song.id]?.let { song.uri to it }
-                                        }.toMap(),
+                                    artworkByUri = uiState.playlistArtworkByUri,
                                     onBack = {
                                         appActions.navigation.selectScreen(
                                             playlistEditorReturnDestination
